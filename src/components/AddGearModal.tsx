@@ -1,0 +1,254 @@
+import React, { useState } from 'react';
+import { X, Plus, Camera, Layers, DollarSign } from 'lucide-react';
+import { GearCategory, ConditionRating, GearStatus, UserAccount, GearItem } from '../types';
+
+interface AddGearModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  currentUser: UserAccount;
+  onAddGear: (gear: Partial<GearItem>) => void;
+}
+
+export const AddGearModal: React.FC<AddGearModalProps> = ({
+  isOpen,
+  onClose,
+  currentUser,
+  onAddGear,
+}) => {
+  const [assetTag, setAssetTag] = useState('');
+  const [name, setName] = useState('');
+  const [brand, setBrand] = useState('');
+  const [model, setModel] = useState('');
+  const [category, setCategory] = useState<GearCategory>('Cameras');
+  const [serialNumber, setSerialNumber] = useState('');
+  const [condition, setCondition] = useState<ConditionRating>('Mint');
+  const [location, setLocation] = useState('Studio');
+  const [kitName, setKitName] = useState('');
+  const [purchaseDate, setPurchaseDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [purchasePrice, setPurchasePrice] = useState<number | string>('');
+  const [replacementValue, setReplacementValue] = useState<number | string>('');
+  const [notes, setNotes] = useState('');
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !assetTag) return;
+
+    onAddGear({
+      assetTag: assetTag.toUpperCase().trim(),
+      name: name.trim(),
+      brand: brand.trim() || 'Custom',
+      model: model.trim() || name.trim(),
+      category,
+      serialNumber: serialNumber.trim() || `SN-${Math.floor(Math.random() * 900000 + 100000)}`,
+      condition,
+      status: 'Available',
+      location: location.trim(),
+      kitName: kitName.trim() || undefined,
+      purchaseDate: purchaseDate || new Date().toISOString().split('T')[0],
+      purchasePrice: Number(purchasePrice) || 0,
+      replacementValue: Number(replacementValue) || Number(purchasePrice) || 0,
+      notes: notes.trim(),
+    });
+
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white border border-slate-200 w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden my-8">
+        <div className="p-5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-xs">
+              <Plus className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900">Add New Equipment Asset</h2>
+              <p className="text-xs text-slate-500">Register new camera, lens, audio or lighting kit into CineVault.</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-700 border border-slate-200 transition-colors cursor-pointer shadow-2xs"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Asset Tag (ID)</label>
+              <input
+                type="text"
+                value={assetTag}
+                onChange={(e) => setAssetTag(e.target.value)}
+                placeholder="e.g. CAM-RED-02, LNS-35-01"
+                className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 uppercase font-mono focus:outline-none focus:bg-white focus:border-amber-500 font-medium"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Category</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value as GearCategory)}
+                className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 focus:outline-none focus:bg-white focus:border-amber-500 font-medium cursor-pointer"
+              >
+                <option value="Cameras">Cameras</option>
+                <option value="Lenses">Lenses</option>
+                <option value="Lighting">Lighting</option>
+                <option value="Audio">Audio</option>
+                <option value="Grip & Support">Grip & Support</option>
+                <option value="Drones & Gimbals">Drones & Gimbals</option>
+                <option value="Power & Batteries">Power & Batteries</option>
+                <option value="Media & Storage">Media & Storage</option>
+                <option value="Accessories">Accessories</option>
+              </select>
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-slate-700 font-semibold mb-1">Equipment Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Canon C300 Mark III Cinema Body"
+                className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 font-medium"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Brand / Manufacturer</label>
+              <input
+                type="text"
+                value={brand}
+                onChange={(e) => setBrand(e.target.value)}
+                placeholder="e.g. Canon, Sony, ARRI, Cooke"
+                className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Serial Number</label>
+              <input
+                type="text"
+                value={serialNumber}
+                onChange={(e) => setSerialNumber(e.target.value)}
+                placeholder="e.g. SN-558291"
+                className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 font-mono focus:outline-none focus:bg-white focus:border-amber-500 font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Location</label>
+              <div className="grid grid-cols-3 gap-2">
+                {(['Studio', 'Gripvan', 'Charging Bay'] as const).map((locOption) => (
+                  <button
+                    key={locOption}
+                    type="button"
+                    onClick={() => setLocation(locOption)}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                      location === locOption
+                        ? 'bg-amber-500 text-white border-amber-600 shadow-2xs ring-2 ring-amber-500/20'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    {locOption}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Kit Assignment (Optional)</label>
+              <input
+                type="text"
+                value={kitName}
+                onChange={(e) => setKitName(e.target.value)}
+                placeholder="e.g. A-Cam Commercial Rig"
+                className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Initial Condition</label>
+              <select
+                value={condition}
+                onChange={(e) => setCondition(e.target.value as ConditionRating)}
+                className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 focus:outline-none focus:bg-white focus:border-amber-500 font-medium cursor-pointer"
+              >
+                <option value="Mint">Mint (Brand New)</option>
+                <option value="Good">Good (Field Ready)</option>
+                <option value="Fair">Fair</option>
+                <option value="Needs Attention">Needs Attention</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Purchase Date</label>
+              <input
+                type="date"
+                value={purchaseDate}
+                onChange={(e) => setPurchaseDate(e.target.value)}
+                className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 focus:outline-none focus:bg-white focus:border-amber-500 font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Cost of Purchase ($ USD)</label>
+              <input
+                type="number"
+                value={purchasePrice}
+                onChange={(e) => setPurchasePrice(e.target.value)}
+                placeholder="e.g. 8500"
+                className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Replacement Value ($ USD)</label>
+              <input
+                type="number"
+                value={replacementValue}
+                onChange={(e) => setReplacementValue(e.target.value)}
+                placeholder="e.g. 12000"
+                className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 font-medium"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-slate-700 font-semibold mb-1">Notes / Included Accessories</label>
+              <textarea
+                rows={2}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Includes baseplate, top handle, 15mm rods..."
+                className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 font-medium"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold transition-colors cursor-pointer shadow-2xs"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-xs transition-colors cursor-pointer"
+            >
+              Register Asset
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};

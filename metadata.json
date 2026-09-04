@@ -1,0 +1,10 @@
+{
+  "name": "CineVault Gear & Inventory Manager",
+  "description": "Professional camera equipment catalog, checkout tracking, maintenance scheduling, smart QR tagging, and cross-platform shoot management.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
