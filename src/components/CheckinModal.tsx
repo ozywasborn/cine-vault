@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, ArrowDownLeft, CheckCircle2, AlertTriangle, MapPin } from 'lucide-react';
-import { GearItem, UserAccount, ConditionRating } from '../types';
+import { GearItem, UserAccount, ConditionRating, AVAILABLE_LOCATIONS } from '../types';
 
 interface CheckinModalProps {
   isOpen: boolean;
@@ -24,7 +24,16 @@ export const CheckinModal: React.FC<CheckinModalProps> = ({
 }) => {
   const [condition, setCondition] = useState<ConditionRating>('Good');
   const [returnNotes, setReturnNotes] = useState('');
-  const [location, setLocation] = useState(item?.location || 'Main Cage Shelf 1');
+  const [location, setLocation] = useState<string>(AVAILABLE_LOCATIONS[0]);
+
+  useEffect(() => {
+    if (item) {
+      const validLoc = item.location && (AVAILABLE_LOCATIONS as readonly string[]).includes(item.location)
+        ? item.location
+        : AVAILABLE_LOCATIONS[0];
+      setLocation(validLoc);
+    }
+  }, [item]);
 
   if (!isOpen || !item) return null;
 
@@ -62,6 +71,12 @@ export const CheckinModal: React.FC<CheckinModalProps> = ({
             <div className="text-slate-500 text-[11px] mt-1 font-medium">
               Returning from: <strong className="text-slate-800">{item.currentCheckout?.projectName || 'Field Shoot'}</strong>
             </div>
+            {item.notes && (
+              <div className="text-slate-600 text-[11px] mt-2 pt-2 border-t border-slate-200/70 font-medium">
+                <span className="font-semibold text-slate-700">Notes, Included Rigging & Accessories:</span>{' '}
+                <span>{item.notes}</span>
+              </div>
+            )}
           </div>
 
           <div>
@@ -80,14 +95,18 @@ export const CheckinModal: React.FC<CheckinModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-slate-700 font-semibold mb-1">Return Shelf / Locker Location</label>
-            <input
-              type="text"
+            <label className="block text-slate-700 font-semibold mb-1">Return Location Drop-down</label>
+            <select
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 focus:outline-none focus:bg-white focus:border-amber-500 font-medium"
-              required
-            />
+              className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 focus:outline-none focus:bg-white focus:border-amber-500 font-medium cursor-pointer"
+            >
+              {AVAILABLE_LOCATIONS.map((loc) => (
+                <option key={loc} value={loc}>
+                  {loc}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

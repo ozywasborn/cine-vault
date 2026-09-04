@@ -17,6 +17,8 @@ import {
   Pencil,
   ChevronDown,
   ChevronUp,
+  Package,
+  Check,
 } from 'lucide-react';
 import { GearItem, UserAccount, MaintenanceRecord } from '../types';
 import { generateQrDataUrl } from '../services/qr';
@@ -31,6 +33,7 @@ interface ItemDetailModalProps {
   onCheckin: (item: GearItem) => void;
   onOpenMaintenance: (item: GearItem) => void;
   onEditGear?: (item: GearItem) => void;
+  onUpdateGear?: (item: GearItem) => void;
 }
 
 export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
@@ -43,9 +46,12 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
   onCheckin,
   onOpenMaintenance,
   onEditGear,
+  onUpdateGear,
 }) => {
   const [qrUrl, setQrUrl] = useState<string>('');
   const [isMaintenanceExpanded, setIsMaintenanceExpanded] = useState<boolean>(true);
+  const [isEditingNotes, setIsEditingNotes] = useState<boolean>(false);
+  const [notesDraft, setNotesDraft] = useState<string>(item?.notes || '');
 
   const itemMaintenanceRecords = useMemo(() => {
     if (!maintenanceRecords || !item) return [];
@@ -61,14 +67,43 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
   useEffect(() => {
     if (item) {
       generateQrDataUrl(item).then(setQrUrl);
+      setNotesDraft(item.notes || '');
+      setIsEditingNotes(false);
     }
-  }, [item]);
+  }, [item?.id, item?.notes]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  const handleSaveNotes = () => {
+    if (onUpdateGear && item) {
+      onUpdateGear({
+        ...item,
+        notes: notesDraft.trim(),
+      });
+    }
+    setIsEditingNotes(false);
+  };
 
   if (!isOpen || !item) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white border border-slate-200 w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden my-8">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white border border-slate-200 w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden my-8"
+      >
         {/* Header */}
         <div className="p-5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -157,7 +192,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
 
               <div className="text-slate-500 text-xs font-medium">
                 Cost of Purchase:{' '}
-                <strong className="text-slate-900 font-mono font-bold">${(item.purchasePrice || item.replacementValue || 0).toLocaleString()}</strong>
+                <strong className="text-slate-900 font-mono font-bold">${(item.purchasePrice || 0).toLocaleString()}</strong>
               </div>
             </div>
           </div>
@@ -200,19 +235,138 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
           )}
 
           {/* Service Dates */}
-          <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200">
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-              <div className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Last Service</div>
-              <div className="text-slate-800 font-semibold mt-0.5">
-                {item.lastServiceDate || 'Factory Calibrated'}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200">
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">
+                  Last Serviced Date
+                </span>
+                {!isAuditor && onUpdateGear && (
+                  <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
+                    Key in Date
+                  </span>
+                )}
               </div>
+              {!isAuditor && onUpdateGear ? (
+                <input
+                  type="date"
+                  value={item.lastServiceDate || ''}
+                  onChange={(e) => {
+                    const newDate = e.target.value || undefined;
+                    let nextDue = item.nextServiceDate;
+                    if (newDate && item.maintenanceIntervalDays) {
+                      const d = new Date(newDate);
+                      d.setDate(d.getDate() + item.maintenanceIntervalDays);
+                      nextDue = d.toISOString().split('T')[0];
+                    }
+                    onUpdateGear({
+                      ...item,
+                      lastServiceDate: newDate,
+                      nextServiceDate: nextDue,
+                    });
+                  }}
+                  className="w-full text-xs font-mono font-semibold text-slate-900 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 shadow-2xs"
+                  title="Key in or update Last Serviced Date"
+                />
+              ) : (
+                <div className="text-slate-800 font-semibold font-mono text-xs">
+                  {item.lastServiceDate || 'Never / Factory Calibrated'}
+                </div>
+              )}
             </div>
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-              <div className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Next Calibration Due</div>
-              <div className="text-amber-800 font-semibold mt-0.5">
+
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+              <div className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">
+                Next Calibration Due
+              </div>
+              <div className="text-amber-800 font-semibold font-mono text-xs pt-1">
                 {item.nextServiceDate || 'Not Scheduled'}
               </div>
+              <div className="text-[10px] text-slate-400">
+                Interval: {item.maintenanceIntervalDays || 90} days
+              </div>
             </div>
+          </div>
+
+          {/* Notes, Included Rigging & Accessories */}
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-amber-100/80 border border-amber-200 flex items-center justify-center text-amber-700 shadow-2xs">
+                  <Package className="w-3.5 h-3.5" />
+                </div>
+                <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                  Notes, Included Rigging & Accessories
+                </h3>
+              </div>
+              {!isAuditor && onUpdateGear && !isEditingNotes && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotesDraft(item.notes || '');
+                    setIsEditingNotes(true);
+                  }}
+                  className="text-[11px] font-semibold text-amber-700 hover:text-amber-800 flex items-center gap-1 cursor-pointer bg-white hover:bg-amber-50 px-2 py-1 rounded-lg border border-slate-200 hover:border-amber-300 transition-colors shadow-2xs"
+                  title="Quick edit notes & accessories"
+                >
+                  <Pencil className="w-3 h-3 text-amber-600" />
+                  <span>Edit</span>
+                </button>
+              )}
+            </div>
+
+            {isEditingNotes ? (
+              <div className="space-y-2 pt-1">
+                <textarea
+                  rows={3}
+                  value={notesDraft}
+                  onChange={(e) => setNotesDraft(e.target.value)}
+                  placeholder="e.g. Includes ARRI dovetail plate, EF mount adapter, top handle, 2x Anton Bauer plates..."
+                  className="w-full p-2.5 rounded-xl bg-white border border-amber-400 text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 leading-relaxed font-medium"
+                  autoFocus
+                />
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNotesDraft(item.notes || '');
+                      setIsEditingNotes(false);
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white border border-slate-200 rounded-xl cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveNotes}
+                    className="px-3.5 py-1.5 text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 rounded-xl cursor-pointer flex items-center gap-1 shadow-xs"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Save Changes</span>
+                  </button>
+                </div>
+              </div>
+            ) : item.notes ? (
+              <div className="bg-white p-3 rounded-xl border border-slate-200/80 text-xs text-slate-700 font-medium whitespace-pre-wrap leading-relaxed shadow-2xs">
+                {item.notes}
+              </div>
+            ) : (
+              <div className="bg-white p-3 rounded-xl border border-slate-200/80 text-xs text-slate-400 italic flex items-center justify-between shadow-2xs">
+                <span>No rigging, accessories, or operational notes specified.</span>
+                {!isAuditor && onUpdateGear && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNotesDraft('');
+                      setIsEditingNotes(true);
+                    }}
+                    className="text-[11px] font-semibold text-amber-700 hover:underline cursor-pointer"
+                  >
+                    + Add Inclusions
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Individual Maintenance / Service Records (Expand/Collapse) */}
@@ -324,16 +478,10 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
           {/* Action Bar */}
           <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-200">
             {isAuditor ? (
-              <div className="flex items-center justify-between w-full">
+              <div className="flex items-center justify-start w-full">
                 <span className="text-xs text-slate-500 font-medium bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
                   Auditor Account: Read-only inspection mode
                 </span>
-                <button
-                  onClick={onClose}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition-colors cursor-pointer"
-                >
-                  Close
-                </button>
               </div>
             ) : (
               <>
@@ -365,13 +513,6 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                       <span>Edit Gear</span>
                     </button>
                   )}
-
-                  <button
-                    onClick={onClose}
-                    className="px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold transition-colors cursor-pointer shadow-2xs"
-                  >
-                    Close
-                  </button>
 
                   {item.status === 'Available' && canCheckout && (
                     <button

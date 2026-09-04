@@ -22,7 +22,7 @@ import {
   Box,
   Check,
 } from 'lucide-react';
-import { GearItem, ShootProject, UserAccount, ConditionRating } from '../types';
+import { GearItem, ShootProject, UserAccount, ConditionRating, AVAILABLE_LOCATIONS } from '../types';
 
 interface FieldShootSummaryProps {
   gear: GearItem[];
@@ -68,7 +68,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
   const [newProjReturnDate, setNewProjReturnDate] = useState(
     new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0]
   );
-  const [newProjLocation, setNewProjLocation] = useState('Studio / Stage 1');
+  const [newProjLocation, setNewProjLocation] = useState<string>(AVAILABLE_LOCATIONS[0]);
   const [newProjLeadDP, setNewProjLeadDP] = useState(currentUser?.name || 'Lead DP');
   const [newProjEmail, setNewProjEmail] = useState(currentUser?.email || 'crew@production.com');
   const [newProjClient, setNewProjClient] = useState('');
@@ -1046,15 +1046,19 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Shoot Location / Set</span>
+                    <span>Shoot Location / Set Drop-down</span>
                   </label>
-                  <input
-                    type="text"
-                    value={newProjLocation}
+                  <select
+                    value={AVAILABLE_LOCATIONS.includes(newProjLocation as any) ? newProjLocation : AVAILABLE_LOCATIONS[0]}
                     onChange={(e) => setNewProjLocation(e.target.value)}
-                    placeholder="e.g. Stage 4, Warner Lot, Burbank"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-medium focus:outline-none focus:bg-white focus:border-amber-500 transition-colors"
-                  />
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-medium focus:outline-none focus:bg-white focus:border-amber-500 transition-colors cursor-pointer"
+                  >
+                    {AVAILABLE_LOCATIONS.map((loc) => (
+                      <option key={loc} value={loc}>
+                        {loc}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>

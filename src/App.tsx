@@ -38,8 +38,8 @@ const LOCAL_STORAGE_AUDIT_KEY = 'cinevault_live_audit_v2';
 const LOCAL_STORAGE_PROJECTS_KEY = 'cinevault_live_projects_v2';
 
 export default function App() {
-  // Navigation
-  const [activeTab, setActiveTab] = useState<'field' | 'inventory' | 'dashboard' | 'maintenance' | 'qr'>('field');
+  // Navigation (Dashboard is the default page on each new access)
+  const [activeTab, setActiveTab] = useState<'field' | 'inventory' | 'dashboard' | 'maintenance' | 'qr'>('dashboard');
 
   // Core App State with Real-Time Local Storage Hydration
   const [gear, setGear] = useState<GearItem[]>(() => {
@@ -189,6 +189,14 @@ export default function App() {
 
   // Add new gear item
   const handleAddGear = async (newItemData: Partial<GearItem>) => {
+    const interval = newItemData.maintenanceIntervalDays || 90;
+    let nextDue = newItemData.nextServiceDate;
+    if (!nextDue && newItemData.lastServiceDate) {
+      const d = new Date(newItemData.lastServiceDate);
+      d.setDate(d.getDate() + interval);
+      nextDue = d.toISOString().split('T')[0];
+    }
+
     const item: GearItem = {
       id: `gear-${Date.now()}`,
       assetTag: newItemData.assetTag || `TAG-${Date.now().toString().slice(-4)}`,
@@ -199,10 +207,14 @@ export default function App() {
       serialNumber: newItemData.serialNumber || `SN-${Date.now()}`,
       condition: newItemData.condition || 'Mint',
       status: 'Available',
-      location: newItemData.location || 'Cage Shelf 1',
+      location: newItemData.location || 'Studio',
       kitName: newItemData.kitName,
+      purchaseDate: newItemData.purchaseDate,
       purchasePrice: newItemData.purchasePrice || 0,
-      replacementValue: newItemData.replacementValue || 0,
+      replacementValue: newItemData.purchasePrice || 0,
+      lastServiceDate: newItemData.lastServiceDate,
+      nextServiceDate: nextDue,
+      maintenanceIntervalDays: interval,
       notes: newItemData.notes,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -281,6 +293,178 @@ export default function App() {
       gearId: finalItem.id,
     };
     setNotifications((prev) => [notif, ...prev]);
+  };
+
+  // Duplicate an existing gear item
+  const handleDuplicateGear = async (sourceItem: GearItem) => {
+    const timestamp = Date.now();
+    const duplicated: GearItem = {
+      ...sourceItem,
+      id: `gear-${timestamp}`,
+      assetTag: `${sourceItem.assetTag}-COPY`,
+      name: `${sourceItem.name} (Copy)`,
+      serialNumber: `SN-${Math.floor(Math.random() * 900000 + 100000)}`,
+      status: 'Available',
+      currentCheckout: undefined,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setGear((prev) => [duplicated, ...prev]);
+
+    try {
+      await apiClient.createGear(duplicated, currentUser);
+    } catch {
+      // Local authoritative
+    }
+
+    const auditEntry: AuditLog = {
+      id: `audit-${timestamp}-${Math.floor(Math.random() * 1000)}`,
+      timestamp: new Date().toISOString(),
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userRole: currentUser.role,
+      provider: currentUser.provider,
+      action: 'CREATE',
+      targetAssetTag: duplicated.assetTag,
+      targetName: duplicated.name,
+      details: `Duplicated item created from [${sourceItem.assetTag}] ${sourceItem.name}`,
+      ipOrDevice: 'Web Client',
+    };
+    setAuditLogs((prev) => [auditEntry, ...prev]);
+
+    const notif: InventoryNotification = {
+      id: `NOTIF-${timestamp}`,
+      title: 'Item Duplicated',
+      message: `Created duplicate asset [${duplicated.assetTag}] (${duplicated.name}).`,
+      timestamp: new Date().toISOString(),
+      read: false,
+      type: 'STATUS_ALERT',
+      gearId: duplicated.id,
+    };
+    setNotifications((prev) => [notif, ...prev]);
+  };
+
+  // Permanently delete a gear item
+  const handleDeleteGear = async (gearId: string) => {
+    const targetItem = gear.find((g) => g.id === gearId);
+    if (!targetItem) return;
+
+    setGear((prev) => prev.filter((g) => g.id !== gearId));
+
+    if (selectedGearItem && selectedGearItem.id === gearId) {
+      setSelectedGearItem(null);
+    }
+    if (editingGearItem && editingGearItem.id === gearId) {
+      setEditingGearItem(null);
+    }
+
+    try {
+      await apiClient.deleteGear(gearId, currentUser);
+    } catch {
+      // Local state authoritative
+    }
+
+    const auditEntry: AuditLog = {
+      id: `audit-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      timestamp: new Date().toISOString(),
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userRole: currentUser.role,
+      provider: currentUser.provider,
+      action: 'TRANSFER',
+      targetAssetTag: targetItem.assetTag,
+      targetName: targetItem.name,
+      details: `Permanently deleted equipment asset ${targetItem.name} (${targetItem.assetTag})`,
+      ipOrDevice: 'Web Client',
+    };
+    setAuditLogs((prev) => [auditEntry, ...prev]);
+
+    const notif: InventoryNotification = {
+      id: `NOTIF-${Date.now()}`,
+      title: 'Equipment Asset Deleted',
+      message: `[${targetItem.assetTag}] ${targetItem.name} removed from inventory.`,
+      timestamp: new Date().toISOString(),
+      read: false,
+      type: 'STATUS_ALERT',
+    };
+    setNotifications((prev) => [notif, ...prev]);
+  };
+
+  // Batch clear calibration horizon dates
+  const handleBatchClearHorizon = async () => {
+    const clearedItems: GearItem[] = [];
+    setGear((prev) =>
+      prev.map((item) => {
+        if (item.nextServiceDate) {
+          const updated = {
+            ...item,
+            nextServiceDate: undefined,
+            updatedAt: new Date().toISOString(),
+          };
+          clearedItems.push(updated);
+          return updated;
+        }
+        return item;
+      })
+    );
+
+    for (const item of clearedItems) {
+      try {
+        await apiClient.updateGear(item.id, item, currentUser);
+      } catch {}
+    }
+
+    const auditEntry: AuditLog = {
+      id: `audit-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      timestamp: new Date().toISOString(),
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userRole: currentUser.role,
+      provider: currentUser.provider,
+      action: 'UPDATE',
+      targetAssetTag: 'HORIZON-BATCH',
+      targetName: 'Service Horizon',
+      details: `Batch cleared calibration horizon schedule for ${clearedItems.length} items.`,
+      ipOrDevice: 'Web Client',
+    };
+    setAuditLogs((prev) => [auditEntry, ...prev]);
+
+    const notif: InventoryNotification = {
+      id: `NOTIF-${Date.now()}`,
+      title: 'Calibration Horizon Cleared',
+      message: `Batch cleared upcoming scheduled service dates for ${clearedItems.length} items.`,
+      timestamp: new Date().toISOString(),
+      read: false,
+      type: 'SERVICE_REMINDER',
+    };
+    setNotifications((prev) => [notif, ...prev]);
+  };
+
+  // Resolve an item directly from the Horizon
+  const handleResolveHorizonItem = async (item: GearItem) => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const interval = item.maintenanceIntervalDays || 90;
+    const nextDue = new Date(Date.now() + 86400000 * interval).toISOString().split('T')[0];
+
+    await handleAddMaintenance({
+      gearId: item.id,
+      date: todayStr,
+      serviceType: 'Calibration',
+      technician: currentUser.name,
+      conditionAfter: 'Mint',
+      notes: `Service calibration resolved via Horizon schedule. Next calibration due in ${interval} days.`,
+      nextServiceDueDate: nextDue,
+      resolved: true,
+    });
+  };
+
+  // Delete/remove an item from the Horizon
+  const handleDeleteHorizonItem = async (item: GearItem) => {
+    await handleUpdateGear({
+      ...item,
+      nextServiceDate: undefined,
+    });
   };
 
   // Perform checkout
@@ -548,6 +732,8 @@ export default function App() {
             onSelectGear={(item) => setSelectedGearItem(item)}
             onEditGear={(item) => setEditingGearItem(item)}
             onUpdateGear={handleUpdateGear}
+            onDuplicateGear={handleDuplicateGear}
+            onDeleteGear={handleDeleteGear}
             onOpenAddModal={() => setIsAddGearOpen(true)}
             onOpenCheckoutModal={openCheckoutForItems}
             onOpenCheckinModal={openCheckinForItem}
@@ -586,6 +772,10 @@ export default function App() {
             currentUser={currentUser}
             onAddMaintenance={handleAddMaintenance}
             onSelectGear={(item) => setSelectedGearItem(item)}
+            onBatchClearHorizon={handleBatchClearHorizon}
+            onResolveHorizonItem={handleResolveHorizonItem}
+            onDeleteHorizonItem={handleDeleteHorizonItem}
+            onUpdateGear={handleUpdateGear}
           />
         )}
 
@@ -664,6 +854,7 @@ export default function App() {
           setSelectedGearItem(null);
         }}
         onEditGear={(item) => setEditingGearItem(item)}
+        onUpdateGear={handleUpdateGear}
       />
 
       <EditGearModal

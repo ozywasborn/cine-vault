@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Search,
   Plus,
@@ -23,6 +23,9 @@ import {
   ArrowUpDown,
   FolderOpen,
   FolderClosed,
+  Copy,
+  Trash2,
+  X,
 } from 'lucide-react';
 import { GearItem, GearCategory, GearStatus, ConditionRating, UserAccount } from '../types';
 
@@ -33,6 +36,8 @@ interface InventoryViewProps {
   onSelectGear: (item: GearItem) => void;
   onEditGear?: (item: GearItem) => void;
   onUpdateGear?: (item: GearItem) => void;
+  onDuplicateGear?: (item: GearItem) => void;
+  onDeleteGear?: (gearId: string) => void;
   onOpenAddModal?: () => void;
   onOpenCheckoutModal?: (items: GearItem[]) => void;
   onOpenCheckinModal?: (item: GearItem) => void;
@@ -46,7 +51,13 @@ interface InventoryViewProps {
   onBatchCheckout?: (items: GearItem[]) => void;
 }
 
-type SortCategoryMode = 'grouped' | 'category-asc' | 'category-desc' | 'tag-asc' | 'valuation-desc';
+type EquipmentSortMode =
+  | 'model-asc'
+  | 'model-desc'
+  | 'tag-asc'
+  | 'valuation-desc'
+  | 'serviced-desc'
+  | 'default';
 
 export const InventoryView: React.FC<InventoryViewProps> = ({
   gear,
@@ -55,6 +66,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   onSelectGear,
   onEditGear,
   onUpdateGear,
+  onDuplicateGear,
+  onDeleteGear,
   onOpenAddModal,
   onOpenCheckoutModal,
   onOpenCheckinModal,
@@ -72,8 +85,47 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [selectedKit, setSelectedKit] = useState<string>('All');
   const [selectedGearIds, setSelectedGearIds] = useState<string[]>([]);
-  const [sortMode, setSortMode] = useState<SortCategoryMode>('grouped');
+  const [equipmentSortMode, setEquipmentSortMode] = useState<EquipmentSortMode>('model-asc');
+  const [categorySorts, setCategorySorts] = useState<Record<string, EquipmentSortMode>>({});
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+
+  // Context menu state for virtual right-click on gear table row
+  const [rowContextMenu, setRowContextMenu] = useState<{
+    isOpen: boolean;
+    x: number;
+    y: number;
+    item: GearItem | null;
+  }>({
+    isOpen: false,
+    x: 0,
+    y: 0,
+    item: null,
+  });
+
+  // Delete confirmation dialog state
+  const [deleteConfirmItem, setDeleteConfirmItem] = useState<GearItem | null>(null);
+
+  // Close context menu on outside click, scroll, or Esc
+  useEffect(() => {
+    const handleDismiss = () => {
+      if (rowContextMenu.isOpen) {
+        setRowContextMenu((prev) => ({ ...prev, isOpen: false }));
+      }
+    };
+    window.addEventListener('click', handleDismiss);
+    window.addEventListener('scroll', handleDismiss, true);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setRowContextMenu((prev) => ({ ...prev, isOpen: false }));
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('click', handleDismiss);
+      window.removeEventListener('scroll', handleDismiss, true);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [rowContextMenu.isOpen]);
 
   // Role permissions
   const userRole = currentUser?.role || 'Admin';
@@ -118,6 +170,21 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       [field]: value,
       updatedAt: new Date().toISOString(),
     };
+
+    if (field === 'lastServiceDate') {
+      const dateVal = value || undefined;
+      let nextDue = item.nextServiceDate;
+      if (dateVal && item.maintenanceIntervalDays) {
+        const d = new Date(dateVal);
+        d.setDate(d.getDate() + item.maintenanceIntervalDays);
+        nextDue = d.toISOString().split('T')[0];
+      }
+      updated = {
+        ...updated,
+        lastServiceDate: dateVal,
+        nextServiceDate: nextDue,
+      };
+    }
 
     if (field === 'status') {
       if (value === 'Available') {
@@ -313,7 +380,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       onExportCsv();
       return;
     }
-    const headers = ['Asset Tag', 'Name', 'Brand', 'Model', 'Category', 'Status', 'Condition', 'Location', 'Purchase Date', 'Serial Number', 'Purchase Cost'];
+    const headers = ['Asset Tag', 'Name', 'Brand', 'Model', 'Category', 'Status', 'Condition', 'Location', 'Purchase Date', 'Serial Number', 'Last Serviced Date', 'Purchase Cost'];
     const rows = gear.map((g) => [
       g.assetTag,
       `"${(g.name || '').replace(/"/g, '""')}"`,
@@ -325,7 +392,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       `"${(g.location || '').replace(/"/g, '""')}"`,
       g.purchaseDate || '2024-01-15',
       g.serialNumber,
-      g.purchasePrice || g.replacementValue || 0,
+      g.lastServiceDate || 'Never',
+      g.purchasePrice || 0,
     ]);
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
@@ -363,36 +431,52 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
     });
   }, [gear, selectedCategory, selectedStatus, selectedKit, searchQuery]);
 
-  // Sorted items for flat view
-  const sortedGear = useMemo(() => {
-    const list = [...filteredGear];
-    if (sortMode === 'category-asc') {
-      return list.sort((a, b) => a.category.localeCompare(b.category) || a.assetTag.localeCompare(b.assetTag));
+  // Helper to sort equipment list based on mode
+  const sortItemList = (items: GearItem[], sort: EquipmentSortMode) => {
+    const list = [...items];
+    if (sort === 'model-asc') {
+      return list.sort(
+        (a, b) =>
+          (a.name || '').localeCompare(b.name || '') ||
+          (a.model || '').localeCompare(b.model || '')
+      );
     }
-    if (sortMode === 'category-desc') {
-      return list.sort((a, b) => b.category.localeCompare(a.category) || a.assetTag.localeCompare(b.assetTag));
+    if (sort === 'model-desc') {
+      return list.sort(
+        (a, b) =>
+          (b.name || '').localeCompare(a.name || '') ||
+          (b.model || '').localeCompare(a.model || '')
+      );
     }
-    if (sortMode === 'tag-asc') {
+    if (sort === 'tag-asc') {
       return list.sort((a, b) => a.assetTag.localeCompare(b.assetTag));
     }
-    if (sortMode === 'valuation-desc') {
-      return list.sort((a, b) => ((b.purchasePrice || b.replacementValue || 0) - (a.purchasePrice || a.replacementValue || 0)));
+    if (sort === 'valuation-desc') {
+      return list.sort(
+        (a, b) =>
+          (b.purchasePrice || 0) -
+          (a.purchasePrice || 0)
+      );
+    }
+    if (sort === 'serviced-desc') {
+      return list.sort((a, b) =>
+        (b.lastServiceDate || '').localeCompare(a.lastServiceDate || '')
+      );
     }
     return list;
-  }, [filteredGear, sortMode]);
+  };
 
-  // Grouped items by category for grouped dropdown view
+  // Grouped items by category with equipment sorted within each specific category
   const groupedCategories = useMemo(() => {
-    // Collect all categories that have items in filteredGear, or maintain standard order
     const map = new Map<string, GearItem[]>();
-
-    // If a specific category is selected in the filter, only group that
     const targetCats = selectedCategory === 'All' ? categories : [selectedCategory];
 
     targetCats.forEach((cat) => {
       const items = filteredGear.filter((g) => g.category === cat);
-      if (items.length > 0) {
-        map.set(cat, items);
+      const activeSort = categorySorts[cat] || equipmentSortMode;
+      const sorted = sortItemList(items, activeSort);
+      if (sorted.length > 0) {
+        map.set(cat, sorted);
       }
     });
 
@@ -401,19 +485,67 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       if (!map.has(g.category)) {
         const existing = map.get(g.category) || [];
         existing.push(g);
-        map.set(g.category, existing);
+        const activeSort = categorySorts[g.category] || equipmentSortMode;
+        map.set(g.category, sortItemList(existing, activeSort));
       }
     });
 
     return Array.from(map.entries()).map(([catName, items]) => ({
       name: catName,
       items,
-      totalValuation: items.reduce((sum, it) => sum + (it.replacementValue || 0), 0),
+      totalValuation: items.reduce((sum, it) => sum + (it.purchasePrice || 0), 0),
       availableCount: items.filter((it) => it.status === 'Available').length,
       checkedOutCount: items.filter((it) => it.status === 'Checked Out').length,
       maintenanceCount: items.filter((it) => it.status === 'In Maintenance').length,
     }));
-  }, [filteredGear, selectedCategory, categories]);
+  }, [filteredGear, selectedCategory, categories, equipmentSortMode, categorySorts]);
+
+  // Toggle Equipment / Model sorting within a specific category
+  const toggleCategoryModelSort = (categoryName: string) => {
+    setCategorySorts((prev) => {
+      const current = prev[categoryName] || equipmentSortMode;
+      const nextSort: EquipmentSortMode = current === 'model-asc' ? 'model-desc' : 'model-asc';
+      return {
+        ...prev,
+        [categoryName]: nextSort,
+      };
+    });
+  };
+
+  // Row right-click context menu handler
+  const handleRowContextMenu = (e: React.MouseEvent, item: GearItem) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const menuWidth = 200;
+    const menuHeight = 150;
+    const x = Math.min(e.clientX, window.innerWidth - menuWidth - 10);
+    const y = Math.min(e.clientY, window.innerHeight - menuHeight - 10);
+    setRowContextMenu({
+      isOpen: true,
+      x: Math.max(10, x),
+      y: Math.max(10, y),
+      item,
+    });
+  };
+
+  const handleDuplicate = (item: GearItem) => {
+    setRowContextMenu({ isOpen: false, x: 0, y: 0, item: null });
+    if (onDuplicateGear) {
+      onDuplicateGear(item);
+    }
+  };
+
+  const handleDeletePrompt = (item: GearItem) => {
+    setRowContextMenu({ isOpen: false, x: 0, y: 0, item: null });
+    setDeleteConfirmItem(item);
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirmItem && onDeleteGear) {
+      onDeleteGear(deleteConfirmItem.id);
+    }
+    setDeleteConfirmItem(null);
+  };
 
   const toggleSelectItem = (id: string) => {
     setSelectedGearIds((prev) =>
@@ -468,9 +600,11 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
     return (
       <tr
         key={item.id}
-        className={`hover:bg-slate-50 transition-colors ${
+        onContextMenu={(e) => handleRowContextMenu(e, item)}
+        className={`hover:bg-slate-50 transition-colors select-none ${
           isSelected ? 'bg-amber-50/40' : ''
         }`}
+        title="Right-click for actions: Edit, Duplicate item, Delete"
       >
         {/* Checkbox */}
         <td className="py-2.5 px-3 text-center">
@@ -631,47 +765,48 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           </div>
         </td>
 
-        {/* Cost of Purchase */}
-        <td className="py-2.5 px-3 text-slate-900 font-mono font-medium whitespace-nowrap text-xs sm:text-sm">
-          ${(item.purchasePrice || item.replacementValue || 0).toLocaleString()}
+        {/* Last Serviced Date - Key-in input */}
+        <td className="py-2 px-3 whitespace-nowrap">
+          <input
+            type="date"
+            disabled={isAuditor}
+            value={item.lastServiceDate || ''}
+            onChange={(e) => handleFieldChange(item, 'lastServiceDate', e.target.value)}
+            className="text-xs font-mono font-medium text-slate-800 bg-slate-50 hover:bg-slate-100/90 focus:bg-white focus:text-slate-900 border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
+            title={isAuditor ? 'Auditor role is read-only' : 'Key in or select Last Serviced Date'}
+          />
         </td>
 
-        {/* Actions Column with Edit Button */}
-        <td className="py-2.5 px-3 text-right whitespace-nowrap">
-          <div className="flex items-center justify-end gap-1.5">
-            {/* Edit Button for individual gear details */}
-            <button
-              onClick={() => handleOpenEdit(item)}
-              disabled={isAuditor}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 hover:border-amber-300 text-slate-700 hover:text-amber-700 text-xs font-semibold transition-colors cursor-pointer shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
-              title={isAuditor ? 'Auditor role is in read-only mode' : 'Edit details for this gear'}
-            >
-              <Pencil className="w-3.5 h-3.5 text-amber-600" />
-              <span>Edit</span>
-            </button>
+        {/* Cost of Purchase */}
+        <td className="py-2.5 px-3 text-slate-900 font-mono font-medium whitespace-nowrap text-xs sm:text-sm">
+          ${(item.purchasePrice || 0).toLocaleString()}
+        </td>
 
-            {/* QR Tag Button */}
+        {/* Actions Column */}
+        <td className="py-2.5 px-3 text-right whitespace-nowrap">
+          <div className="inline-flex items-center justify-end gap-1.5">
+            {/* QR Tag Button - Standardized square 32x32px */}
             <button
               onClick={() => handleOpenQr(item)}
-              className="p-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-amber-600 transition-colors cursor-pointer shadow-2xs"
+              className="w-8 h-8 flex items-center justify-center rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-amber-600 transition-colors cursor-pointer shadow-2xs shrink-0"
               title="View & Print Smart QR Tag"
             >
               <QrCode className="w-3.5 h-3.5" />
             </button>
 
-            {/* Operational Actions */}
+            {/* Operational Action - Standardized 96x32px */}
             {isAuditor ? (
               <button
                 onClick={() => onSelectGear(item)}
-                className="px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-xs border border-slate-200 cursor-pointer shadow-2xs"
-                title="Inspect item specifications and financial valuation"
+                className="w-24 h-8 flex items-center justify-center px-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-xs border border-slate-200 cursor-pointer shadow-2xs transition-colors shrink-0"
+                title="Inspect item specifications and details"
               >
-                Inspect
+                <span>Inspect</span>
               </button>
             ) : item.status === 'Available' ? (
               <button
                 onClick={() => handleOpenCheckout([item])}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition-colors cursor-pointer shadow-xs"
+                className="w-24 h-8 flex items-center justify-center gap-1 px-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer shrink-0"
                 title="Check out gear to shoot"
               >
                 <ArrowUpRight className="w-3.5 h-3.5 text-white" />
@@ -680,7 +815,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             ) : item.status === 'Checked Out' ? (
               <button
                 onClick={() => handleOpenCheckin(item)}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                className="w-24 h-8 flex items-center justify-center gap-1 px-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold shadow-2xs transition-colors cursor-pointer shrink-0"
                 title="Check in gear back to cage"
               >
                 <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-700" />
@@ -689,7 +824,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             ) : (
               <button
                 onClick={() => (canMaintain ? handleOpenMaintenance(item) : onSelectGear(item))}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+                className="w-24 h-8 flex items-center justify-center gap-1 px-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-colors cursor-pointer shrink-0"
                 title={canMaintain ? 'Manage Service' : 'Inspect Service Record'}
               >
                 <Wrench className="w-3.5 h-3.5 text-amber-500" />
@@ -788,22 +923,27 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
-            {/* Category Sort & Organization Dropdown */}
-            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2 py-1 text-xs">
+            {/* Equipment Sorting Dropdown */}
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 text-xs">
               <span className="text-slate-400 font-medium whitespace-nowrap flex items-center gap-1">
                 <ArrowUpDown className="w-3.5 h-3.5 text-amber-600" />
-                <span>View:</span>
+                <span>Sort Items:</span>
               </span>
               <select
-                value={sortMode}
-                onChange={(e) => setSortMode(e.target.value as SortCategoryMode)}
+                value={equipmentSortMode}
+                onChange={(e) => {
+                  const newSort = e.target.value as EquipmentSortMode;
+                  setEquipmentSortMode(newSort);
+                  setCategorySorts({});
+                }}
                 className="bg-transparent text-slate-800 font-semibold focus:outline-none cursor-pointer text-xs"
               >
-                <option value="grouped">Category Drop-down Accordion</option>
-                <option value="category-asc">Sort by Category (A → Z)</option>
-                <option value="category-desc">Sort by Category (Z → A)</option>
-                <option value="tag-asc">Sort by Asset Tag</option>
-                <option value="valuation-desc">Sort by Purchase Cost (High → Low)</option>
+                <option value="model-asc">Equipment / Model (A → Z)</option>
+                <option value="model-desc">Equipment / Model (Z → A)</option>
+                <option value="tag-asc">Asset Tag (A → Z)</option>
+                <option value="valuation-desc">Purchase Cost (High → Low)</option>
+                <option value="serviced-desc">Last Serviced Date</option>
+                <option value="default">Default Asset Order</option>
               </select>
             </div>
 
@@ -872,7 +1012,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
-            {sortMode === 'grouped' && groupedCategories.length > 0 && (
+            {groupedCategories.length > 0 && (
               <button
                 type="button"
                 onClick={isAllCollapsed ? expandAllCategories : collapseAllCategories}
@@ -913,14 +1053,15 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             Try adjusting your search query, movement status, or category filter to locate matching assets.
           </p>
         </div>
-      ) : sortMode === 'grouped' ? (
-        /* Category Drop-Down Accordion Sections */
+      ) : (
+        /* Category Drop-Down Accordion Sections (Retained As Only View) */
         <div className="space-y-4">
           {groupedCategories.map((group) => {
             const isCollapsed = !!collapsedCategories[group.name];
             const allInCatSelected =
               group.items.length > 0 && group.items.every((it) => selectedGearIds.includes(it.id));
             const catStyle = getCategoryHeaderStyle(group.name);
+            const activeCatSort = categorySorts[group.name] || equipmentSortMode;
 
             return (
               <div
@@ -950,6 +1091,11 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${catStyle.badgeBg}`}>
                           {group.items.length} {group.items.length === 1 ? 'item' : 'items'}
                         </span>
+                        {categorySorts[group.name] && (
+                          <span className="text-[10px] font-semibold text-amber-700 bg-amber-100/80 px-1.5 py-0.2 rounded border border-amber-300">
+                            {categorySorts[group.name] === 'model-asc' ? 'A → Z' : 'Z → A'}
+                          </span>
+                        )}
                       </h2>
                     </div>
                   </div>
@@ -1016,13 +1162,29 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                             />
                           </th>
                           <th className="py-2.5 px-3 w-28 whitespace-nowrap">Asset Tag</th>
-                          <th className="py-2.5 px-3 min-w-[220px]">Equipment / Model</th>
+                          <th
+                            onClick={() => toggleCategoryModelSort(group.name)}
+                            className="py-2.5 px-3 min-w-[220px] cursor-pointer hover:text-slate-900 transition-colors select-none"
+                            title={`Click to sort ${group.name} by Equipment / Model (A → Z or Z → A)`}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span>Equipment / Model</span>
+                              {activeCatSort === 'model-asc' ? (
+                                <ChevronUp className="w-3.5 h-3.5 text-amber-600" />
+                              ) : activeCatSort === 'model-desc' ? (
+                                <ChevronDown className="w-3.5 h-3.5 text-amber-600" />
+                              ) : (
+                                <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                              )}
+                            </div>
+                          </th>
                           <th className="py-2.5 px-2.5 whitespace-nowrap">Category</th>
                           <th className="py-2.5 px-2.5 whitespace-nowrap">Movement Status</th>
                           <th className="py-2.5 px-2.5 whitespace-nowrap">Condition</th>
                           <th className="py-2.5 px-2.5 whitespace-nowrap">Location</th>
+                          <th className="py-2.5 px-3 whitespace-nowrap">Last Serviced Date</th>
                           <th className="py-2.5 px-3 whitespace-nowrap">Cost of Purchase</th>
-                          <th className="py-2.5 px-3 text-right whitespace-nowrap">Actions</th>
+                          <th className="py-2.5 px-3 text-right whitespace-nowrap w-36">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -1035,35 +1197,122 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             );
           })}
         </div>
-      ) : (
-        /* Flat Sorted Table View */
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 uppercase font-bold text-[11px] tracking-wider">
-                  <th className="py-2.5 px-3 w-10 text-center">
-                    <input
-                      type="checkbox"
-                      checked={filteredGear.length > 0 && selectedGearIds.length === filteredGear.length}
-                      onChange={selectAllFiltered}
-                      className="rounded bg-white border-slate-300 text-amber-500 focus:ring-0 cursor-pointer"
-                    />
-                  </th>
-                  <th className="py-2.5 px-3 w-28 whitespace-nowrap">Asset Tag</th>
-                  <th className="py-2.5 px-3 min-w-[220px]">Equipment / Model</th>
-                  <th className="py-2.5 px-2.5 whitespace-nowrap">Category</th>
-                  <th className="py-2.5 px-2.5 whitespace-nowrap">Movement Status</th>
-                  <th className="py-2.5 px-2.5 whitespace-nowrap">Condition</th>
-                  <th className="py-2.5 px-2.5 whitespace-nowrap">Location</th>
-                  <th className="py-2.5 px-3 whitespace-nowrap">Cost of Purchase</th>
-                  <th className="py-2.5 px-3 text-right whitespace-nowrap">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {sortedGear.map((item) => renderGearRow(item))}
-              </tbody>
-            </table>
+      )}
+
+      {/* Virtual Right-Click Context Menu for Gear Row */}
+      {rowContextMenu.isOpen && rowContextMenu.item && (
+        <div
+          style={{ top: `${rowContextMenu.y}px`, left: `${rowContextMenu.x}px` }}
+          className="fixed z-50 w-52 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 animate-in fade-in-0 zoom-in-95 select-none"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-3 py-1.5 border-b border-slate-100 text-[11px] font-semibold text-slate-500 truncate">
+            <span className="font-mono text-amber-800 font-bold">[{rowContextMenu.item.assetTag}]</span> {rowContextMenu.item.name}
+          </div>
+
+          {/* Edit Option */}
+          <button
+            type="button"
+            disabled={isAuditor}
+            onClick={() => {
+              const item = rowContextMenu.item!;
+              setRowContextMenu({ isOpen: false, x: 0, y: 0, item: null });
+              handleOpenEdit(item);
+            }}
+            className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Pencil className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <div className="flex flex-col">
+              <span>Edit</span>
+              <span className="text-[10px] text-slate-400 font-normal">Open Equipment edit modal</span>
+            </div>
+          </button>
+
+          {/* Duplicate Item Option */}
+          <button
+            type="button"
+            disabled={isAuditor}
+            onClick={() => handleDuplicate(rowContextMenu.item!)}
+            className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors cursor-pointer border-t border-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Copy className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <div className="flex flex-col">
+              <span>Duplicate item</span>
+              <span className="text-[10px] text-slate-400 font-normal">Create duplicate entry</span>
+            </div>
+          </button>
+
+          {/* Delete Option */}
+          <button
+            type="button"
+            disabled={isAuditor}
+            onClick={() => handleDeletePrompt(rowContextMenu.item!)}
+            className="w-full px-3 py-2 text-left text-xs font-semibold text-rose-700 hover:bg-rose-50 flex items-center gap-2 transition-colors cursor-pointer border-t border-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+            <div className="flex flex-col">
+              <span>Delete</span>
+              <span className="text-[10px] text-rose-600/80 font-normal">Remove equipment from inventory</span>
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialogue */}
+      {deleteConfirmItem && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Delete Equipment Asset</h3>
+                  <p className="text-xs text-slate-500">Confirm permanent deletion</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setDeleteConfirmItem(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="text-xs text-slate-600 bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1">
+              <div>Are you sure you want to delete this equipment item?</div>
+              <div className="font-semibold text-slate-900 pt-1">
+                <span className="font-mono text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                  [{deleteConfirmItem.assetTag}]
+                </span>{' '}
+                {deleteConfirmItem.name}
+              </div>
+              <div className="text-slate-500 text-[11px] pt-1">
+                Serial Number: {deleteConfirmItem.serialNumber} • Location: {deleteConfirmItem.location}
+              </div>
+            </div>
+
+            <p className="text-xs text-rose-600 font-medium">
+              This action cannot be undone and will remove the item from all inventory lists.
+            </p>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmItem(null)}
+                className="px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 cursor-pointer shadow-2xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white cursor-pointer shadow-xs"
+              >
+                Confirm Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

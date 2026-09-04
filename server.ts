@@ -116,7 +116,7 @@ async function startServer() {
       serialNumber: body.serialNumber || `SN-${Math.floor(Math.random() * 900000 + 100000)}`,
       status: body.status || 'Available',
       condition: body.condition || 'Mint',
-      location: body.location || 'Main Cage Shelf 1',
+      location: body.location || 'Studio',
       kitName: body.kitName || undefined,
       purchaseDate: body.purchaseDate || new Date().toISOString().split('T')[0],
       purchasePrice: Number(body.purchasePrice) || 0,
@@ -168,6 +168,26 @@ async function startServer() {
     );
 
     res.json(updated);
+  });
+
+  app.delete('/api/gear/:id', (req, res) => {
+    const index = gearStore.findIndex((g) => g.id === req.params.id);
+    if (index === -1) return res.status(404).json({ error: 'Gear item not found' });
+
+    const [deleted] = gearStore.splice(index, 1);
+
+    recordAudit(
+      req.body.currentUser?.id,
+      req.body.currentUser?.name,
+      req.body.currentUser?.role,
+      req.body.currentUser?.provider,
+      'TRANSFER',
+      deleted.assetTag,
+      deleted.name,
+      `Deleted equipment record for ${deleted.name} (${deleted.assetTag})`
+    );
+
+    res.json({ success: true, id: deleted.id });
   });
 
   // Single Item Checkout

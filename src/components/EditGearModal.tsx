@@ -13,7 +13,7 @@ import {
   Trash2,
   CheckCircle2,
 } from 'lucide-react';
-import { GearItem, GearCategory, GearStatus, ConditionRating, UserAccount } from '../types';
+import { GearItem, GearCategory, GearStatus, ConditionRating, UserAccount, AVAILABLE_LOCATIONS } from '../types';
 
 interface EditGearModalProps {
   isOpen: boolean;
@@ -42,7 +42,7 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
   const [kitName, setKitName] = useState('');
   const [purchaseDate, setPurchaseDate] = useState('');
   const [purchasePrice, setPurchasePrice] = useState<number | string>('');
-  const [replacementValue, setReplacementValue] = useState<number | string>('');
+  const [lastServiceDate, setLastServiceDate] = useState<string>('');
   const [maintenanceIntervalDays, setMaintenanceIntervalDays] = useState<number | string>(120);
   const [notes, setNotes] = useState('');
   const [specsList, setSpecsList] = useState<{ key: string; value: string }[]>([]);
@@ -68,7 +68,7 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
       setKitName(item.kitName || '');
       setPurchaseDate(item.purchaseDate || '');
       setPurchasePrice(item.purchasePrice !== undefined ? item.purchasePrice : '');
-      setReplacementValue(item.replacementValue !== undefined ? item.replacementValue : '');
+      setLastServiceDate(item.lastServiceDate || '');
       setMaintenanceIntervalDays(item.maintenanceIntervalDays || 120);
       setNotes(item.notes || '');
 
@@ -136,7 +136,18 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
       kitName: kitName.trim() || undefined,
       purchaseDate: purchaseDate || undefined,
       purchasePrice: Number(purchasePrice) || 0,
-      replacementValue: Number(replacementValue) || 0,
+      replacementValue: item.replacementValue || Number(purchasePrice) || 0,
+      lastServiceDate: lastServiceDate || undefined,
+      nextServiceDate: (() => {
+        if (!lastServiceDate) return item.nextServiceDate;
+        if (lastServiceDate !== item.lastServiceDate) {
+          const interval = Number(maintenanceIntervalDays) || 120;
+          const d = new Date(lastServiceDate);
+          d.setDate(d.getDate() + interval);
+          return d.toISOString().split('T')[0];
+        }
+        return item.nextServiceDate;
+      })(),
       maintenanceIntervalDays: Number(maintenanceIntervalDays) || 120,
       notes: notes.trim(),
       specs: convertedSpecs,
@@ -336,24 +347,19 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Location</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['Studio', 'Gripvan', 'Charging Bay'] as const).map((locOption) => (
-                    <button
-                      key={locOption}
-                      type="button"
-                      disabled={isAuditor}
-                      onClick={() => setLocation(locOption)}
-                      className={`px-3 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
-                        location === locOption
-                          ? 'bg-amber-500 text-white border-amber-600 shadow-2xs ring-2 ring-amber-500/20'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      {locOption}
-                    </button>
+                <label className="block text-slate-700 font-semibold mb-1">Location Drop-down</label>
+                <select
+                  value={AVAILABLE_LOCATIONS.includes(location as any) ? location : AVAILABLE_LOCATIONS[0]}
+                  disabled={isAuditor}
+                  onChange={(e) => setLocation(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-medium focus:outline-none focus:bg-white focus:border-amber-500 cursor-pointer disabled:opacity-60"
+                >
+                  {AVAILABLE_LOCATIONS.map((loc) => (
+                    <option key={loc} value={loc}>
+                      {loc}
+                    </option>
                   ))}
-                </div>
+                </select>
               </div>
 
               <div>
@@ -374,7 +380,7 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
           <div className="space-y-3 pt-3 border-t border-slate-100">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
               <DollarSign className="w-3.5 h-3.5 text-slate-400" />
-              <span>Financial Valuation & Maintenance Intervals</span>
+              <span>Purchase & Maintenance Schedule</span>
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -402,14 +408,13 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Replacement Value ($)</label>
+                <label className="block text-slate-700 font-semibold mb-1">Last Serviced Date</label>
                 <input
-                  type="number"
-                  value={replacementValue}
+                  type="date"
+                  value={lastServiceDate}
                   disabled={isAuditor}
-                  onChange={(e) => setReplacementValue(e.target.value)}
-                  placeholder="e.g. 6500"
-                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-medium focus:outline-none focus:bg-white focus:border-amber-500 disabled:opacity-60"
+                  onChange={(e) => setLastServiceDate(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-medium focus:outline-none focus:bg-white focus:border-amber-500 disabled:opacity-60 font-mono"
                 />
               </div>
 

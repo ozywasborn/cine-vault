@@ -357,7 +357,7 @@ export const api = {
         serialNumber: item.serialNumber || 'SN-UNKNOWN',
         status: item.status || 'Available',
         condition: item.condition || 'Mint',
-        location: item.location || 'Cage Shelf 1',
+        location: item.location || 'Studio',
         purchaseDate: item.purchaseDate || new Date().toISOString().split('T')[0],
         purchasePrice: Number(item.purchasePrice) || 0,
         replacementValue: Number(item.replacementValue) || 0,
@@ -390,6 +390,26 @@ export const api = {
         return cached[idx];
       }
       throw err;
+    }
+  },
+
+  async deleteGearItem(id: string, currentUser?: UserAccount): Promise<boolean> {
+    try {
+      const res = await fetch(`/api/gear/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentUser }),
+      });
+      if (!res.ok) throw new Error('Delete failed');
+      const cached = getCachedGear();
+      const filtered = cached.filter((g) => g.id !== id);
+      saveCachedGear(filtered);
+      return true;
+    } catch (err) {
+      const cached = getCachedGear();
+      const filtered = cached.filter((g) => g.id !== id);
+      saveCachedGear(filtered);
+      return true;
     }
   },
 
@@ -470,6 +490,7 @@ export const apiClient = {
   createGear: (item: any, currentUser: UserAccount) => api.addGearItem({ ...item, currentUser }),
   updateGear: (id: string, updates: any, currentUser: UserAccount) =>
     api.updateGearItem(id, { ...updates, currentUser }),
+  deleteGear: (id: string, currentUser?: UserAccount) => api.deleteGearItem(id, currentUser),
   checkoutGear: (id: string, payload: any, currentUser: UserAccount) =>
     api.checkoutGear(id, { ...payload, currentUser }),
   checkinGear: (id: string, conditionOnReturn: any, returnNotes: string, currentUser: UserAccount) =>

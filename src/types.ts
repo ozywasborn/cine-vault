@@ -20,6 +20,9 @@ export type GearStatus =
 
 export type ConditionRating = 'Mint' | 'Good' | 'Fair' | 'Needs Attention' | 'Damaged';
 
+export const AVAILABLE_LOCATIONS = ['Studio', 'Gripvan', 'Charging Bay'] as const;
+export type LocationOption = (typeof AVAILABLE_LOCATIONS)[number];
+
 export type UserRole = 'Admin' | 'Equipment Manager' | 'Cinematographer' | 'Auditor';
 
 export type AuthProvider = 'Google Workspace' | 'Microsoft 365';

@@ -8,7 +8,7 @@ import {
   Film,
   Layers,
 } from 'lucide-react';
-import { GearItem, UserAccount } from '../types';
+import { GearItem, UserAccount, AVAILABLE_LOCATIONS } from '../types';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -34,7 +34,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   onConfirmCheckout,
 }) => {
   const [projectName, setProjectName] = useState('Apex Commercial - Day 2');
-  const [shootLocation, setShootLocation] = useState('Mojave Desert Track, Unit B');
+  const [shootLocation, setShootLocation] = useState<string>(AVAILABLE_LOCATIONS[0]);
   const [expectedReturnDate, setExpectedReturnDate] = useState(
     new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0]
   );
@@ -113,15 +113,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-slate-700 font-semibold mb-1">Shoot Location / Set</label>
-              <input
-                type="text"
+              <label className="block text-slate-700 font-semibold mb-1">Shoot Location / Set Drop-down</label>
+              <select
                 value={shootLocation}
                 onChange={(e) => setShootLocation(e.target.value)}
-                placeholder="e.g. Stage 4, Downtown Soundstage, Olympic Park"
-                className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 font-medium"
-                required
-              />
+                className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 focus:outline-none focus:bg-white focus:border-amber-500 font-medium cursor-pointer"
+              >
+                {AVAILABLE_LOCATIONS.map((loc) => (
+                  <option key={loc} value={loc}>
+                    {loc}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
