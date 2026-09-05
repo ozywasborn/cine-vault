@@ -238,9 +238,27 @@ export default function App() {
         try {
           const res = await googleSheetsService.fetchAll(sheetsConfig.webAppUrl);
           if (res.success) {
-            if (res.gear && res.gear.length > 0) setGear(res.gear);
+            if (res.gear && res.gear.length > 0) {
+              setGear((prevLocal) => {
+                if (prevLocal.length > res.gear!.length) {
+                  const remoteIds = new Set(res.gear!.map((g) => g.id));
+                  const missingFromRemote = prevLocal.filter((g) => !remoteIds.has(g.id));
+                  return [...res.gear!, ...missingFromRemote];
+                }
+                return res.gear!;
+              });
+            }
             if (res.projects && res.projects.length > 0) setProjects(res.projects);
-            if (res.maintenance && res.maintenance.length > 0) setMaintenance(res.maintenance);
+            if (res.maintenance && res.maintenance.length > 0) {
+              setMaintenance((prevMaint) => {
+                if (prevMaint.length > res.maintenance!.length) {
+                  const remoteIds = new Set(res.maintenance!.map((m) => m.id));
+                  const missing = prevMaint.filter((m) => !remoteIds.has(m.id));
+                  return [...res.maintenance!, ...missing];
+                }
+                return res.maintenance!;
+              });
+            }
             if (res.auditLogs && res.auditLogs.length > 0) setAuditLogs(res.auditLogs);
             setSheetsConfig((prev) => {
               const updated = {

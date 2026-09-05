@@ -318,23 +318,31 @@ function updateOrInsertRow(ss, sheetName, item, idKey) {
   var flat = flattenObject(item);
   var data = sheet.getDataRange().getValues();
   if (data.length <= 1) {
+    // Sheet has only header or is empty; write safely
     writeJsonToSheet(ss, sheetName, [item], false);
     return;
   }
   
   var headers = data[0];
-  var idColIdx = headers.indexOf(idKey || 'id');
-  if (idColIdx === -1) {
-    writeJsonToSheet(ss, sheetName, [item], false);
-    return;
+  var searchKey = (idKey || 'id').toLowerCase().trim();
+  var idColIdx = -1;
+  for (var h = 0; h < headers.length; h++) {
+    var hdr = String(headers[h] || '').toLowerCase().trim();
+    if (hdr === searchKey || hdr === 'id' || hdr === 'assettag') {
+      idColIdx = h;
+      break;
+    }
   }
   
+  // If id column still not found, search for assetTag match
+  var targetId = String(flat[idKey || 'id'] || flat.assetTag || '');
   var foundRowIdx = -1;
-  var targetId = String(flat[idKey || 'id']);
-  for (var r = 1; r < data.length; r++) {
-    if (String(data[r][idColIdx]) === targetId) {
-      foundRowIdx = r + 1;
-      break;
+  if (idColIdx !== -1) {
+    for (var r = 1; r < data.length; r++) {
+      if (String(data[r][idColIdx]).trim() === targetId.trim()) {
+        foundRowIdx = r + 1;
+        break;
+      }
     }
   }
   
@@ -350,6 +358,7 @@ function updateOrInsertRow(ss, sheetName, item, idKey) {
   if (foundRowIdx !== -1) {
     sheet.getRange(foundRowIdx, 1, 1, headers.length).setValues([newRow]);
   } else {
+    // SAFE FALLBACK: Append row to existing sheet, NEVER clear existing items
     sheet.appendRow(newRow);
   }
 }
