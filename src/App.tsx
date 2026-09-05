@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { ExternalLink } from 'lucide-react';
 import {
   Navbar,
   DashboardView,
@@ -13,6 +14,7 @@ import {
   ItemDetailModal,
   EditGearModal,
   NotificationsDrawer,
+  GoogleSheetsModal,
 } from './components';
 import {
   GearItem,
@@ -31,6 +33,12 @@ import {
   INITIAL_USERS,
 } from './data/mockData';
 import { apiClient } from './services/api';
+import {
+  GoogleSheetsConfig,
+  getStoredSheetsConfig,
+  saveStoredSheetsConfig,
+  googleSheetsService,
+} from './services/googleSheetsService';
 
 const LOCAL_STORAGE_GEAR_KEY = 'cinevault_live_gear_v2';
 const LOCAL_STORAGE_MAINT_KEY = 'cinevault_live_maint_v2';
@@ -100,6 +108,14 @@ export default function App() {
   const [isAddGearOpen, setIsAddGearOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isCheckinOpen, setIsCheckinOpen] = useState(false);
+  const [isGoogleSheetsModalOpen, setIsGoogleSheetsModalOpen] = useState(false);
+  const [sheetsConfig, setSheetsConfig] = useState<GoogleSheetsConfig>(getStoredSheetsConfig);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
 
   // Item interaction states
   const [selectedGearItem, setSelectedGearItem] = useState<GearItem | null>(null);
@@ -107,14 +123,43 @@ export default function App() {
   const [checkoutQueue, setCheckoutQueue] = useState<GearItem[]>([]);
   const [checkinTarget, setCheckinTarget] = useState<GearItem | null>(null);
 
+  // Derived state: equipment service dates ALWAYS follow the latest date input under Individual Maintenance records
+  const synchronizedGear = useMemo(() => {
+    return gear.map((item) => {
+      const itemRecs = maintenance
+        .filter((m) => m.gearId === item.id && m.date && String(m.date).trim())
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      const latest = itemRecs[0];
+      if (!latest) return item;
+
+      let nextDue = latest.nextServiceDueDate ? String(latest.nextServiceDueDate).trim() : undefined;
+      if (!nextDue && latest.date) {
+        try {
+          const d = new Date(latest.date);
+          if (!isNaN(d.getTime())) {
+            const interval = item.maintenanceIntervalDays || 120;
+            d.setDate(d.getDate() + interval);
+            nextDue = d.toISOString().split('T')[0];
+          }
+        } catch {}
+      }
+
+      return {
+        ...item,
+        lastServiceDate: latest.date,
+        nextServiceDate: nextDue || item.nextServiceDate,
+      };
+    });
+  }, [gear, maintenance]);
+
   // Continuous Real-Time Synchronization
   useEffect(() => {
     try {
-      localStorage.setItem(LOCAL_STORAGE_GEAR_KEY, JSON.stringify(gear));
+      localStorage.setItem(LOCAL_STORAGE_GEAR_KEY, JSON.stringify(synchronizedGear));
     } catch {
       // ignore
     }
-  }, [gear]);
+  }, [synchronizedGear]);
 
   useEffect(() => {
     try {
@@ -169,6 +214,56 @@ export default function App() {
     loadData();
   }, []);
 
+  // Real-time synchronization to Google Sheets if configured
+  const syncToSheetsIfNeeded = (action: 'updateGear' | 'deleteGear', itemOrId: any) => {
+    if (sheetsConfig.webAppUrl && sheetsConfig.autoSyncEnabled && sheetsConfig.status === 'connected') {
+      googleSheetsService.syncGearItem(sheetsConfig.webAppUrl, action, itemOrId).catch((err) => {
+        console.warn('Background sync to Google Sheets error:', err);
+      });
+    }
+  };
+
+  const syncProjectToSheetsIfNeeded = (project: ProjectShoot) => {
+    if (sheetsConfig.webAppUrl && sheetsConfig.autoSyncEnabled && sheetsConfig.status === 'connected') {
+      googleSheetsService.syncProject(sheetsConfig.webAppUrl, project).catch((err) => {
+        console.warn('Background sync project to Google Sheets error:', err);
+      });
+    }
+  };
+
+  // Initial load from Google Sheets if configured
+  useEffect(() => {
+    async function loadFromGoogleSheets() {
+      if (sheetsConfig.webAppUrl && sheetsConfig.webAppUrl.trim()) {
+        try {
+          const res = await googleSheetsService.fetchAll(sheetsConfig.webAppUrl);
+          if (res.success) {
+            if (res.gear && res.gear.length > 0) setGear(res.gear);
+            if (res.projects && res.projects.length > 0) setProjects(res.projects);
+            if (res.maintenance && res.maintenance.length > 0) setMaintenance(res.maintenance);
+            if (res.auditLogs && res.auditLogs.length > 0) setAuditLogs(res.auditLogs);
+            setSheetsConfig((prev) => {
+              const updated = {
+                ...prev,
+                status: 'connected' as const,
+                sheetName: res.sheetName || prev.sheetName,
+                spreadsheetUrl: res.spreadsheetUrl || prev.spreadsheetUrl,
+                lastSynced: new Date().toISOString(),
+              };
+              saveStoredSheetsConfig(updated);
+              return updated;
+            });
+            showToast(`Loaded ${res.gear?.length || 0} assets from Google Sheets (${res.sheetName || 'Cloud DB'})`);
+          }
+        } catch (e) {
+          console.warn('Initial Google Sheets sync error:', e);
+        }
+      }
+    }
+    loadFromGoogleSheets();
+  }, [sheetsConfig.webAppUrl]);
+
+
   // Switch active user & record audit entry
   const handleSwitchUser = (user: UserAccount) => {
     setCurrentUser(user);
@@ -204,7 +299,7 @@ export default function App() {
       brand: newItemData.brand || 'Generic',
       model: newItemData.model || '',
       category: newItemData.category || 'Cameras',
-      serialNumber: newItemData.serialNumber || `SN-${Date.now()}`,
+      serialNumber: newItemData.serialNumber !== undefined && newItemData.serialNumber !== null ? String(newItemData.serialNumber).trim() : '',
       condition: newItemData.condition || 'Mint',
       status: 'Available',
       location: newItemData.location || 'Studio',
@@ -221,6 +316,7 @@ export default function App() {
     };
 
     setGear((prev) => [item, ...prev]);
+    syncToSheetsIfNeeded('updateGear', item);
 
     // Continual background sync
     try {
@@ -250,13 +346,54 @@ export default function App() {
       updatedAt: now,
     };
 
-    setGear((prev) =>
-      prev.map((item) => (item.id === finalItem.id ? finalItem : item))
-    );
+    setGear((prev) => {
+      const nextGear = prev.map((item) => (item.id === finalItem.id ? finalItem : item));
+      try {
+        localStorage.setItem(LOCAL_STORAGE_GEAR_KEY, JSON.stringify(nextGear));
+      } catch (err) {
+        console.warn('Failed to save gear to localStorage:', err);
+      }
+      return nextGear;
+    });
+    syncToSheetsIfNeeded('updateGear', finalItem);
 
-    // If currently selected in detail modal, update it as well
+    // If currently selected in detail modal or edit modal, update them as well
     if (selectedGearItem && selectedGearItem.id === finalItem.id) {
       setSelectedGearItem(finalItem);
+    }
+    if (editingGearItem && editingGearItem.id === finalItem.id) {
+      setEditingGearItem(finalItem);
+    }
+
+    // If finalItem.lastServiceDate is provided, ensure maintenance records have a matching entry
+    if (finalItem.lastServiceDate && String(finalItem.lastServiceDate).trim()) {
+      setMaintenance((prevMaint) => {
+        const itemRecs = prevMaint
+          .filter((m) => m.gearId === finalItem.id && m.date && String(m.date).trim())
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const latest = itemRecs[0];
+        if (!latest || latest.date !== finalItem.lastServiceDate) {
+          const newRec: MaintenanceRecord = {
+            id: `maint-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            gearId: finalItem.id,
+            date: finalItem.lastServiceDate,
+            serviceType: 'General Overhaul',
+            technician: currentUser.name || 'Field Tech',
+            cost: 0,
+            conditionAfter: finalItem.condition || 'Good',
+            nextServiceDueDate: finalItem.nextServiceDate || '',
+            resolved: true,
+            notes: 'Service logged via inventory updates',
+          };
+          const nextCombined = [newRec, ...prevMaint];
+          try {
+            localStorage.setItem(LOCAL_STORAGE_MAINT_KEY, JSON.stringify(nextCombined));
+          } catch {}
+          apiClient.addMaintenance(newRec, currentUser).catch(() => {});
+          return nextCombined;
+        }
+        return prevMaint;
+      });
     }
 
     // Continual background sync to server
@@ -293,6 +430,7 @@ export default function App() {
       gearId: finalItem.id,
     };
     setNotifications((prev) => [notif, ...prev]);
+    showToast(`Updated "${finalItem.name}" (${finalItem.assetTag})`);
   };
 
   // Duplicate an existing gear item
@@ -311,6 +449,7 @@ export default function App() {
     };
 
     setGear((prev) => [duplicated, ...prev]);
+    syncToSheetsIfNeeded('updateGear', duplicated);
 
     try {
       await apiClient.createGear(duplicated, currentUser);
@@ -351,6 +490,7 @@ export default function App() {
     if (!targetItem) return;
 
     setGear((prev) => prev.filter((g) => g.id !== gearId));
+    syncToSheetsIfNeeded('deleteGear', gearId);
 
     if (selectedGearItem && selectedGearItem.id === gearId) {
       setSelectedGearItem(null);
@@ -478,11 +618,12 @@ export default function App() {
     notes?: string;
   }) => {
     const now = new Date().toISOString();
+    const checkedOutItems: GearItem[] = [];
 
     setGear((prev) =>
       prev.map((item) => {
         if (payload.gearIds.includes(item.id)) {
-          return {
+          const updated: GearItem = {
             ...item,
             status: 'Checked Out',
             currentCheckout: {
@@ -497,10 +638,14 @@ export default function App() {
             },
             updatedAt: now,
           };
+          checkedOutItems.push(updated);
+          return updated;
         }
         return item;
       })
     );
+
+    checkedOutItems.forEach((item) => syncToSheetsIfNeeded('updateGear', item));
 
     // Background sync
     for (const id of payload.gearIds) {
@@ -542,11 +687,12 @@ export default function App() {
   ) => {
     const now = new Date().toISOString();
     const targetItem = gear.find((g) => g.id === id);
+    let checkedInItem: GearItem | null = null;
 
     setGear((prev) =>
       prev.map((item) => {
         if (item.id === id) {
-          return {
+          const updated: GearItem = {
             ...item,
             status: conditionOnReturn === 'Damaged' ? 'In Maintenance' : 'Available',
             condition: conditionOnReturn,
@@ -554,10 +700,16 @@ export default function App() {
             currentCheckout: undefined,
             updatedAt: now,
           };
+          checkedInItem = updated;
+          return updated;
         }
         return item;
       })
     );
+
+    if (checkedInItem) {
+      syncToSheetsIfNeeded('updateGear', checkedInItem);
+    }
 
     try {
       await apiClient.checkinGear(id, conditionOnReturn, returnNotes, currentUser);
@@ -632,6 +784,118 @@ export default function App() {
     setNotifications((prev) => [notif, ...prev]);
   };
 
+  // Batch Save/Sync Maintenance Records edited directly in EditGearModal
+  const handleSaveGearMaintenance = async (
+    gearId: string,
+    updatedRecords: MaintenanceRecord[],
+    shouldSyncGear = false
+  ) => {
+    const validRecords = [...updatedRecords]
+      .filter((r) => r.date && String(r.date).trim())
+      .sort((a, b) => {
+        const timeA = new Date(a.date).getTime();
+        const timeB = new Date(b.date).getTime();
+        return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+      });
+    const latest = validRecords[0];
+
+    // 1. Synchronously update state and persist maintenance records immediately
+    let newCombined: MaintenanceRecord[] = [];
+    setMaintenance((prevMaintenance) => {
+      const otherGearRecords = prevMaintenance.filter((r) => r.gearId !== gearId);
+      newCombined = [...updatedRecords, ...otherGearRecords].sort((a, b) => {
+        const timeA = a.date ? new Date(a.date).getTime() : 0;
+        const timeB = b.date ? new Date(b.date).getTime() : 0;
+        return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+      });
+
+      try {
+        localStorage.setItem(LOCAL_STORAGE_MAINT_KEY, JSON.stringify(newCombined));
+      } catch (err) {
+        console.warn('Failed to save maintenance to localStorage', err);
+      }
+      return newCombined;
+    });
+
+    // 2. Compute latest service metrics and synchronize matching gear item synchronously
+    if (shouldSyncGear) {
+      setGear((prevGear) => {
+        const nextGear = prevGear.map((g) => {
+          if (g.id === gearId && latest) {
+            let nextDue = latest.nextServiceDueDate ? String(latest.nextServiceDueDate).trim() : undefined;
+            if (!nextDue && latest.date) {
+              try {
+                const d = new Date(latest.date);
+                if (!isNaN(d.getTime())) {
+                  const interval = g.maintenanceIntervalDays || 120;
+                  d.setDate(d.getDate() + interval);
+                  nextDue = d.toISOString().split('T')[0];
+                }
+              } catch {}
+            }
+            return {
+              ...g,
+              lastServiceDate: latest.date,
+              nextServiceDate: nextDue || g.nextServiceDate,
+              updatedAt: new Date().toISOString(),
+            };
+          }
+          return g;
+        });
+        try {
+          localStorage.setItem(LOCAL_STORAGE_GEAR_KEY, JSON.stringify(nextGear));
+        } catch {}
+
+        const updatedItem = nextGear.find((g) => g.id === gearId);
+        if (updatedItem) {
+          if (selectedGearItem?.id === gearId) setSelectedGearItem(updatedItem);
+          if (editingGearItem?.id === gearId) setEditingGearItem(updatedItem);
+          syncToSheetsIfNeeded('updateGear', updatedItem);
+        }
+        return nextGear;
+      });
+    }
+
+    // 3. Sync individual maintenance record operations to backend API
+    const previousForGear = maintenance.filter((r) => r.gearId === gearId);
+    const updatedIds = new Set(updatedRecords.map((r) => r.id));
+    const deletedRecords = previousForGear.filter((r) => !updatedIds.has(r.id));
+    const previousMap = new Map(previousForGear.map((r) => [r.id, r]));
+
+    try {
+      for (const del of deletedRecords) {
+        await apiClient.deleteMaintenance(del.id, currentUser);
+      }
+      for (const rec of updatedRecords) {
+        if (!previousMap.has(rec.id)) {
+          await apiClient.addMaintenance(rec, currentUser);
+        } else {
+          const old = previousMap.get(rec.id)!;
+          if (JSON.stringify(old) !== JSON.stringify(rec)) {
+            await apiClient.updateMaintenance(rec, currentUser);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Syncing maintenance records error:', err);
+    }
+
+    // 4. Background sync to Google Sheets if connected (sync maintenance and audit records only; avoid overwriting inventory with stale data)
+    if (sheetsConfig.webAppUrl && sheetsConfig.autoSyncEnabled && sheetsConfig.status === 'connected') {
+      googleSheetsService
+        .pushAll(sheetsConfig.webAppUrl, {
+          maintenance: newCombined,
+          auditLogs,
+        })
+        .catch((e) => console.warn('Google Sheets auto-sync maintenance error:', e));
+    }
+
+    if (shouldSyncGear) {
+      const matchedGear = synchronizedGear.find((g) => g.id === gearId);
+      showToast(`Saved maintenance log for ${matchedGear?.name || 'equipment'}`);
+    }
+  };
+
   // Quick action openers
   const openCheckoutForItems = (items: GearItem[]) => {
     setCheckoutQueue(items);
@@ -644,8 +908,21 @@ export default function App() {
   };
 
   const handleExportCsv = () => {
-    const headers = ['Asset Tag', 'Name', 'Brand', 'Model', 'Category', 'Status', 'Condition', 'Location', 'Serial Number', 'Value'];
-    const rows = gear.map((g) => [
+    const headers = [
+      'Asset Tag',
+      'Name',
+      'Brand',
+      'Model',
+      'Category',
+      'Status',
+      'Condition',
+      'Location',
+      'Purchase Date',
+      'Serial Number',
+      'Last Serviced Date',
+      'Purchase Cost',
+    ];
+    const rows = synchronizedGear.map((g) => [
       g.assetTag,
       `"${(g.name || '').replace(/"/g, '""')}"`,
       `"${(g.brand || '').replace(/"/g, '""')}"`,
@@ -654,8 +931,10 @@ export default function App() {
       g.status,
       g.condition,
       `"${(g.location || '').replace(/"/g, '""')}"`,
+      g.purchaseDate || '',
       g.serialNumber,
-      g.replacementValue,
+      g.lastServiceDate || 'Never',
+      g.purchasePrice || 0,
     ]);
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
@@ -676,6 +955,8 @@ export default function App() {
         currentUser={currentUser}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
+        onOpenGoogleSheets={() => setIsGoogleSheetsModalOpen(true)}
+        isSheetsConnected={sheetsConfig.status === 'connected'}
         unreadNotificationsCount={notifications.filter((n) => !n.read).length}
       />
 
@@ -683,7 +964,7 @@ export default function App() {
       <main className="flex-1 w-full max-w-[2000px] xl:max-w-[2100px] 2xl:max-w-[2200px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {activeTab === 'field' && (
           <FieldShootSummaryView
-            gear={gear}
+            gear={synchronizedGear}
             projects={projects}
             currentUser={currentUser}
             onSelectGear={(item) => setSelectedGearItem(item)}
@@ -705,6 +986,7 @@ export default function App() {
             onUpdateGear={handleUpdateGear}
             onAddProject={(newProject) => {
               setProjects((prev) => [newProject, ...prev]);
+              syncProjectToSheetsIfNeeded(newProject);
               const now = new Date().toISOString();
               const auditEntry: AuditLog = {
                 id: `audit-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -721,13 +1003,16 @@ export default function App() {
               };
               setAuditLogs((prev) => [auditEntry, ...prev]);
             }}
-            onProjectsChange={setProjects}
+            onProjectsChange={(updatedProjects) => {
+              setProjects(updatedProjects);
+              updatedProjects.forEach((p) => syncProjectToSheetsIfNeeded(p));
+            }}
           />
         )}
 
         {activeTab === 'inventory' && (
           <InventoryView
-            gear={gear}
+            gear={synchronizedGear}
             currentUser={currentUser}
             onSelectGear={(item) => setSelectedGearItem(item)}
             onEditGear={(item) => setEditingGearItem(item)}
@@ -755,7 +1040,7 @@ export default function App() {
 
         {activeTab === 'dashboard' && (
           <DashboardView
-            gear={gear}
+            gear={synchronizedGear}
             maintenance={maintenance}
             projects={projects}
             onNavigateToField={() => setActiveTab('field')}
@@ -767,7 +1052,7 @@ export default function App() {
 
         {activeTab === 'maintenance' && (
           <MaintenanceView
-            gear={gear}
+            gear={synchronizedGear}
             maintenance={maintenance}
             currentUser={currentUser}
             onAddMaintenance={handleAddMaintenance}
@@ -781,7 +1066,7 @@ export default function App() {
 
         {activeTab === 'qr' && (
           <QrTagManager
-            gear={gear}
+            gear={synchronizedGear}
             onSelectGear={(item) => setSelectedGearItem(item)}
             onQuickCheckout={(item) => openCheckoutForItems([item])}
             onQuickCheckin={openCheckinForItem}
@@ -801,9 +1086,41 @@ export default function App() {
           <span className="text-slate-500 hidden sm:inline">Automatic Real-Time Sync</span>
         </div>
         <div className="flex items-center gap-4 text-[11px] text-slate-500">
-          <span className="flex items-center gap-1.5 font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-            Real-Time Persistent Storage Active
-          </span>
+          {sheetsConfig.status === 'connected' ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (sheetsConfig.spreadsheetUrl) {
+                    window.open(sheetsConfig.spreadsheetUrl, '_blank');
+                  } else {
+                    setIsGoogleSheetsModalOpen(true);
+                  }
+                }}
+                className="flex items-center gap-1.5 font-medium px-2 py-0.5 rounded border text-emerald-700 bg-emerald-50 border-emerald-300 hover:bg-emerald-100 transition-colors cursor-pointer"
+                title={sheetsConfig.spreadsheetUrl ? "Open Google Sheet in new tab" : "Manage Cloud Database"}
+              >
+                <span>☁️ Google Sheets Cloud DB: {sheetsConfig.sheetName || 'Connected'}</span>
+                <ExternalLink className="w-3 h-3 text-emerald-600" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsGoogleSheetsModalOpen(true)}
+                className="text-slate-400 hover:text-slate-600 underline text-[10px]"
+              >
+                Sync Settings
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsGoogleSheetsModalOpen(true)}
+              className="flex items-center gap-1.5 font-medium px-2 py-0.5 rounded border text-slate-700 bg-slate-50 border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer"
+              title="Click to connect Google Sheets Cloud Database"
+            >
+              <span>Local Persistent Storage Active (Click to connect Cloud)</span>
+            </button>
+          )}
           <span className="text-slate-300">•</span>
           <span>Role: <strong className="text-slate-700">{currentUser.role}</strong> ({currentUser.name})</span>
         </div>
@@ -844,7 +1161,7 @@ export default function App() {
       <ItemDetailModal
         isOpen={!!selectedGearItem}
         onClose={() => setSelectedGearItem(null)}
-        item={selectedGearItem}
+        item={selectedGearItem ? (synchronizedGear.find((g) => g.id === selectedGearItem.id) || selectedGearItem) : null}
         currentUser={currentUser}
         maintenanceRecords={maintenance}
         onCheckout={(item) => openCheckoutForItems([item])}
@@ -860,9 +1177,12 @@ export default function App() {
       <EditGearModal
         isOpen={!!editingGearItem}
         onClose={() => setEditingGearItem(null)}
-        item={editingGearItem}
+        item={editingGearItem ? (synchronizedGear.find((g) => g.id === editingGearItem.id) || editingGearItem) : null}
         currentUser={currentUser}
         onSaveGear={handleUpdateGear}
+        maintenanceRecords={maintenance}
+        onSaveMaintenanceRecords={handleSaveGearMaintenance}
+        onSwitchUser={handleSwitchUser}
       />
 
       <NotificationsDrawer
@@ -876,10 +1196,37 @@ export default function App() {
         }}
         onClearAll={() => setNotifications([])}
         onSelectGearById={(id) => {
-          const item = gear.find((g) => g.id === id);
+          const item = synchronizedGear.find((g) => g.id === id);
           if (item) setSelectedGearItem(item);
         }}
       />
+
+      {/* Google Sheets Cloud Database Modal */}
+      <GoogleSheetsModal
+        isOpen={isGoogleSheetsModalOpen}
+        onClose={() => setIsGoogleSheetsModalOpen(false)}
+        gear={synchronizedGear}
+        projects={projects}
+        maintenance={maintenance}
+        auditLogs={auditLogs}
+        sheetsConfig={sheetsConfig}
+        onConfigChange={setSheetsConfig}
+        onDataImported={(imported) => {
+          if (imported.gear && imported.gear.length > 0) setGear(imported.gear);
+          if (imported.projects && imported.projects.length > 0) setProjects(imported.projects);
+          if (imported.maintenance && imported.maintenance.length > 0) setMaintenance(imported.maintenance);
+          if (imported.auditLogs && imported.auditLogs.length > 0) setAuditLogs(imported.auditLogs);
+        }}
+        showToast={showToast}
+      />
+
+      {/* Floating Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-2xl bg-slate-900 text-white text-xs font-semibold shadow-2xl border border-slate-700 flex items-center gap-2 animate-bounce">
+          <span className="w-2 h-2 rounded-full bg-emerald-400" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
     </div>
   );
 }

@@ -77,12 +77,12 @@ async function startServer() {
       const q = search.toLowerCase();
       filtered = filtered.filter(
         (g) =>
-          g.name.toLowerCase().includes(q) ||
-          g.assetTag.toLowerCase().includes(q) ||
-          g.brand.toLowerCase().includes(q) ||
-          g.serialNumber.toLowerCase().includes(q) ||
-          g.location.toLowerCase().includes(q) ||
-          (g.kitName && g.kitName.toLowerCase().includes(q))
+          String(g.name || '').toLowerCase().includes(q) ||
+          String(g.assetTag || '').toLowerCase().includes(q) ||
+          String(g.brand || '').toLowerCase().includes(q) ||
+          String(g.serialNumber || '').toLowerCase().includes(q) ||
+          String(g.location || '').toLowerCase().includes(q) ||
+          (g.kitName && String(g.kitName).toLowerCase().includes(q))
       );
     }
 
@@ -102,7 +102,7 @@ async function startServer() {
     }
 
     // Check duplicate tag
-    if (gearStore.some((g) => g.assetTag.toLowerCase() === body.assetTag.toLowerCase())) {
+    if (gearStore.some((g) => String(g.assetTag || '').toLowerCase() === String(body.assetTag || '').toLowerCase())) {
       return res.status(409).json({ error: `Asset tag ${body.assetTag} already exists.` });
     }
 
@@ -144,17 +144,39 @@ async function startServer() {
   });
 
   app.put('/api/gear/:id', (req, res) => {
-    const index = gearStore.findIndex((g) => g.id === req.params.id);
-    if (index === -1) return res.status(404).json({ error: 'Gear item not found' });
+    let index = gearStore.findIndex((g) => g.id === req.params.id || g.assetTag === req.params.id);
+    const body = req.body;
+    let updated: GearItem;
 
-    const current = gearStore[index];
-    const updated: GearItem = {
-      ...current,
-      ...req.body,
-      id: current.id, // Immutable ID
-    };
-
-    gearStore[index] = updated;
+    if (index === -1) {
+      updated = {
+        assetTag: body.assetTag || 'GEAR-' + Date.now(),
+        name: body.name || 'Untitled Gear',
+        brand: body.brand || 'Custom',
+        model: body.model || body.name || '',
+        category: body.category || 'Cameras',
+        serialNumber: body.serialNumber || '',
+        status: body.status || 'Available',
+        condition: body.condition || 'Good',
+        location: body.location || 'Studio',
+        purchasePrice: Number(body.purchasePrice) || 0,
+        replacementValue: Number(body.replacementValue) || Number(body.purchasePrice) || 0,
+        maintenanceIntervalDays: Number(body.maintenanceIntervalDays) || 120,
+        totalShootsCompleted: Number(body.totalShootsCompleted) || 0,
+        notes: body.notes || '',
+        ...body,
+        id: req.params.id,
+      };
+      gearStore.unshift(updated);
+    } else {
+      const current = gearStore[index];
+      updated = {
+        ...current,
+        ...body,
+        id: current.id, // Immutable ID
+      };
+      gearStore[index] = updated;
+    }
 
     recordAudit(
       req.body.currentUser?.id,
@@ -359,6 +381,28 @@ async function startServer() {
     res.json({ count: checkedIn.length, items: checkedIn });
   });
 
+  // Helper to ensure equipment service dates strictly follow the latest Individual Maintenance records
+  function syncGearFromMaintenance(gearId: string) {
+    const gear = gearStore.find((g) => g.id === gearId);
+    if (!gear) return;
+    const gearRecs = maintenanceStore
+      .filter((m) => m.gearId === gearId && m.date && m.date.trim())
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const latest = gearRecs[0];
+    if (latest) {
+      gear.lastServiceDate = latest.date;
+      gear.condition = latest.conditionAfter || gear.condition;
+      if (latest.nextServiceDueDate) {
+        gear.nextServiceDate = latest.nextServiceDueDate;
+      }
+      if (latest.resolved && gear.status === 'In Maintenance') {
+        gear.status = 'Available';
+      } else if (!latest.resolved) {
+        gear.status = 'In Maintenance';
+      }
+    }
+  }
+
   // Maintenance Endpoints
   app.get('/api/maintenance', (req, res) => {
     res.json(maintenanceStore);
@@ -370,8 +414,11 @@ async function startServer() {
       return res.status(400).json({ error: 'gearId and serviceType required' });
     }
 
+    const recordId = body.id || `maint-${Date.now()}`;
+    const existingIdx = maintenanceStore.findIndex((m) => m.id === recordId);
+
     const newRecord: MaintenanceRecord = {
-      id: `maint-${Date.now()}`,
+      id: recordId,
       gearId: body.gearId,
       date: body.date || new Date().toISOString().split('T')[0],
       serviceType: body.serviceType,
@@ -384,24 +431,16 @@ async function startServer() {
       resolved: body.resolved ?? true,
     };
 
-    maintenanceStore.unshift(newRecord);
+    if (existingIdx !== -1) {
+      maintenanceStore[existingIdx] = newRecord;
+    } else {
+      maintenanceStore.unshift(newRecord);
+    }
 
-    // Update gear item condition and service dates
-    const gearIdx = gearStore.findIndex((g) => g.id === body.gearId);
-    if (gearIdx !== -1) {
-      const gear = gearStore[gearIdx];
-      gear.condition = newRecord.conditionAfter;
-      gear.lastServiceDate = newRecord.date;
-      if (newRecord.nextServiceDueDate) {
-        gear.nextServiceDate = newRecord.nextServiceDueDate;
-      }
-      if (newRecord.resolved && gear.status === 'In Maintenance') {
-        gear.status = 'Available';
-      } else if (!newRecord.resolved) {
-        gear.status = 'In Maintenance';
-      }
-      gearStore[gearIdx] = gear;
+    syncGearFromMaintenance(body.gearId);
 
+    const gear = gearStore.find((g) => g.id === body.gearId);
+    if (gear) {
       recordAudit(
         req.body.currentUser?.id,
         req.body.currentUser?.name,
@@ -415,6 +454,87 @@ async function startServer() {
     }
 
     res.status(201).json(newRecord);
+  });
+
+  app.put('/api/maintenance/:id', (req, res) => {
+    let idx = maintenanceStore.findIndex((m) => m.id === req.params.id);
+    const body = req.body;
+    let updated: MaintenanceRecord;
+
+    if (idx === -1) {
+      // Upsert record if not previously present in server memory
+      updated = {
+        id: req.params.id,
+        gearId: body.gearId || '',
+        date: body.date || new Date().toISOString().split('T')[0],
+        serviceType: body.serviceType || 'General Overhaul',
+        technician: body.technician || 'Internal Tech',
+        vendor: body.vendor !== undefined ? body.vendor : '',
+        cost: body.cost !== undefined ? Number(body.cost) : 0,
+        conditionAfter: body.conditionAfter || 'Good',
+        notes: body.notes !== undefined ? body.notes : '',
+        nextServiceDueDate: body.nextServiceDueDate !== undefined ? body.nextServiceDueDate : '',
+        resolved: body.resolved !== undefined ? body.resolved : true,
+      };
+      maintenanceStore.unshift(updated);
+    } else {
+      const current = maintenanceStore[idx];
+      updated = {
+        ...current,
+        date: body.date || current.date,
+        serviceType: body.serviceType || current.serviceType,
+        technician: body.technician || current.technician,
+        vendor: body.vendor !== undefined ? body.vendor : current.vendor,
+        cost: body.cost !== undefined ? Number(body.cost) : current.cost,
+        conditionAfter: body.conditionAfter || current.conditionAfter,
+        notes: body.notes !== undefined ? body.notes : current.notes,
+        nextServiceDueDate: body.nextServiceDueDate !== undefined ? body.nextServiceDueDate : current.nextServiceDueDate,
+        resolved: body.resolved !== undefined ? body.resolved : current.resolved,
+      };
+      maintenanceStore[idx] = updated;
+    }
+
+    syncGearFromMaintenance(updated.gearId);
+
+    const gear = gearStore.find((g) => g.id === updated.gearId);
+    if (gear) {
+      recordAudit(
+        req.body.currentUser?.id,
+        req.body.currentUser?.name,
+        req.body.currentUser?.role,
+        req.body.currentUser?.provider,
+        'MAINTENANCE_LOG',
+        gear.assetTag,
+        gear.name,
+        `Updated ${updated.serviceType} record (${updated.date}): ${updated.notes || 'Service details updated'}`
+      );
+    }
+
+    res.json(updated);
+  });
+
+  app.delete('/api/maintenance/:id', (req, res) => {
+    const idx = maintenanceStore.findIndex((m) => m.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ error: 'Maintenance record not found' });
+
+    const removed = maintenanceStore.splice(idx, 1)[0];
+    syncGearFromMaintenance(removed.gearId);
+
+    const gear = gearStore.find((g) => g.id === removed.gearId);
+    if (gear) {
+      recordAudit(
+        req.body.currentUser?.id,
+        req.body.currentUser?.name,
+        req.body.currentUser?.role,
+        req.body.currentUser?.provider,
+        'MAINTENANCE_LOG',
+        gear.assetTag,
+        gear.name,
+        `Removed service record ${removed.serviceType} from ${removed.date}`
+      );
+    }
+
+    res.json({ success: true, removed });
   });
 
   // Shoots & Projects
@@ -491,6 +611,174 @@ async function startServer() {
       timestamp: cloudBridgeConfig.googleWorkspace.lastSynced,
       targetFolder: cloudBridgeConfig.googleWorkspace.targetDriveFolder,
     });
+  });
+
+  // Helper to validate and query Google Apps Script Web App
+  const validateAndFetchGoogleScript = async (webAppUrl: string, method: 'GET' | 'POST', body?: any) => {
+    const trimmed = (webAppUrl || '').trim();
+    if (!trimmed) {
+      throw new Error('Web App URL cannot be empty.');
+    }
+
+    if (trimmed.includes('docs.google.com/spreadsheets/d/')) {
+      throw new Error(
+        'You entered a Google Sheets spreadsheet link instead of the Apps Script Web App URL. In your Google Sheet, click Extensions > Apps Script > Deploy > New deployment > Web app, and copy the URL ending in /exec.'
+      );
+    }
+
+    if (trimmed.includes('/dev')) {
+      throw new Error(
+        "You entered a test '/dev' URL. Google restricts this URL to browser sessions. Please use the production deployment URL that ends with '/exec'."
+      );
+    }
+
+    if (!trimmed.includes('script.google.com/macros/s/')) {
+      throw new Error(
+        "The URL must be a Google Apps Script Web App URL starting with 'https://script.google.com/macros/s/...' and ending with '/exec'."
+      );
+    }
+
+    const headers: Record<string, string> = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) CineVault/1.0',
+      Accept: '*/*',
+    };
+
+    let fetchUrl = trimmed;
+    const fetchOptions: RequestInit = {
+      method,
+      headers,
+      redirect: 'follow',
+    };
+
+    if (method === 'GET') {
+      const qs = body ? new URLSearchParams(body).toString() : '';
+      if (qs) {
+        fetchUrl = trimmed.includes('?') ? `${trimmed}&${qs}` : `${trimmed}?${qs}`;
+      }
+    } else if (method === 'POST' && body) {
+      headers['Content-Type'] = 'text/plain;charset=utf-8';
+      fetchOptions.body = JSON.stringify(body);
+    }
+
+    console.log(`[Google Sheets Proxy] ${method} -> ${fetchUrl}`);
+    const response = await fetch(fetchUrl, fetchOptions);
+    console.log(`[Google Sheets Proxy] Status: ${response.status} (${response.statusText})`);
+    const rawText = await response.text();
+    console.log(`[Google Sheets Proxy] Response preview:`, rawText.substring(0, 200));
+
+    try {
+      return JSON.parse(rawText);
+    } catch {
+      // If Google returned HTML instead of JSON
+      if (rawText.includes('ServiceLogin') || rawText.includes('accounts.google.com') || rawText.includes('Sign in')) {
+        throw new Error(
+          "Google returned a Sign-In page. This happens when 'Who has access' was set to 'Only myself'. In Apps Script, click Deploy > Manage deployments > Edit (pencil icon), change 'Who has access' from 'Only myself' to 'Anyone', and deploy a new version."
+        );
+      }
+      if (rawText.includes('Google Drive') || rawText.includes('Google Docs')) {
+        throw new Error(
+          'Google returned a Drive/Docs page instead of the Web App. Please ensure you copied the Web App URL from the Deployment dialog.'
+        );
+      }
+      if (rawText.includes('Script function not found') || rawText.includes('Script error')) {
+        throw new Error(
+          'Apps Script returned an execution error. Please ensure you pasted the full script code into Code.gs and saved it before deploying.'
+        );
+      }
+      throw new Error(
+        "Google returned an HTML web page instead of JSON. Ensure your Apps Script is deployed as a Web App with 'Who has access: Anyone' and authorized."
+      );
+    }
+  };
+
+  // Google Sheets Cloud Database Proxy Endpoints
+  app.post('/api/sheets/test', async (req, res) => {
+    try {
+      const data = await validateAndFetchGoogleScript(req.body.webAppUrl, 'GET', { action: 'ping' });
+      res.json(data);
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message || 'Failed to reach Google Apps Script' });
+    }
+  });
+
+  app.post('/api/sheets/fetch-all', async (req, res) => {
+    try {
+      const data: any = await validateAndFetchGoogleScript(req.body.webAppUrl, 'GET', { action: 'fetchAll' });
+      if (data && data.success) {
+        if (Array.isArray(data.gear) && data.gear.length > 0) {
+          gearStore = data.gear;
+        }
+        if (Array.isArray(data.projects) && data.projects.length > 0) {
+          projectsStore = data.projects;
+        }
+        if (Array.isArray(data.maintenance) && data.maintenance.length > 0) {
+          maintenanceStore = data.maintenance;
+        }
+        if (Array.isArray(data.auditLogs) && data.auditLogs.length > 0) {
+          auditStore = data.auditLogs;
+        }
+      }
+      res.json(data);
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message || 'Error fetching data from Google Sheets' });
+    }
+  });
+
+  app.post('/api/sheets/push-all', async (req, res) => {
+    try {
+      if (Array.isArray(req.body.gear) && req.body.gear.length > 0) {
+        gearStore = req.body.gear;
+      }
+      if (Array.isArray(req.body.maintenance) && req.body.maintenance.length > 0) {
+        maintenanceStore = req.body.maintenance;
+      }
+      if (Array.isArray(req.body.projects) && req.body.projects.length > 0) {
+        projectsStore = req.body.projects;
+      }
+      if (Array.isArray(req.body.auditLogs) && req.body.auditLogs.length > 0) {
+        auditStore = req.body.auditLogs;
+      }
+
+      const payload = {
+        action: 'pushAll',
+        spreadsheetUrl: req.body.spreadsheetUrl,
+        gear: req.body.gear || gearStore,
+        projects: req.body.projects || projectsStore,
+        maintenance: req.body.maintenance || maintenanceStore,
+        auditLogs: req.body.auditLogs || auditStore,
+      };
+      console.log(`[Google Sheets Proxy] push-all called with ${payload.gear.length} gear items, ${payload.projects.length} projects`);
+      const data = await validateAndFetchGoogleScript(req.body.webAppUrl, 'POST', payload);
+      res.json(data);
+    } catch (err: any) {
+      console.error(`[Google Sheets Proxy] push-all error:`, err);
+      res.status(400).json({ success: false, error: err.message || 'Error pushing data to Google Sheets' });
+    }
+  });
+
+  app.post('/api/sheets/update-item', async (req, res) => {
+    try {
+      const data = await validateAndFetchGoogleScript(req.body.webAppUrl, 'POST', {
+        action: req.body.action,
+        item: req.body.item,
+        id: req.body.id,
+      });
+      res.json(data);
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message || 'Error updating item in Google Sheets' });
+    }
+  });
+
+  app.post('/api/sheets/update-project', async (req, res) => {
+    try {
+      const data = await validateAndFetchGoogleScript(req.body.webAppUrl, 'POST', {
+        action: 'updateProject',
+        project: req.body.project,
+      });
+      res.json(data);
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err.message || 'Error updating project in Google Sheets' });
+    }
   });
 
   // Full Database Export & Transfer

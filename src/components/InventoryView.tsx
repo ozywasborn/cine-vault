@@ -418,13 +418,13 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         const match =
-          item.name.toLowerCase().includes(q) ||
-          item.assetTag.toLowerCase().includes(q) ||
-          item.brand.toLowerCase().includes(q) ||
-          item.model.toLowerCase().includes(q) ||
-          item.serialNumber.toLowerCase().includes(q) ||
-          item.location.toLowerCase().includes(q) ||
-          (item.kitName && item.kitName.toLowerCase().includes(q));
+          String(item.name || '').toLowerCase().includes(q) ||
+          String(item.assetTag || '').toLowerCase().includes(q) ||
+          String(item.brand || '').toLowerCase().includes(q) ||
+          String(item.model || '').toLowerCase().includes(q) ||
+          String(item.serialNumber || '').toLowerCase().includes(q) ||
+          String(item.location || '').toLowerCase().includes(q) ||
+          (item.kitName && String(item.kitName).toLowerCase().includes(q));
         if (!match) return false;
       }
       return true;
@@ -437,19 +437,19 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
     if (sort === 'model-asc') {
       return list.sort(
         (a, b) =>
-          (a.name || '').localeCompare(b.name || '') ||
-          (a.model || '').localeCompare(b.model || '')
+          String(a.name || '').localeCompare(String(b.name || '')) ||
+          String(a.model || '').localeCompare(String(b.model || ''))
       );
     }
     if (sort === 'model-desc') {
       return list.sort(
         (a, b) =>
-          (b.name || '').localeCompare(a.name || '') ||
-          (b.model || '').localeCompare(a.model || '')
+          String(b.name || '').localeCompare(String(a.name || '')) ||
+          String(b.model || '').localeCompare(String(a.model || ''))
       );
     }
     if (sort === 'tag-asc') {
-      return list.sort((a, b) => a.assetTag.localeCompare(b.assetTag));
+      return list.sort((a, b) => String(a.assetTag || '').localeCompare(String(b.assetTag || '')));
     }
     if (sort === 'valuation-desc') {
       return list.sort(
@@ -627,25 +627,42 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           </button>
         </td>
 
-        {/* Equipment Name - Clean single-line layout */}
-        <td className="py-2.5 px-3 min-w-[220px]">
-          <div
-            onClick={() => onSelectGear(item)}
-            className="font-bold text-slate-900 hover:text-amber-600 transition-colors cursor-pointer text-xs sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis max-w-[380px]"
-            title={item.name}
-          >
-            {item.name}
+        {/* Equipment Name - Clean layout */}
+        <td className="py-2.5 px-3 overflow-hidden">
+          <div className="flex items-center gap-1.5 group/name">
+            <div
+              onClick={() => onSelectGear(item)}
+              className="font-bold text-slate-900 hover:text-amber-600 transition-colors cursor-pointer text-xs sm:text-sm truncate"
+              title="Click to view details"
+            >
+              {item.name}
+            </div>
+            {onEditGear && !isAuditor && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenEdit(item);
+                }}
+                className="opacity-0 group-hover/name:opacity-100 p-0.5 rounded hover:bg-amber-50 text-slate-400 hover:text-amber-600 transition-all cursor-pointer shrink-0"
+                title="Edit equipment name and details"
+              >
+                <Pencil className="w-3 h-3" />
+              </button>
+            )}
           </div>
-          <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2 font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[380px]">
+          <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2 font-medium truncate">
             {item.brand && (
               <span>
                 <strong className="text-slate-700">{item.brand} {item.model}</strong>
               </span>
             )}
-            {item.brand && <span className="text-slate-300">•</span>}
-            <span>
-              SN: <strong className="text-slate-800 font-mono">{item.serialNumber}</strong>
-            </span>
+            {item.brand && item.serialNumber && <span className="text-slate-300">•</span>}
+            {item.serialNumber && (
+              <span>
+                SN: <strong className="text-slate-800 font-mono">{item.serialNumber}</strong>
+              </span>
+            )}
             {item.kitName && (
               <>
                 <span className="text-slate-300">•</span>
@@ -658,13 +675,13 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
         </td>
 
         {/* Category Drop-down */}
-        <td className="py-2.5 px-2.5 text-slate-700 font-medium whitespace-nowrap">
-          <div className="relative inline-flex items-center">
+        <td className="py-2.5 px-2 text-slate-700 font-medium whitespace-nowrap">
+          <div className="relative inline-flex items-center w-[118px]">
             <select
               value={item.category}
               disabled={isAuditor}
               onChange={(e) => handleFieldChange(item, 'category', e.target.value as GearCategory)}
-              className="text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100/90 border border-slate-200 rounded-lg pl-2 pr-6 py-1 focus:outline-none focus:border-amber-500 cursor-pointer disabled:cursor-not-allowed appearance-none transition-colors"
+              className="w-full text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100/90 border border-slate-200 rounded-lg pl-2 pr-5 py-1 focus:outline-none focus:border-amber-500 cursor-pointer disabled:cursor-not-allowed appearance-none transition-colors truncate"
               title={isAuditor ? 'Auditor role is read-only' : 'Quickly reassign category'}
             >
               {categories.map((c) => (
@@ -678,14 +695,14 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
         </td>
 
         {/* Movement Status Drop-down */}
-        <td className="py-2.5 px-2.5 whitespace-nowrap">
+        <td className="py-2.5 px-2 whitespace-nowrap">
           <div className="flex flex-col gap-0.5">
-            <div className="relative inline-flex items-center">
+            <div className="relative inline-flex items-center w-[124px]">
               <select
                 value={item.status}
                 disabled={isAuditor}
                 onChange={(e) => handleFieldChange(item, 'status', e.target.value as GearStatus)}
-                className={`text-[11px] font-bold uppercase tracking-wider rounded-lg pl-2.5 pr-6 py-1 border cursor-pointer appearance-none transition-colors focus:outline-none focus:bg-white focus:text-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 active:bg-white active:text-slate-900 disabled:cursor-not-allowed ${
+                className={`w-full text-[11px] font-bold uppercase tracking-wider rounded-lg pl-2 pr-4 py-1 border cursor-pointer appearance-none transition-colors focus:outline-none focus:bg-white focus:text-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 active:bg-white active:text-slate-900 disabled:cursor-not-allowed truncate ${
                   item.status === 'Available'
                     ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100/80'
                     : item.status === 'Checked Out'
@@ -706,10 +723,10 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                   </option>
                 ))}
               </select>
-              <ChevronDown className="w-3 h-3 text-slate-500 absolute right-1.5 pointer-events-none" />
+              <ChevronDown className="w-3 h-3 text-slate-500 absolute right-1 pointer-events-none" />
             </div>
             {item.currentCheckout && (item.status === 'Checked Out' || item.status === 'Out On Loan') && (
-              <div className="text-[10px] text-slate-500 truncate max-w-[140px]">
+              <div className="text-[10px] text-slate-500 truncate w-[124px]">
                 {item.status === 'Out On Loan' ? 'Loan: ' : 'On: '}
                 <strong className="text-slate-800">{item.currentCheckout.projectName}</strong>
               </div>
@@ -718,13 +735,13 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
         </td>
 
         {/* Condition Drop-down */}
-        <td className="py-2.5 px-2.5 whitespace-nowrap">
-          <div className="relative inline-flex items-center">
+        <td className="py-2.5 px-2 whitespace-nowrap">
+          <div className="relative inline-flex items-center w-[98px]">
             <select
               value={item.condition}
               disabled={isAuditor}
               onChange={(e) => handleFieldChange(item, 'condition', e.target.value as ConditionRating)}
-              className={`text-xs font-semibold rounded-lg pl-2 pr-6 py-1 border cursor-pointer appearance-none transition-colors focus:outline-none focus:bg-white focus:text-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 active:bg-white active:text-slate-900 disabled:cursor-not-allowed ${
+              className={`w-full text-xs font-semibold rounded-lg pl-2 pr-4 py-1 border cursor-pointer appearance-none transition-colors focus:outline-none focus:bg-white focus:text-slate-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 active:bg-white active:text-slate-900 disabled:cursor-not-allowed truncate ${
                 item.condition === 'Mint'
                   ? 'bg-emerald-50/70 text-emerald-700 border-emerald-200 hover:bg-emerald-100/80'
                   : item.condition === 'Good'
@@ -741,18 +758,18 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                 </option>
               ))}
             </select>
-            <ChevronDown className="w-3 h-3 text-slate-400 absolute right-1.5 pointer-events-none" />
+            <ChevronDown className="w-3 h-3 text-slate-400 absolute right-1 pointer-events-none" />
           </div>
         </td>
 
         {/* Location Drop-down - Studio, Gripvan, Charging Bay */}
-        <td className="py-2.5 px-2.5 whitespace-nowrap">
-          <div className="relative inline-flex items-center min-w-[110px]">
+        <td className="py-2.5 px-2 whitespace-nowrap">
+          <div className="relative inline-flex items-center w-[98px]">
             <select
               value={allLocations.includes(item.location) ? item.location : 'Studio'}
               disabled={isAuditor}
               onChange={(e) => handleFieldChange(item, 'location', e.target.value)}
-              className="w-full text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100/90 border border-slate-200 rounded-lg pl-2.5 pr-6 py-1 focus:outline-none focus:bg-white focus:text-slate-900 focus:border-amber-500 cursor-pointer disabled:cursor-not-allowed appearance-none transition-colors"
+              className="w-full text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100/90 border border-slate-200 rounded-lg pl-2 pr-4 py-1 focus:outline-none focus:bg-white focus:text-slate-900 focus:border-amber-500 cursor-pointer disabled:cursor-not-allowed appearance-none transition-colors truncate"
               title={isAuditor ? 'Auditor role is read-only' : 'Location options (Studio, Gripvan, Charging Bay)'}
             >
               {allLocations.map((loc) => (
@@ -761,30 +778,42 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                 </option>
               ))}
             </select>
-            <ChevronDown className="w-3 h-3 text-slate-400 absolute right-1.5 pointer-events-none" />
+            <ChevronDown className="w-3 h-3 text-slate-400 absolute right-1 pointer-events-none" />
           </div>
         </td>
 
         {/* Last Serviced Date - Key-in input */}
-        <td className="py-2 px-3 whitespace-nowrap">
+        <td className="py-2 px-2 whitespace-nowrap">
           <input
             type="date"
             disabled={isAuditor}
             value={item.lastServiceDate || ''}
             onChange={(e) => handleFieldChange(item, 'lastServiceDate', e.target.value)}
-            className="text-xs font-mono font-medium text-slate-800 bg-slate-50 hover:bg-slate-100/90 focus:bg-white focus:text-slate-900 border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
+            className="w-[116px] text-xs font-mono font-medium text-slate-800 bg-slate-50 hover:bg-slate-100/90 focus:bg-white focus:text-slate-900 border border-slate-200 rounded-lg px-1.5 py-1 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
             title={isAuditor ? 'Auditor role is read-only' : 'Key in or select Last Serviced Date'}
           />
         </td>
 
         {/* Cost of Purchase */}
-        <td className="py-2.5 px-3 text-slate-900 font-mono font-medium whitespace-nowrap text-xs sm:text-sm">
+        <td className="py-2.5 px-2 text-slate-900 font-mono font-medium whitespace-nowrap text-xs sm:text-sm">
           ${(item.purchasePrice || 0).toLocaleString()}
         </td>
 
         {/* Actions Column */}
-        <td className="py-2.5 px-3 text-right whitespace-nowrap">
+        <td className="py-2.5 pl-2 pr-5 text-right whitespace-nowrap">
           <div className="inline-flex items-center justify-end gap-1.5">
+            {/* Quick Edit Gear Button - Standardized square 32x32px */}
+            {onEditGear && (
+              <button
+                type="button"
+                onClick={() => handleOpenEdit(item)}
+                className="w-8 h-8 flex items-center justify-center rounded-xl bg-white border border-slate-200 hover:bg-amber-50 hover:border-amber-300 text-slate-600 hover:text-amber-700 transition-colors cursor-pointer shadow-2xs shrink-0"
+                title={isAuditor ? 'Inspect equipment details' : 'Edit Equipment Details'}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            )}
+
             {/* QR Tag Button - Standardized square 32x32px */}
             <button
               onClick={() => handleOpenQr(item)}
@@ -1150,10 +1179,22 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                 {/* Drop-down Table Content */}
                 {!isCollapsed && (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs">
+                    <table className="w-full text-left border-collapse text-xs table-fixed min-w-[1320px]">
+                      <colgroup>
+                        <col style={{ width: '2.8%' }} />
+                        <col style={{ width: '8.0%' }} />
+                        <col style={{ width: '28.5%' }} />
+                        <col style={{ width: '9.8%' }} />
+                        <col style={{ width: '10.8%' }} />
+                        <col style={{ width: '8.8%' }} />
+                        <col style={{ width: '8.8%' }} />
+                        <col style={{ width: '9.8%' }} />
+                        <col style={{ width: '7.2%' }} />
+                        <col style={{ width: '15.5%' }} />
+                      </colgroup>
                       <thead>
                         <tr className="bg-slate-50/50 border-b border-slate-200 text-slate-500 uppercase font-bold text-[10px] tracking-wider">
-                          <th className="py-2.5 px-3 w-10 text-center">
+                          <th className="py-2.5 px-3 text-center">
                             <input
                               type="checkbox"
                               checked={allInCatSelected}
@@ -1161,10 +1202,10 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                               className="rounded bg-white border-slate-300 text-amber-500 focus:ring-0 cursor-pointer"
                             />
                           </th>
-                          <th className="py-2.5 px-3 w-28 whitespace-nowrap">Asset Tag</th>
+                          <th className="py-2.5 px-3 whitespace-nowrap">Asset Tag</th>
                           <th
                             onClick={() => toggleCategoryModelSort(group.name)}
-                            className="py-2.5 px-3 min-w-[220px] cursor-pointer hover:text-slate-900 transition-colors select-none"
+                            className="py-2.5 px-3 cursor-pointer hover:text-slate-900 transition-colors select-none"
                             title={`Click to sort ${group.name} by Equipment / Model (A → Z or Z → A)`}
                           >
                             <div className="flex items-center gap-1.5">
@@ -1178,13 +1219,13 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                               )}
                             </div>
                           </th>
-                          <th className="py-2.5 px-2.5 whitespace-nowrap">Category</th>
-                          <th className="py-2.5 px-2.5 whitespace-nowrap">Movement Status</th>
-                          <th className="py-2.5 px-2.5 whitespace-nowrap">Condition</th>
-                          <th className="py-2.5 px-2.5 whitespace-nowrap">Location</th>
-                          <th className="py-2.5 px-3 whitespace-nowrap">Last Serviced Date</th>
-                          <th className="py-2.5 px-3 whitespace-nowrap">Cost of Purchase</th>
-                          <th className="py-2.5 px-3 text-right whitespace-nowrap w-36">Actions</th>
+                          <th className="py-2.5 px-2 whitespace-nowrap">Category</th>
+                          <th className="py-2.5 px-2 whitespace-nowrap">Movement Status</th>
+                          <th className="py-2.5 px-2 whitespace-nowrap">Condition</th>
+                          <th className="py-2.5 px-2 whitespace-nowrap">Location</th>
+                          <th className="py-2.5 px-2 whitespace-nowrap">Last Serviced Date</th>
+                          <th className="py-2.5 px-2 whitespace-nowrap">Cost of Purchase</th>
+                          <th className="py-2.5 pl-2 pr-5 text-right whitespace-nowrap">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">

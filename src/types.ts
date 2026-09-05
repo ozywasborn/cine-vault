@@ -108,6 +108,7 @@ export interface ShootProject {
   endDate: string;
   assignedGearIds: string[];
   status: 'Prep' | 'On Shoot' | 'Wrap' | 'Archived';
+  color?: string;
 }
 
 export type ProjectShoot = ShootProject;

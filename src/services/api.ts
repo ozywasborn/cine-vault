@@ -1,10 +1,10 @@
 import { GearItem, MaintenanceRecord, ShootProject, AuditLog, AppNotification, CloudBridgeConfig, UserAccount } from '../types';
 import { INITIAL_GEAR, INITIAL_MAINTENANCE, INITIAL_PROJECTS, INITIAL_AUDIT_LOGS, INITIAL_NOTIFICATIONS, INITIAL_CLOUD_BRIDGE } from '../data/mockData';
 
-const LOCAL_STORAGE_KEY_GEAR = 'cinevault_gear_data';
-const LOCAL_STORAGE_KEY_MAINT = 'cinevault_maint_data';
-const LOCAL_STORAGE_KEY_AUDIT = 'cinevault_audit_data';
-const LOCAL_STORAGE_KEY_NOTIFS = 'cinevault_notifs_data';
+const LOCAL_STORAGE_KEY_GEAR = 'cinevault_live_gear_v2';
+const LOCAL_STORAGE_KEY_MAINT = 'cinevault_live_maint_v2';
+const LOCAL_STORAGE_KEY_AUDIT = 'cinevault_live_audit_v2';
+const LOCAL_STORAGE_KEY_NOTIFS = 'cinevault_live_notifs_v2';
 const LOCAL_STORAGE_KEY_OFFLINE_QUEUE = 'cinevault_offline_queue';
 
 export interface OfflineAction {
@@ -303,23 +303,37 @@ export const api = {
     }
   },
 
-  async addMaintenance(payload: Partial<MaintenanceRecord> & { currentUser: UserAccount }): Promise<MaintenanceRecord> {
+  async addMaintenance(
+    payload: Partial<MaintenanceRecord> & { currentUser?: UserAccount },
+    currentUser?: UserAccount
+  ): Promise<MaintenanceRecord> {
+    const user = currentUser || payload.currentUser;
+    const bodyPayload = { ...payload, currentUser: user };
     try {
       const res = await fetch('/api/maintenance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(bodyPayload),
       });
       if (!res.ok) throw new Error('Maintenance post failed');
-      return await res.json();
+      const data: MaintenanceRecord = await res.json();
+      const cached = getCachedMaintenance();
+      const idx = cached.findIndex((m) => m.id === data.id);
+      if (idx !== -1) {
+        cached[idx] = data;
+      } else {
+        cached.unshift(data);
+      }
+      saveCachedMaintenance(cached);
+      return data;
     } catch (err) {
-      enqueueOfflineAction({ type: 'MAINTENANCE', payload });
+      enqueueOfflineAction({ type: 'MAINTENANCE', payload: bodyPayload });
       const record: MaintenanceRecord = {
-        id: `maint-offline-${Date.now()}`,
+        id: payload.id || `maint-offline-${Date.now()}`,
         gearId: payload.gearId || '',
         date: payload.date || new Date().toISOString().split('T')[0],
         serviceType: payload.serviceType || 'General Overhaul',
-        technician: payload.technician || 'Field Tech',
+        technician: payload.technician || user?.name || 'Field Tech',
         cost: Number(payload.cost) || 0,
         conditionAfter: payload.conditionAfter || 'Good',
         notes: payload.notes || '',
@@ -330,6 +344,55 @@ export const api = {
       cachedMaint.unshift(record);
       saveCachedMaintenance(cachedMaint);
       return record;
+    }
+  },
+
+  async updateMaintenance(record: MaintenanceRecord, currentUser: UserAccount): Promise<MaintenanceRecord> {
+    try {
+      const res = await fetch(`/api/maintenance/${record.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...record, currentUser }),
+      });
+      if (!res.ok) throw new Error('Maintenance update failed');
+      const updated = await res.json();
+      const cached = getCachedMaintenance();
+      const idx = cached.findIndex((m) => m.id === record.id);
+      if (idx !== -1) {
+        cached[idx] = updated;
+      } else {
+        cached.unshift(updated);
+      }
+      saveCachedMaintenance(cached);
+      return updated;
+    } catch (err) {
+      const cached = getCachedMaintenance();
+      const idx = cached.findIndex((m) => m.id === record.id);
+      if (idx !== -1) {
+        cached[idx] = record;
+      } else {
+        cached.unshift(record);
+      }
+      saveCachedMaintenance(cached);
+      return record;
+    }
+  },
+
+  async deleteMaintenance(id: string, currentUser: UserAccount): Promise<boolean> {
+    try {
+      const res = await fetch(`/api/maintenance/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentUser }),
+      });
+      if (!res.ok) throw new Error('Maintenance delete failed');
+      const cached = getCachedMaintenance().filter((m) => m.id !== id);
+      saveCachedMaintenance(cached);
+      return true;
+    } catch (err) {
+      const cached = getCachedMaintenance().filter((m) => m.id !== id);
+      saveCachedMaintenance(cached);
+      return true;
     }
   },
 
@@ -378,8 +441,16 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
       });
-      if (!res.ok) throw new Error('Update failed');
-      return await res.json();
+      const data: GearItem = res.ok ? await res.json() : (updates as any);
+      const cached = getCachedGear();
+      const idx = cached.findIndex((g) => g.id === id);
+      if (idx !== -1) {
+        cached[idx] = { ...cached[idx], ...data };
+      } else {
+        cached.unshift(data);
+      }
+      saveCachedGear(cached);
+      return data;
     } catch (err) {
       enqueueOfflineAction({ type: 'UPDATE_GEAR', payload: { id, updates } });
       const cached = getCachedGear();
@@ -389,7 +460,7 @@ export const api = {
         saveCachedGear(cached);
         return cached[idx];
       }
-      throw err;
+      return updates as GearItem;
     }
   },
 
@@ -503,15 +574,33 @@ export const apiClient = {
         body: JSON.stringify({ ...record, currentUser }),
       });
       if (!res.ok) throw new Error('Maintenance request failed');
-      return await res.json();
+      const data = await res.json();
+      const cached = getCachedMaintenance();
+      const idx = cached.findIndex((m) => m.id === data.id);
+      if (idx !== -1) {
+        cached[idx] = data;
+      } else {
+        cached.unshift(data);
+      }
+      saveCachedMaintenance(cached);
+      return data;
     } catch (err) {
       enqueueOfflineAction({ type: 'MAINTENANCE', payload: { ...record, currentUser } });
       const cached = getCachedMaintenance();
-      cached.unshift(record);
+      const idx = cached.findIndex((m) => m.id === record.id);
+      if (idx !== -1) {
+        cached[idx] = record;
+      } else {
+        cached.unshift(record);
+      }
       saveCachedMaintenance(cached);
       return record;
     }
   },
+  updateMaintenance: (record: MaintenanceRecord, currentUser: UserAccount) =>
+    api.updateMaintenance(record, currentUser),
+  deleteMaintenance: (id: string, currentUser: UserAccount) =>
+    api.deleteMaintenance(id, currentUser),
   syncM365: (currentUser: UserAccount) => api.syncWithM365(currentUser),
   syncGoogleWorkspace: (currentUser: UserAccount) => api.syncWithGoogleWorkspace(currentUser),
 };

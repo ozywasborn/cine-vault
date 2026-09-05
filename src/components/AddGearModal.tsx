@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Plus, Tag, MapPin, DollarSign } from 'lucide-react';
 import {
   GearCategory,
@@ -37,7 +37,35 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
   const [lastServiceDate, setLastServiceDate] = useState<string>('');
   const [notes, setNotes] = useState('');
 
+  const resetForm = () => {
+    setAssetTag('');
+    setName('');
+    setBrand('');
+    setModel('');
+    setCategory('Cameras');
+    setSerialNumber('');
+    setStatus('Available');
+    setCondition('Mint');
+    setLocation(AVAILABLE_LOCATIONS[0] || 'Studio');
+    setKitName('');
+    setPurchaseDate(new Date().toISOString().split('T')[0]);
+    setPurchasePrice('');
+    setLastServiceDate('');
+    setNotes('');
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      resetForm();
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +77,7 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
       brand: brand.trim() || 'Custom',
       model: model.trim() || name.trim(),
       category,
-      serialNumber: serialNumber.trim() || `SN-${Math.floor(Math.random() * 900000 + 100000)}`,
+      serialNumber: serialNumber.trim(),
       status,
       condition,
       location: location.trim() || AVAILABLE_LOCATIONS[0],
@@ -61,7 +89,7 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
       notes: notes.trim(),
     });
 
-    onClose();
+    handleClose();
   };
 
   const statuses: GearStatus[] = [
@@ -88,7 +116,7 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-700 border border-slate-200 transition-colors cursor-pointer shadow-2xs"
           >
             <X className="w-4 h-4" />
@@ -303,7 +331,7 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold transition-colors cursor-pointer shadow-2xs"
             >
               Cancel

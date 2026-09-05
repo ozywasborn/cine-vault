@@ -11,4 +11,5 @@ export * from './AddGearModal';
 export * from './ItemDetailModal';
 export * from './EditGearModal';
 export * from './NotificationsDrawer';
+export * from './GoogleSheetsModal';
 

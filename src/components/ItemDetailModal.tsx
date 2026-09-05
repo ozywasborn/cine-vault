@@ -111,7 +111,22 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
               {item.assetTag}
             </span>
             <div>
-              <h2 className="text-base font-bold text-slate-900 leading-tight">{item.name}</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900 leading-tight">{item.name}</h2>
+                {!isAuditor && onEditGear && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onEditGear(item);
+                    }}
+                    className="p-1 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer"
+                    title="Edit Equipment Details"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
               <div className="text-xs text-slate-500 flex items-center gap-2 mt-0.5 font-medium">
                 <span>{item.brand}</span>
                 <span>•</span>
@@ -176,7 +191,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
               </div>
 
               <div className="text-slate-700 font-mono text-[11px]">
-                Serial Number: <strong className="text-amber-800 font-semibold">{item.serialNumber}</strong>
+                Serial Number: <strong className="text-amber-800 font-semibold">{item.serialNumber || '—'}</strong>
               </div>
 
               <div className="text-slate-500 text-xs font-medium">

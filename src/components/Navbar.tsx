@@ -8,6 +8,7 @@ import {
   QrCode,
   Bell,
   ShieldCheck,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { UserAccount, AppNotification } from '../types';
 
@@ -20,6 +21,8 @@ interface NavbarProps {
   onOpenUserModal?: () => void;
   onOpenAuthModal?: () => void;
   onOpenNotifications: () => void;
+  onOpenGoogleSheets?: () => void;
+  isSheetsConnected?: boolean;
   isOnline?: boolean;
   unreadNotifications?: AppNotification[];
   unreadNotificationsCount?: number;
@@ -147,16 +150,34 @@ export const Navbar: React.FC<NavbarProps> = (props) => {
 
           {/* Right Action Controls */}
           <div className="flex items-center gap-2.5">
+            {/* Google Sheets Cloud DB Trigger */}
+            <button
+              id="btn-google-sheets"
+              onClick={props.onOpenGoogleSheets}
+              className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer border shadow-xs ${
+                props.isSheetsConnected
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100/90'
+                  : 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100/90'
+              }`}
+              title={props.isSheetsConnected ? 'Google Sheets Cloud DB Connected - Click to view/sync' : 'Click to connect Google Sheets Cloud Database'}
+            >
+              <FileSpreadsheet className={`w-3.5 h-3.5 shrink-0 ${props.isSheetsConnected ? 'text-emerald-600' : 'text-amber-600'}`} />
+              <span className="font-semibold text-[11px] hidden md:inline">
+                {props.isSheetsConnected ? 'Sheets DB: Connected' : 'Connect Sheets DB'}
+              </span>
+              <span className={`w-2 h-2 rounded-full ${props.isSheetsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+            </button>
+
             {/* Real-time Continuous Sync Status */}
             <div
-              className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs bg-emerald-50 border border-emerald-200 text-emerald-800"
+              className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs bg-slate-50 border border-slate-200 text-slate-700 hidden lg:flex"
               title="Continuous Real-Time Sync Active - All changes are saved automatically"
             >
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
-              <span className="font-semibold text-[11px] hidden sm:inline">Live Real-Time Sync</span>
+              <span className="font-semibold text-[11px]">Real-Time Store</span>
             </div>
 
             {/* Notifications / Service Alerts */}

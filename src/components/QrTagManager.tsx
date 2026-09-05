@@ -81,9 +81,9 @@ export const QrTagManager: React.FC<QrTagManagerProps> = ({
     const clean = tagOrPayload.trim().toUpperCase();
     const found = gear.find(
       (g) =>
-        g.assetTag.toUpperCase() === clean ||
-        g.serialNumber.toUpperCase() === clean ||
-        g.id.toUpperCase() === clean
+        String(g.assetTag || '').toUpperCase() === clean ||
+        String(g.serialNumber || '').toUpperCase() === clean ||
+        String(g.id || '').toUpperCase() === clean
     );
 
     if (found) {
@@ -104,10 +104,10 @@ export const QrTagManager: React.FC<QrTagManagerProps> = ({
     if (!searchFilter) return true;
     const q = searchFilter.toLowerCase();
     return (
-      g.name.toLowerCase().includes(q) ||
-      g.assetTag.toLowerCase().includes(q) ||
-      g.category.toLowerCase().includes(q) ||
-      g.location.toLowerCase().includes(q)
+      String(g.name || '').toLowerCase().includes(q) ||
+      String(g.assetTag || '').toLowerCase().includes(q) ||
+      String(g.category || '').toLowerCase().includes(q) ||
+      String(g.location || '').toLowerCase().includes(q)
     );
   });
 
