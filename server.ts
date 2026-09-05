@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import {
   INITIAL_GEAR,
@@ -12,13 +13,53 @@ import {
 } from './src/data/mockData';
 import { GearItem, MaintenanceRecord, ShootProject, AuditLog, AppNotification, CloudBridgeConfig } from './src/types';
 
-// In-memory data store with initial seed (persists during server lifetime, also supported by client localStorage)
+const DB_FILE_PATH = path.resolve(process.cwd(), 'src/data/persisted_db.json');
+
+// In-memory data store with initial seed (persists to local disk and client localStorage)
 let gearStore: GearItem[] = JSON.parse(JSON.stringify(INITIAL_GEAR));
 let maintenanceStore: MaintenanceRecord[] = JSON.parse(JSON.stringify(INITIAL_MAINTENANCE));
 let projectsStore: ShootProject[] = JSON.parse(JSON.stringify(INITIAL_PROJECTS));
 let auditStore: AuditLog[] = JSON.parse(JSON.stringify(INITIAL_AUDIT_LOGS));
 let notificationStore: AppNotification[] = JSON.parse(JSON.stringify(INITIAL_NOTIFICATIONS));
 let cloudBridgeConfig: CloudBridgeConfig = JSON.parse(JSON.stringify(INITIAL_CLOUD_BRIDGE));
+
+function loadPersistedStores() {
+  try {
+    if (fs.existsSync(DB_FILE_PATH)) {
+      const raw = fs.readFileSync(DB_FILE_PATH, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed.gear) && parsed.gear.length > 0) gearStore = parsed.gear;
+      if (Array.isArray(parsed.maint) && parsed.maint.length > 0) maintenanceStore = parsed.maint;
+      if (Array.isArray(parsed.projects) && parsed.projects.length > 0) projectsStore = parsed.projects;
+      if (Array.isArray(parsed.audit) && parsed.audit.length > 0) auditStore = parsed.audit;
+      console.log(`[Database] Loaded persisted database from disk: ${gearStore.length} gear items, ${maintenanceStore.length} maintenance records.`);
+    }
+  } catch (err) {
+    console.warn('[Database] Could not load persisted database file, using fallback:', err);
+  }
+}
+
+function persistStoresToDisk() {
+  try {
+    fs.writeFileSync(
+      DB_FILE_PATH,
+      JSON.stringify(
+        {
+          gear: gearStore,
+          maint: maintenanceStore,
+          projects: projectsStore,
+          audit: auditStore,
+        },
+        null,
+        2
+      )
+    );
+  } catch (err) {
+    console.warn('[Database] Failed to persist data to disk:', err);
+  }
+}
+
+loadPersistedStores();
 
 async function startServer() {
   const app = express();
@@ -128,6 +169,7 @@ async function startServer() {
     };
 
     gearStore.unshift(newItem);
+    persistStoresToDisk();
 
     recordAudit(
       req.body.currentUser?.id,
@@ -177,6 +219,7 @@ async function startServer() {
       };
       gearStore[index] = updated;
     }
+    persistStoresToDisk();
 
     recordAudit(
       req.body.currentUser?.id,
@@ -197,6 +240,7 @@ async function startServer() {
     if (index === -1) return res.status(404).json({ error: 'Gear item not found' });
 
     const [deleted] = gearStore.splice(index, 1);
+    persistStoresToDisk();
 
     recordAudit(
       req.body.currentUser?.id,
