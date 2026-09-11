@@ -12,8 +12,9 @@ import {
   INITIAL_USERS,
 } from './src/data/mockData';
 import { GearItem, MaintenanceRecord, ShootProject, AuditLog, AppNotification, CloudBridgeConfig } from './src/types';
+import { normalizeDateToYMD } from './src/utils/dateUtils';
 
-const DB_FILE_PATH = path.resolve(process.cwd(), 'src/data/persisted_db.json');
+const DB_FILE_PATH = path.resolve(process.cwd(), 'data/persisted_db.json');
 
 // In-memory data store with initial seed (persists to local disk and client localStorage)
 let gearStore: GearItem[] = JSON.parse(JSON.stringify(INITIAL_GEAR));
@@ -30,7 +31,13 @@ function loadPersistedStores() {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed.gear) && parsed.gear.length > 0) gearStore = parsed.gear;
       if (Array.isArray(parsed.maint) && parsed.maint.length > 0) maintenanceStore = parsed.maint;
-      if (Array.isArray(parsed.projects) && parsed.projects.length > 0) projectsStore = parsed.projects;
+      if (Array.isArray(parsed.projects) && parsed.projects.length > 0) {
+        projectsStore = parsed.projects.map((p: any) => ({
+          ...p,
+          startDate: normalizeDateToYMD(p.startDate) || p.startDate,
+          endDate: normalizeDateToYMD(p.endDate) || p.endDate,
+        }));
+      }
       if (Array.isArray(parsed.audit) && parsed.audit.length > 0) auditStore = parsed.audit;
       console.log(`[Database] Loaded persisted database from disk: ${gearStore.length} gear items, ${maintenanceStore.length} maintenance records.`);
     }
@@ -65,7 +72,8 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
   // Helper for audit logging
   const recordAudit = (
@@ -583,7 +591,189 @@ async function startServer() {
 
   // Shoots & Projects
   app.get('/api/projects', (req, res) => {
+    const cleanProjects = projectsStore.map((p) => ({
+      ...p,
+      startDate: normalizeDateToYMD(p.startDate) || p.startDate,
+      endDate: normalizeDateToYMD(p.endDate) || p.endDate,
+    }));
+    res.json(cleanProjects);
+  });
+
+  app.put('/api/projects/:id', (req, res) => {
+    const projId = req.params.id;
+    const body = req.body;
+    const cleanBody = {
+      ...body,
+      ...(body.startDate ? { startDate: normalizeDateToYMD(body.startDate) || body.startDate } : {}),
+      ...(body.endDate ? { endDate: normalizeDateToYMD(body.endDate) || body.endDate } : {}),
+    };
+    let idx = projectsStore.findIndex((p) => p.id === projId || p.name === projId);
+    if (idx !== -1) {
+      projectsStore[idx] = {
+        ...projectsStore[idx],
+        ...cleanBody,
+      };
+    } else {
+      projectsStore.push(cleanBody);
+      idx = projectsStore.length - 1;
+    }
+    persistStoresToDisk();
+    res.json(projectsStore[idx]);
+  });
+
+  app.post('/api/projects', (req, res) => {
+    const body = req.body;
+    const cleanBody = {
+      ...body,
+      ...(body.startDate ? { startDate: normalizeDateToYMD(body.startDate) || body.startDate } : {}),
+      ...(body.endDate ? { endDate: normalizeDateToYMD(body.endDate) || body.endDate } : {}),
+    };
+    const idx = projectsStore.findIndex((p) => p.id === cleanBody.id || p.name === cleanBody.name);
+    if (idx !== -1) {
+      projectsStore[idx] = {
+        ...projectsStore[idx],
+        ...cleanBody,
+      };
+    } else {
+      projectsStore.push(cleanBody);
+    }
+    persistStoresToDisk();
+    res.json(cleanBody);
+  });
+
+  app.put('/api/projects-batch', (req, res) => {
+    const { projects } = req.body;
+    if (Array.isArray(projects)) {
+      projectsStore = projects.map((p: ShootProject) => ({
+        ...p,
+        startDate: normalizeDateToYMD(p.startDate) || p.startDate,
+        endDate: normalizeDateToYMD(p.endDate) || p.endDate,
+      }));
+      persistStoresToDisk();
+    }
     res.json(projectsStore);
+  });
+
+  app.delete('/api/projects/:id', (req, res) => {
+    const projId = req.params.id;
+    const idx = projectsStore.findIndex((p) => p.id === projId || p.name === projId);
+    if (idx !== -1) {
+      const removed = projectsStore.splice(idx, 1)[0];
+      persistStoresToDisk();
+      return res.json({ success: true, removed });
+    }
+    res.status(404).json({ error: 'Project not found' });
+  });
+
+  // Google Maps Places API (New) Autocomplete Proxy
+  app.post('/api/places/autocomplete', async (req, res) => {
+    try {
+      const { input, sessionToken, apiKey: clientApiKey } = req.body;
+      if (!input || typeof input !== 'string' || !input.trim()) {
+        return res.json({ suggestions: [], source: 'empty' });
+      }
+
+      const apiKey =
+        clientApiKey ||
+        process.env.GOOGLE_MAPS_API_KEY ||
+        process.env.VITE_GOOGLE_MAPS_API_KEY ||
+        '';
+
+      if (!apiKey) {
+        // Filming locations / studio facilities intelligent fallback when API key is not yet configured
+        const fallbackVenues = [
+          'Sunset Gower Studios, 1438 N Gower St, Hollywood, CA 90028',
+          'Warner Bros. Studios, 4000 Warner Blvd, Burbank, CA 91522',
+          'Paramount Pictures Studios, 5555 Melrose Ave, Los Angeles, CA 90038',
+          'Sony Pictures Studios, 10202 W Washington Blvd, Culver City, CA 90232',
+          'Universal Studios Hollywood Soundstages, 100 Universal City Plaza, Universal City, CA 91608',
+          'Steiner Studios, 15 Washington Ave, Brooklyn, NY 11205',
+          'Silvercup Studios, 42-22 22nd St, Queens, NY 11101',
+          'Kaufman Astoria Studios, 34-12 36th St, Astoria, NY 11106',
+          'Pinewood Studios, Pinewood Rd, Iver Heath, Slough, UK',
+          'Shepperton Studios, Studios Rd, Shepperton, UK',
+          'Babelsberg Studios, August-Bebel-Str. 26-53, Potsdam, Germany',
+          'Olympic Peninsula Rainforest, Forks, WA 98331',
+          'JW Marriott Hotel Seoul, 176 Sinbanpo-ro, Seocho-gu, Seoul, South Korea',
+          'Downtown Stage 4 Soundstage, Los Angeles, CA 90013',
+          'Mojave Air and Space Port, 1434 Flightline, Mojave, CA 93501',
+          'Red Rock Canyon State Park, Cantil, CA 93519',
+          'Cinelease Studios, 5130 Anza Blvd, Mansfield, TX 76063',
+          'Tyler Perry Studios, 3300 Continental Colony Pkwy SW, Atlanta, GA 30331',
+          'Trilith Studios, 461 Sandy Creek Rd, Fayetteville, GA 30214',
+          'Albuquerque Studios, 5650 University Blvd SE, Albuquerque, NM 87106',
+          'Vancouver Film Studios, 3500 Cornett Rd, Vancouver, BC, Canada',
+          'Fox Studios Australia, Driver Ave, Moore Park, NSW, Australia',
+        ];
+
+        const q = input.toLowerCase().trim();
+        const matches = fallbackVenues
+          .filter((v) => v.toLowerCase().includes(q))
+          .map((address, idx) => {
+            const parts = address.split(',');
+            const primary = parts[0].trim();
+            const secondary = parts.slice(1).join(',').trim();
+            return {
+              placeId: `preview-${idx}`,
+              text: address,
+              primaryText: primary,
+              secondaryText: secondary,
+              isMock: true,
+            };
+          });
+
+        return res.json({
+          suggestions: matches.slice(0, 5),
+          source: 'local_fallback',
+          message: 'Provide GOOGLE_MAPS_API_KEY for live global Google Maps Places API (New) suggestions.',
+        });
+      }
+
+      // Call upstream Google Maps Places API (New) Autocomplete
+      const gmpResponse = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': apiKey,
+          'X-Goog-Maps-Solution-ID': 'gmp_git_agentskills_v1',
+          'X-Goog-FieldMask':
+            'suggestions.placePrediction.placeId,suggestions.placePrediction.text.text,suggestions.placePrediction.structuredFormat',
+        },
+        body: JSON.stringify({
+          input: input.trim(),
+          sessionToken: sessionToken || undefined,
+        }),
+      });
+
+      if (!gmpResponse.ok) {
+        const errDetails = await gmpResponse.text();
+        console.warn('[Google Places API Error]', gmpResponse.status, errDetails);
+        return res.status(gmpResponse.status).json({
+          error: 'Google Maps Places API error',
+          status: gmpResponse.status,
+          details: errDetails,
+        });
+      }
+
+      const gmpData = await gmpResponse.json();
+      const suggestions = (gmpData.suggestions || [])
+        .filter((s: any) => s.placePrediction)
+        .map((s: any) => ({
+          placeId: s.placePrediction.placeId,
+          text: s.placePrediction.text?.text || '',
+          primaryText:
+            s.placePrediction.structuredFormat?.mainText?.text ||
+            s.placePrediction.text?.text ||
+            '',
+          secondaryText: s.placePrediction.structuredFormat?.secondaryText?.text || '',
+          isMock: false,
+        }));
+
+      res.json({ suggestions, source: 'google_maps' });
+    } catch (err: any) {
+      console.error('[Google Places Autocomplete Error]', err);
+      res.status(500).json({ error: 'Failed to fetch places autocomplete', message: err.message });
+    }
   });
 
   // Audit Logs
@@ -815,9 +1005,16 @@ async function startServer() {
 
   app.post('/api/sheets/update-project', async (req, res) => {
     try {
+      const cleanProject = req.body.project
+        ? {
+            ...req.body.project,
+            startDate: normalizeDateToYMD(req.body.project.startDate) || req.body.project.startDate,
+            endDate: normalizeDateToYMD(req.body.project.endDate) || req.body.project.endDate,
+          }
+        : req.body.project;
       const data = await validateAndFetchGoogleScript(req.body.webAppUrl, 'POST', {
         action: 'updateProject',
-        project: req.body.project,
+        project: cleanProject,
       });
       res.json(data);
     } catch (err: any) {
@@ -890,6 +1087,30 @@ async function startServer() {
     );
 
     res.json({ success: true, count: gearStore.length });
+  });
+
+  // Centralized Error Handling Middleware for API routes: ensures all API errors return JSON instead of HTML
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error('[Server Error Middleware]', err);
+    if (res.headersSent) {
+      return next(err);
+    }
+    if (err.type === 'entity.too.large') {
+      return res.status(413).json({
+        success: false,
+        error: 'Payload too large. The data being sent exceeds the server limit.',
+      });
+    }
+    if (err instanceof SyntaxError && 'body' in err) {
+      return res.status(400).json({
+        success: false,
+        error: 'Malformed JSON payload received.',
+      });
+    }
+    res.status(err.status || 500).json({
+      success: false,
+      error: err.message || 'An unexpected server error occurred.',
+    });
   });
 
   // Vite middleware setup

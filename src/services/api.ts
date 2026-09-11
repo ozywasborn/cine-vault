@@ -1,5 +1,6 @@
 import { GearItem, MaintenanceRecord, ShootProject, AuditLog, AppNotification, CloudBridgeConfig, UserAccount } from '../types';
 import { INITIAL_GEAR, INITIAL_MAINTENANCE, INITIAL_PROJECTS, INITIAL_AUDIT_LOGS, INITIAL_NOTIFICATIONS, INITIAL_CLOUD_BRIDGE } from '../data/mockData';
+import { normalizeDateToYMD } from '../utils/dateUtils';
 
 const LOCAL_STORAGE_KEY_GEAR = 'cinevault_live_gear_v2';
 const LOCAL_STORAGE_KEY_MAINT = 'cinevault_live_maint_v2';
@@ -135,9 +136,69 @@ export const api = {
     try {
       const res = await fetch('/api/projects');
       if (!res.ok) throw new Error('API fetch failed');
-      return await res.json();
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        return data.map((p: any) => ({
+          ...p,
+          startDate: normalizeDateToYMD(p.startDate) || p.startDate,
+          endDate: normalizeDateToYMD(p.endDate) || p.endDate,
+        }));
+      }
+      return INITIAL_PROJECTS;
     } catch {
       return INITIAL_PROJECTS;
+    }
+  },
+
+  async updateProject(id: string, updates: Partial<ShootProject>): Promise<ShootProject> {
+    try {
+      const cleanUpdates: Partial<ShootProject> = {
+        ...updates,
+        ...(updates.startDate ? { startDate: normalizeDateToYMD(updates.startDate) || updates.startDate } : {}),
+        ...(updates.endDate ? { endDate: normalizeDateToYMD(updates.endDate) || updates.endDate } : {}),
+      };
+      const res = await fetch(`/api/projects/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cleanUpdates),
+      });
+      if (!res.ok) throw new Error('Project update failed');
+      const saved = await res.json();
+      return {
+        ...saved,
+        startDate: normalizeDateToYMD(saved.startDate) || saved.startDate,
+        endDate: normalizeDateToYMD(saved.endDate) || saved.endDate,
+      };
+    } catch (err) {
+      console.warn('Failed to update project on server:', err);
+      return updates as ShootProject;
+    }
+  },
+
+  async saveProjects(projects: ShootProject[]): Promise<ShootProject[]> {
+    try {
+      const cleanProjects = projects.map((p) => ({
+        ...p,
+        startDate: normalizeDateToYMD(p.startDate) || p.startDate,
+        endDate: normalizeDateToYMD(p.endDate) || p.endDate,
+      }));
+      const res = await fetch('/api/projects-batch', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projects: cleanProjects }),
+      });
+      if (!res.ok) throw new Error('Batch projects update failed');
+      const saved = await res.json();
+      return Array.isArray(saved)
+        ? saved.map((p: any) => ({
+            ...p,
+            startDate: normalizeDateToYMD(p.startDate) || p.startDate,
+            endDate: normalizeDateToYMD(p.endDate) || p.endDate,
+          }))
+        : cleanProjects;
+    } catch (err) {
+      console.warn('Failed to save projects to server:', err);
+      return projects;
     }
   },
 
@@ -332,7 +393,7 @@ export const api = {
         id: payload.id || `maint-offline-${Date.now()}`,
         gearId: payload.gearId || '',
         date: payload.date || new Date().toISOString().split('T')[0],
-        serviceType: payload.serviceType || 'General Overhaul',
+        serviceType: payload.serviceType || 'General Servicing',
         technician: payload.technician || user?.name || 'Field Tech',
         cost: Number(payload.cost) || 0,
         conditionAfter: payload.conditionAfter || 'Good',
@@ -601,7 +662,24 @@ export const apiClient = {
     api.updateMaintenance(record, currentUser),
   deleteMaintenance: (id: string, currentUser: UserAccount) =>
     api.deleteMaintenance(id, currentUser),
+  updateProject: (id: string, updates: Partial<ShootProject>) => api.updateProject(id, updates),
+  saveProjects: (projects: ShootProject[]) => api.saveProjects(projects),
   syncM365: (currentUser: UserAccount) => api.syncWithM365(currentUser),
   syncGoogleWorkspace: (currentUser: UserAccount) => api.syncWithGoogleWorkspace(currentUser),
+  getPlaceSuggestions: async (input: string, sessionToken?: string, apiKey?: string) => {
+    try {
+      const res = await fetch('/api/places/autocomplete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input, sessionToken, apiKey }),
+      });
+      if (!res.ok) return { suggestions: [], source: 'error' };
+      return await res.json();
+    } catch {
+      return { suggestions: [], source: 'offline' };
+    }
+  },
 };
+
+export const apiService = apiClient;
 

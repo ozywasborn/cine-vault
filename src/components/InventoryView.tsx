@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Search,
   Plus,
@@ -20,14 +21,190 @@ import {
   BatteryCharging,
   HardDrive,
   Package,
+  Boxes,
   ArrowUpDown,
   FolderOpen,
   FolderClosed,
   Copy,
   Trash2,
   X,
+  Palette,
+  Check,
+  CheckCircle2,
 } from 'lucide-react';
 import { GearItem, GearCategory, GearStatus, ConditionRating, UserAccount } from '../types';
+
+export interface CategoryColorTheme {
+  id: string;
+  name: string;
+  containerBorder: string;
+  headerBg: string;
+  badgeBg: string;
+  dot: string;
+  iconBox: string;
+  iconColor: string;
+  accentText: string;
+}
+
+export const CATEGORY_THEMES: CategoryColorTheme[] = [
+  {
+    id: 'amber',
+    name: 'Amber Cinema',
+    containerBorder: 'border-amber-200 hover:border-amber-300',
+    headerBg: 'bg-amber-50/80 hover:bg-amber-100/70 border-b border-amber-200/90',
+    badgeBg: 'bg-amber-100/90 text-amber-900 border-amber-300',
+    dot: 'bg-amber-500',
+    iconBox: 'bg-white border-amber-200/90 shadow-2xs',
+    iconColor: 'text-amber-600',
+    accentText: 'text-amber-700',
+  },
+  {
+    id: 'blue',
+    name: 'Blue Horizon',
+    containerBorder: 'border-blue-200 hover:border-blue-300',
+    headerBg: 'bg-blue-50/80 hover:bg-blue-100/70 border-b border-blue-200/90',
+    badgeBg: 'bg-blue-100/90 text-blue-900 border-blue-300',
+    dot: 'bg-blue-500',
+    iconBox: 'bg-white border-blue-200/90 shadow-2xs',
+    iconColor: 'text-blue-600',
+    accentText: 'text-blue-700',
+  },
+  {
+    id: 'emerald',
+    name: 'Emerald Studio',
+    containerBorder: 'border-emerald-200 hover:border-emerald-300',
+    headerBg: 'bg-emerald-50/80 hover:bg-emerald-100/70 border-b border-emerald-200/90',
+    badgeBg: 'bg-emerald-100/90 text-emerald-900 border-emerald-300',
+    dot: 'bg-emerald-500',
+    iconBox: 'bg-white border-emerald-200/90 shadow-2xs',
+    iconColor: 'text-emerald-600',
+    accentText: 'text-emerald-700',
+  },
+  {
+    id: 'purple',
+    name: 'Violet Stage',
+    containerBorder: 'border-purple-200 hover:border-purple-300',
+    headerBg: 'bg-purple-50/80 hover:bg-purple-100/70 border-b border-purple-200/90',
+    badgeBg: 'bg-purple-100/90 text-purple-900 border-purple-300',
+    dot: 'bg-purple-500',
+    iconBox: 'bg-white border-purple-200/90 shadow-2xs',
+    iconColor: 'text-purple-600',
+    accentText: 'text-purple-700',
+  },
+  {
+    id: 'rose',
+    name: 'Rose Sunset',
+    containerBorder: 'border-rose-200 hover:border-rose-300',
+    headerBg: 'bg-rose-50/80 hover:bg-rose-100/70 border-b border-rose-200/90',
+    badgeBg: 'bg-rose-100/90 text-rose-900 border-rose-300',
+    dot: 'bg-rose-500',
+    iconBox: 'bg-white border-rose-200/90 shadow-2xs',
+    iconColor: 'text-rose-500',
+    accentText: 'text-rose-700',
+  },
+  {
+    id: 'indigo',
+    name: 'Indigo Prime',
+    containerBorder: 'border-indigo-200 hover:border-indigo-300',
+    headerBg: 'bg-indigo-50/80 hover:bg-indigo-100/70 border-b border-indigo-200/90',
+    badgeBg: 'bg-indigo-100/90 text-indigo-900 border-indigo-300',
+    dot: 'bg-indigo-500',
+    iconBox: 'bg-white border-indigo-200/90 shadow-2xs',
+    iconColor: 'text-indigo-600',
+    accentText: 'text-indigo-700',
+  },
+  {
+    id: 'teal',
+    name: 'Teal Flare',
+    containerBorder: 'border-teal-200 hover:border-teal-300',
+    headerBg: 'bg-teal-50/80 hover:bg-teal-100/70 border-b border-teal-200/90',
+    badgeBg: 'bg-teal-100/90 text-teal-900 border-teal-300',
+    dot: 'bg-teal-500',
+    iconBox: 'bg-white border-teal-200/90 shadow-2xs',
+    iconColor: 'text-teal-600',
+    accentText: 'text-teal-700',
+  },
+  {
+    id: 'orange',
+    name: 'Tungsten Gold',
+    containerBorder: 'border-orange-200 hover:border-orange-300',
+    headerBg: 'bg-orange-50/80 hover:bg-orange-100/70 border-b border-orange-200/90',
+    badgeBg: 'bg-orange-100/90 text-orange-900 border-orange-300',
+    dot: 'bg-orange-500',
+    iconBox: 'bg-white border-orange-200/90 shadow-2xs',
+    iconColor: 'text-orange-600',
+    accentText: 'text-orange-700',
+  },
+  {
+    id: 'red',
+    name: 'Crimson Rig',
+    containerBorder: 'border-red-200 hover:border-red-300',
+    headerBg: 'bg-red-50/80 hover:bg-red-100/70 border-b border-red-200/90',
+    badgeBg: 'bg-red-100/90 text-red-900 border-red-300',
+    dot: 'bg-red-500',
+    iconBox: 'bg-white border-red-200/90 shadow-2xs',
+    iconColor: 'text-red-600',
+    accentText: 'text-red-700',
+  },
+  {
+    id: 'cyan',
+    name: 'Cyan Flare',
+    containerBorder: 'border-cyan-200 hover:border-cyan-300',
+    headerBg: 'bg-cyan-50/80 hover:bg-cyan-100/70 border-b border-cyan-200/90',
+    badgeBg: 'bg-cyan-100/90 text-cyan-900 border-cyan-300',
+    dot: 'bg-cyan-500',
+    iconBox: 'bg-white border-cyan-200/90 shadow-2xs',
+    iconColor: 'text-cyan-600',
+    accentText: 'text-cyan-700',
+  },
+  {
+    id: 'lime',
+    name: 'Lime Matrix',
+    containerBorder: 'border-lime-200 hover:border-lime-300',
+    headerBg: 'bg-lime-50/80 hover:bg-lime-100/70 border-b border-lime-200/90',
+    badgeBg: 'bg-lime-100/90 text-lime-900 border-lime-300',
+    dot: 'bg-lime-500',
+    iconBox: 'bg-white border-lime-200/90 shadow-2xs',
+    iconColor: 'text-lime-600',
+    accentText: 'text-lime-700',
+  },
+  {
+    id: 'fuchsia',
+    name: 'Fuchsia Neon',
+    containerBorder: 'border-fuchsia-200 hover:border-fuchsia-300',
+    headerBg: 'bg-fuchsia-50/80 hover:bg-fuchsia-100/70 border-b border-fuchsia-200/90',
+    badgeBg: 'bg-fuchsia-100/90 text-fuchsia-900 border-fuchsia-300',
+    dot: 'bg-fuchsia-500',
+    iconBox: 'bg-white border-fuchsia-200/90 shadow-2xs',
+    iconColor: 'text-fuchsia-600',
+    accentText: 'text-fuchsia-700',
+  },
+];
+
+export const DEFAULT_CATEGORY_COLOR_MAP: Record<string, string> = {
+  Cameras: 'amber',
+  Lenses: 'blue',
+  Lighting: 'orange',
+  Audio: 'emerald',
+  'Grip & Support': 'indigo',
+  'Drones & Gimbals': 'cyan',
+  'Power & Batteries': 'rose',
+  'Media & Storage': 'purple',
+  Accessories: 'teal',
+};
+
+export const getCategoryTheme = (
+  cat: string,
+  customColorId?: string
+): CategoryColorTheme => {
+  const targetId = customColorId || DEFAULT_CATEGORY_COLOR_MAP[cat] || 'amber';
+  const match = CATEGORY_THEMES.find(
+    (t) =>
+      t.id.toLowerCase() === targetId.toLowerCase() ||
+      t.name.toLowerCase() === targetId.toLowerCase()
+  );
+  return match || CATEGORY_THEMES[0];
+};
 
 interface InventoryViewProps {
   gear: GearItem[];
@@ -88,6 +265,77 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const [equipmentSortMode, setEquipmentSortMode] = useState<EquipmentSortMode>('model-asc');
   const [categorySorts, setCategorySorts] = useState<Record<string, EquipmentSortMode>>({});
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+
+  // Category custom colour codes stored in localStorage
+  const [categoryColors, setCategoryColors] = useState<Record<string, string>>(() => {
+    try {
+      const stored = localStorage.getItem('cinevault_category_colors');
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Active colour picker state
+  const [activeColorPicker, setActiveColorPicker] = useState<string | null>(null);
+  const [colorPickerPos, setColorPickerPos] = useState<{ top: number; left: number }>({
+    top: 0,
+    left: 0,
+  });
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage((curr) => (curr === msg ? null : curr));
+    }, 3000);
+  };
+
+  const handleSetCategoryColor = (catName: string, themeId: string) => {
+    setCategoryColors((prev) => {
+      const next = { ...prev, [catName]: themeId };
+      try {
+        localStorage.setItem('cinevault_category_colors', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    const themeObj = CATEGORY_THEMES.find((t) => t.id === themeId);
+    showToast(`Assigned ${themeObj?.name || themeId} colour to "${catName}"`);
+  };
+
+  const handleResetCategoryColor = (catName: string) => {
+    setCategoryColors((prev) => {
+      const next = { ...prev };
+      delete next[catName];
+      try {
+        localStorage.setItem('cinevault_category_colors', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    showToast(`Reset colour for "${catName}" to default`);
+  };
+
+  // Close colour picker on outside click, scroll, or resize
+  useEffect(() => {
+    if (!activeColorPicker) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.category-color-picker-popover') && !target.closest('.category-color-dot-btn')) {
+        setActiveColorPicker(null);
+      }
+    };
+    const handleDismiss = () => {
+      setActiveColorPicker(null);
+    };
+    window.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('scroll', handleDismiss, true);
+    window.addEventListener('resize', handleDismiss);
+    return () => {
+      window.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', handleDismiss, true);
+      window.removeEventListener('resize', handleDismiss);
+    };
+  }, [activeColorPicker]);
 
   // Context menu state for virtual right-click on gear table row
   const [rowContextMenu, setRowContextMenu] = useState<{
@@ -240,94 +488,27 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
     }
   };
 
-  const getCategoryIcon = (cat: string) => {
+  const getCategoryIcon = (cat: string, iconColorClass?: string) => {
+    const colorClass = iconColorClass || 'text-slate-600';
     switch (cat) {
       case 'Cameras':
-        return <Camera className="w-4 h-4 text-amber-600" />;
+        return <Camera className={`w-4 h-4 ${colorClass}`} />;
       case 'Lenses':
-        return <Aperture className="w-4 h-4 text-blue-600" />;
+        return <Aperture className={`w-4 h-4 ${colorClass}`} />;
       case 'Lighting':
-        return <Sun className="w-4 h-4 text-amber-500" />;
+        return <Sun className={`w-4 h-4 ${colorClass}`} />;
       case 'Audio':
-        return <Mic className="w-4 h-4 text-emerald-600" />;
+        return <Mic className={`w-4 h-4 ${colorClass}`} />;
       case 'Grip & Support':
-        return <SlidersHorizontal className="w-4 h-4 text-indigo-600" />;
+        return <SlidersHorizontal className={`w-4 h-4 ${colorClass}`} />;
       case 'Drones & Gimbals':
-        return <Compass className="w-4 h-4 text-sky-600" />;
+        return <Compass className={`w-4 h-4 ${colorClass}`} />;
       case 'Power & Batteries':
-        return <BatteryCharging className="w-4 h-4 text-rose-500" />;
+        return <BatteryCharging className={`w-4 h-4 ${colorClass}`} />;
       case 'Media & Storage':
-        return <HardDrive className="w-4 h-4 text-violet-600" />;
+        return <HardDrive className={`w-4 h-4 ${colorClass}`} />;
       default:
-        return <Package className="w-4 h-4 text-slate-600" />;
-    }
-  };
-
-  const getCategoryHeaderStyle = (cat: string) => {
-    switch (cat) {
-      case 'Cameras':
-        return {
-          headerBg: 'bg-amber-50/80 hover:bg-amber-100/70 border-b border-amber-200/90',
-          badgeBg: 'bg-amber-100/90 text-amber-900 border-amber-300',
-          iconBox: 'bg-white border-amber-200/90 text-amber-600 shadow-2xs',
-          containerBorder: 'border-amber-200/90',
-        };
-      case 'Lenses':
-        return {
-          headerBg: 'bg-blue-50/80 hover:bg-blue-100/70 border-b border-blue-200/90',
-          badgeBg: 'bg-blue-100/90 text-blue-900 border-blue-300',
-          iconBox: 'bg-white border-blue-200/90 text-blue-600 shadow-2xs',
-          containerBorder: 'border-blue-200/90',
-        };
-      case 'Lighting':
-        return {
-          headerBg: 'bg-yellow-50/80 hover:bg-yellow-100/70 border-b border-yellow-200/90',
-          badgeBg: 'bg-yellow-100/90 text-yellow-900 border-yellow-300',
-          iconBox: 'bg-white border-yellow-200/90 text-amber-500 shadow-2xs',
-          containerBorder: 'border-yellow-200/90',
-        };
-      case 'Audio':
-        return {
-          headerBg: 'bg-emerald-50/80 hover:bg-emerald-100/70 border-b border-emerald-200/90',
-          badgeBg: 'bg-emerald-100/90 text-emerald-900 border-emerald-300',
-          iconBox: 'bg-white border-emerald-200/90 text-emerald-600 shadow-2xs',
-          containerBorder: 'border-emerald-200/90',
-        };
-      case 'Grip & Support':
-        return {
-          headerBg: 'bg-indigo-50/80 hover:bg-indigo-100/70 border-b border-indigo-200/90',
-          badgeBg: 'bg-indigo-100/90 text-indigo-900 border-indigo-300',
-          iconBox: 'bg-white border-indigo-200/90 text-indigo-600 shadow-2xs',
-          containerBorder: 'border-indigo-200/90',
-        };
-      case 'Drones & Gimbals':
-        return {
-          headerBg: 'bg-sky-50/80 hover:bg-sky-100/70 border-b border-sky-200/90',
-          badgeBg: 'bg-sky-100/90 text-sky-900 border-sky-300',
-          iconBox: 'bg-white border-sky-200/90 text-sky-600 shadow-2xs',
-          containerBorder: 'border-sky-200/90',
-        };
-      case 'Power & Batteries':
-        return {
-          headerBg: 'bg-rose-50/80 hover:bg-rose-100/70 border-b border-rose-200/90',
-          badgeBg: 'bg-rose-100/90 text-rose-900 border-rose-300',
-          iconBox: 'bg-white border-rose-200/90 text-rose-500 shadow-2xs',
-          containerBorder: 'border-rose-200/90',
-        };
-      case 'Media & Storage':
-        return {
-          headerBg: 'bg-violet-50/80 hover:bg-violet-100/70 border-b border-violet-200/90',
-          badgeBg: 'bg-violet-100/90 text-violet-900 border-violet-300',
-          iconBox: 'bg-white border-violet-200/90 text-violet-600 shadow-2xs',
-          containerBorder: 'border-violet-200/90',
-        };
-      default:
-        return {
-          headerBg: 'bg-slate-100/80 hover:bg-slate-200/70 border-b border-slate-200',
-          badgeBg: 'bg-slate-200/90 text-slate-800 border-slate-300',
-          iconBox: 'bg-white border-slate-200 text-slate-600 shadow-2xs',
-          containerBorder: 'border-slate-200',
-        };
+        return <Package className={`w-4 h-4 ${colorClass}`} />;
     }
   };
 
@@ -430,6 +611,24 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       return true;
     });
   }, [gear, selectedCategory, selectedStatus, selectedKit, searchQuery]);
+
+  // Quick fleet metrics for header banner
+  const totalFleetValuation = useMemo(
+    () => gear.reduce((sum, g) => sum + (g.purchasePrice || 0), 0),
+    [gear]
+  );
+  const availableCount = useMemo(
+    () => gear.filter((g) => g.status === 'Available').length,
+    [gear]
+  );
+  const onShootCount = useMemo(
+    () => gear.filter((g) => g.status === 'Checked Out' || g.status === 'Out On Loan').length,
+    [gear]
+  );
+  const maintenanceCount = useMemo(
+    () => gear.filter((g) => g.status === 'In Maintenance').length,
+    [gear]
+  );
 
   // Helper to sort equipment list based on mode
   const sortItemList = (items: GearItem[], sort: EquipmentSortMode) => {
@@ -786,6 +985,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
         <td className="py-2 px-2 whitespace-nowrap">
           <input
             type="date"
+            autoComplete="off"
             disabled={isAuditor}
             value={item.lastServiceDate || ''}
             onChange={(e) => handleFieldChange(item, 'lastServiceDate', e.target.value)}
@@ -867,120 +1067,153 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   };
 
   return (
-    <div className="space-y-5">
-      {/* Top Header & Search Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Equipment Inventory</h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Full studio fleet registry with category grouping, drop-down sorting, and individual gear editing.
-          </p>
-        </div>
+    <div className="space-y-6">
+      {/* Condensed Fleet Inventory Header Banner */}
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          {/* Left: Title & Studio Description */}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center shrink-0 shadow-2xs">
+                <Boxes className="w-4 h-4" />
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+                Equipment Inventory
+              </h1>
+            </div>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1 pl-10.5">
+              Full studio fleet registry with category grouping, drop-down sorting, and individual gear editing.
+            </p>
+          </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={handleExport}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer shadow-2xs"
-          >
-            <Download className="w-3.5 h-3.5 text-slate-500" />
-            <span>Export CSV</span>
-          </button>
-
-          {selectedGearIds.length > 0 && (
-            <>
-              <button
-                onClick={() => handleOpenBatchQr(selectedItems)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-xs font-bold text-amber-800 border border-amber-200 transition-colors cursor-pointer shadow-2xs"
-              >
-                <QrCode className="w-3.5 h-3.5 text-amber-600" />
-                <span>Print QR Sheet ({selectedGearIds.length})</span>
-              </button>
-
-              {canCheckout ? (
-                <button
-                  onClick={() => handleOpenCheckout(selectedItems)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs"
-                >
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                  <span>Batch Checkout ({selectedGearIds.length})</span>
-                </button>
-              ) : (
-                <span
-                  title="Auditor account is restricted to read-only reporting"
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 text-slate-500 text-xs font-medium border border-slate-200"
-                >
-                  <span>Auditor (Read-Only)</span>
+          {/* Right: Fleet Summary Metric Badges */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+            <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-2">
+              <span className="text-[10px] uppercase font-bold text-slate-400">Total Fleet</span>
+              <span className="text-xs font-bold text-slate-900 font-mono">
+                {gear.length} Assets
+              </span>
+            </div>
+            <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-2">
+              <span className="text-[10px] uppercase font-bold text-slate-400">In Cage</span>
+              <span className="text-xs font-bold text-emerald-600 font-mono">
+                {availableCount} Available
+              </span>
+            </div>
+            <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-2">
+              <span className="text-[10px] uppercase font-bold text-slate-400">On Shoot</span>
+              <span className="text-xs font-bold text-amber-600 font-mono">
+                {onShootCount} Units
+              </span>
+            </div>
+            {maintenanceCount > 0 && (
+              <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-2">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Service</span>
+                <span className="text-xs font-bold text-rose-600 font-mono">
+                  {maintenanceCount} Units
                 </span>
-              )}
-            </>
-          )}
-
-          {canAddGear ? (
-            <button
-              onClick={handleOpenAdd}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-colors shadow-xs cursor-pointer"
-            >
-              <Plus className="w-4 h-4 text-white" />
-              <span>Add Equipment</span>
-            </button>
-          ) : (
-            <button
-              onClick={handleOpenAdd}
-              title={`Registration restricted to Admin / Equipment Manager (Current role: ${userRole})`}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 text-slate-400 text-xs font-semibold cursor-not-allowed border border-slate-200"
-            >
-              <Plus className="w-3.5 h-3.5 text-slate-400" />
-              <span>Add Equipment (Locked)</span>
-            </button>
-          )}
+              </div>
+            )}
+            <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-2">
+              <span className="text-[10px] uppercase font-bold text-slate-400">Valuation</span>
+              <span className="text-xs font-bold text-slate-900 font-mono">
+                ${totalFleetValuation.toLocaleString()}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Filter & Sort Controls Row */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-        <div className="flex flex-col sm:flex-row items-center gap-3">
-          {/* Search bar */}
-          <div className="relative flex-1 w-full">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by asset tag, gear name, serial number, kit, locker..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 transition-all"
-            />
+      {/* Sticky Inventory Controls Toolbar */}
+      <div className="sticky top-16 z-30 space-y-2.5">
+        <div className="bg-slate-50/95 backdrop-blur-md p-3 sm:p-3.5 rounded-2xl border border-slate-200/90 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+          {/* Left: Section Title, Count, Expand/Collapse & Selection */}
+          <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+            <div className="flex items-center gap-2">
+              <Boxes className="w-4 h-4 text-slate-700" />
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+                Inventory
+              </h2>
+              <span className="px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-700 text-xs font-bold font-mono">
+                {filteredGear.length}
+              </span>
+            </div>
+
+            {/* Expand all / Collapse all button switch */}
+            {groupedCategories.length > 0 && (
+              <button
+                type="button"
+                onClick={isAllCollapsed ? expandAllCategories : collapseAllCategories}
+                className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 hover:text-amber-800 transition-colors cursor-pointer px-2.5 py-1 rounded-xl bg-amber-50/90 hover:bg-amber-100/80 border border-amber-200 shadow-2xs"
+                title={isAllCollapsed ? 'Expand all categories' : 'Collapse all categories'}
+              >
+                {isAllCollapsed ? (
+                  <>
+                    <ChevronDown className="w-3.5 h-3.5 text-amber-700" />
+                    <span>Expand All</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronUp className="w-3.5 h-3.5 text-amber-700" />
+                    <span>Collapse All</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* Select Filtered / Deselect All */}
+            <button
+              type="button"
+              onClick={selectAllFiltered}
+              className="text-xs font-semibold text-slate-600 hover:text-amber-600 transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-slate-200/60"
+              title={selectedGearIds.length === filteredGear.length ? 'Deselect all items' : 'Select all filtered items'}
+            >
+              {selectedGearIds.length === filteredGear.length && filteredGear.length > 0
+                ? 'Deselect All'
+                : 'Select Filtered'}
+            </button>
+
+            {selectedGearIds.length > 0 && (
+              <span className="text-[11px] font-bold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-full border border-amber-300">
+                {selectedGearIds.length} selected
+              </span>
+            )}
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
-            {/* Equipment Sorting Dropdown */}
-            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 text-xs">
-              <span className="text-slate-400 font-medium whitespace-nowrap flex items-center gap-1">
-                <ArrowUpDown className="w-3.5 h-3.5 text-amber-600" />
-                <span>Sort Items:</span>
-              </span>
-              <select
-                value={equipmentSortMode}
-                onChange={(e) => {
-                  const newSort = e.target.value as EquipmentSortMode;
-                  setEquipmentSortMode(newSort);
-                  setCategorySorts({});
-                }}
-                className="bg-transparent text-slate-800 font-semibold focus:outline-none cursor-pointer text-xs"
-              >
-                <option value="model-asc">Equipment / Model (A → Z)</option>
-                <option value="model-desc">Equipment / Model (Z → A)</option>
-                <option value="tag-asc">Asset Tag (A → Z)</option>
-                <option value="valuation-desc">Purchase Cost (High → Low)</option>
-                <option value="serviced-desc">Last Serviced Date</option>
-                <option value="default">Default Asset Order</option>
-              </select>
+          {/* Center: Search Field & Dropdown Filters */}
+          <div className="flex flex-1 items-center gap-2 flex-wrap min-w-0">
+            {/* Relocated Search Field in Empty Space */}
+            <div className="relative flex-1 min-w-[180px] sm:min-w-[200px]">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search by tag, gear name, SN, kit..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoComplete="off"
+                data-lpignore="true"
+                data-1p-ignore="true"
+                spellCheck={false}
+                className="w-full pl-8 pr-7 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 transition-all shadow-2xs"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
             {/* Category Filter Select */}
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 px-3.5 py-2 focus:outline-none focus:bg-white focus:border-amber-500 cursor-pointer font-medium"
+              className="bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 px-2.5 py-1.5 focus:outline-none focus:border-amber-500 cursor-pointer font-medium transition-colors shadow-2xs"
+              title="Filter by equipment category"
             >
               <option value="All">All Categories ({gear.length})</option>
               {categories.map((c) => (
@@ -990,13 +1223,14 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               ))}
             </select>
 
-            {/* Status Select */}
+            {/* Status Filter Select */}
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 px-3.5 py-2 focus:outline-none focus:bg-white focus:border-amber-500 cursor-pointer font-medium"
+              className="bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 px-2.5 py-1.5 focus:outline-none focus:border-amber-500 cursor-pointer font-medium transition-colors shadow-2xs"
+              title="Filter by movement status"
             >
-              <option value="All">All Movement Statuses</option>
+              <option value="All">All Statuses</option>
               {statuses.map((s) => (
                 <option key={s} value={s}>
                   {s} ({gear.filter((g) => g.status === s).length})
@@ -1004,14 +1238,37 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               ))}
             </select>
 
-            {/* Kit Select */}
+            {/* Equipment Sorting Dropdown */}
+            <div className="flex items-center bg-white border border-slate-200 rounded-xl px-2 py-1 shadow-2xs">
+              <ArrowUpDown className="w-3 h-3 text-amber-600 mr-1 shrink-0" />
+              <select
+                value={equipmentSortMode}
+                onChange={(e) => {
+                  const newSort = e.target.value as EquipmentSortMode;
+                  setEquipmentSortMode(newSort);
+                  setCategorySorts({});
+                }}
+                className="bg-transparent text-slate-800 font-semibold focus:outline-none cursor-pointer text-xs"
+                title="Change default equipment sort order"
+              >
+                <option value="model-asc">Model (A → Z)</option>
+                <option value="model-desc">Model (Z → A)</option>
+                <option value="tag-asc">Asset Tag (A → Z)</option>
+                <option value="valuation-desc">Cost (High → Low)</option>
+                <option value="serviced-desc">Last Serviced Date</option>
+                <option value="default">Default Order</option>
+              </select>
+            </div>
+
+            {/* Kit Filter Select (if kits exist) */}
             {kits.length > 0 && (
               <select
                 value={selectedKit}
                 onChange={(e) => setSelectedKit(e.target.value)}
-                className="bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 px-3.5 py-2 focus:outline-none focus:bg-white focus:border-amber-500 cursor-pointer font-medium"
+                className="bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 px-2.5 py-1.5 focus:outline-none focus:border-amber-500 cursor-pointer font-medium transition-colors shadow-2xs"
+                title="Filter by production kit"
               >
-                <option value="All">All Production Kits</option>
+                <option value="All">All Kits</option>
                 {kits.map((k) => (
                   <option key={k} value={k}>
                     {k}
@@ -1020,53 +1277,69 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               </select>
             )}
           </div>
-        </div>
 
-        {/* Filter Quick Info & Category Expand/Collapse Buttons */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500 pt-2 border-t border-slate-100">
-          <div className="flex items-center gap-3">
-            <span>
-              Showing <strong className="text-slate-900">{filteredGear.length}</strong> of {gear.length} items
-            </span>
-            {selectedCategory !== 'All' && (
-              <span className="px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 font-medium">
-                Category: {selectedCategory}
-              </span>
-            )}
+          {/* Right: Actions (Batch Actions, Export CSV, and Sticky Add Equipment Button) */}
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
+            {/* Batch Actions when items are checked */}
             {selectedGearIds.length > 0 && (
-              <span className="text-amber-600 font-bold">
-                • {selectedGearIds.length} selected
-              </span>
-            )}
-          </div>
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleOpenBatchQr(selectedItems)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-xs font-bold text-amber-800 border border-amber-200 transition-colors cursor-pointer shadow-2xs"
+                  title="Print QR label sheet for selected items"
+                >
+                  <QrCode className="w-3.5 h-3.5 text-amber-600" />
+                  <span>QR ({selectedGearIds.length})</span>
+                </button>
 
-          <div className="flex items-center gap-3">
-            {groupedCategories.length > 0 && (
+                {canCheckout && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenCheckout(selectedItems)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                    title="Batch checkout selected equipment"
+                  >
+                    <ArrowUpRight className="w-3.5 h-3.5 text-white" />
+                    <span>Checkout ({selectedGearIds.length})</span>
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* Export CSV Button */}
+            <button
+              type="button"
+              onClick={handleExport}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer shadow-2xs"
+              title="Export full inventory to CSV spreadsheet"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <span className="hidden sm:inline">Export CSV</span>
+            </button>
+
+            {/* Primary Sticky "Add Equipment" Button - ALWAYS ACCESSIBLE AT ANY SCROLL DEPTH */}
+            {canAddGear ? (
               <button
                 type="button"
-                onClick={isAllCollapsed ? expandAllCategories : collapseAllCategories}
-                className="flex items-center gap-1 text-xs font-semibold text-amber-700 hover:text-amber-800 transition-colors cursor-pointer px-2.5 py-1 rounded-lg bg-amber-50/80 border border-amber-200"
+                onClick={handleOpenAdd}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-xs cursor-pointer hover:shadow-sm"
+                title="Add a new equipment asset to inventory"
               >
-                {isAllCollapsed ? (
-                  <>
-                    <ChevronDown className="w-3.5 h-3.5" />
-                    <span>Expand All Categories</span>
-                  </>
-                ) : (
-                  <>
-                    <ChevronUp className="w-3.5 h-3.5" />
-                    <span>Collapse All Categories</span>
-                  </>
-                )}
+                <Plus className="w-3.5 h-3.5 text-white stroke-[2.5]" />
+                <span>Add Equipment</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleOpenAdd}
+                title={`Registration restricted to Admin / Equipment Manager (Current role: ${userRole})`}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-400 text-xs font-semibold cursor-not-allowed border border-slate-200"
+              >
+                <Plus className="w-3.5 h-3.5 text-slate-400" />
+                <span>Add Equipment (Locked)</span>
               </button>
             )}
-
-            <button
-              onClick={selectAllFiltered}
-              className="text-xs font-semibold text-slate-600 hover:text-amber-600 transition-colors cursor-pointer"
-            >
-              {selectedGearIds.length === filteredGear.length ? 'Deselect All' : 'Select Filtered'}
-            </button>
           </div>
         </div>
       </div>
@@ -1089,18 +1362,18 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             const isCollapsed = !!collapsedCategories[group.name];
             const allInCatSelected =
               group.items.length > 0 && group.items.every((it) => selectedGearIds.includes(it.id));
-            const catStyle = getCategoryHeaderStyle(group.name);
+            const catTheme = getCategoryTheme(group.name, categoryColors[group.name]);
             const activeCatSort = categorySorts[group.name] || equipmentSortMode;
 
             return (
               <div
                 key={group.name}
-                className={`bg-white rounded-2xl border ${catStyle.containerBorder} overflow-hidden shadow-xs transition-all`}
+                className={`bg-white rounded-2xl border ${catTheme.containerBorder} overflow-hidden shadow-xs transition-all`}
               >
                 {/* Category Drop-down Header */}
                 <div
                   onClick={() => toggleCategoryCollapse(group.name)}
-                  className={`p-3.5 sm:p-4 ${catStyle.headerBg} flex items-center justify-between cursor-pointer select-none transition-colors`}
+                  className={`p-3.5 sm:p-4 ${catTheme.headerBg} flex items-center justify-between cursor-pointer select-none transition-colors`}
                 >
                   <div className="flex items-center gap-3">
                     <div className="p-1 rounded-lg bg-white/90 border border-slate-200 text-slate-600 shadow-2xs">
@@ -1112,12 +1385,40 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <div className={`w-7 h-7 rounded-lg border flex items-center justify-center ${catStyle.iconBox}`}>
-                        {getCategoryIcon(group.name)}
+                      <div className={`w-7 h-7 rounded-lg border flex items-center justify-center ${catTheme.iconBox}`}>
+                        {getCategoryIcon(group.name, catTheme.iconColor)}
                       </div>
+
+                      {/* Interactive Category Coloured Dot Button */}
+                      <div className="relative inline-flex items-center" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (activeColorPicker === group.name) {
+                              setActiveColorPicker(null);
+                            } else {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const popoverWidth = 288;
+                              const left = Math.max(16, Math.min(rect.left, window.innerWidth - popoverWidth - 16));
+                              const top = rect.bottom + 6;
+                              setColorPickerPos({ top, left });
+                              setActiveColorPicker(group.name);
+                            }
+                          }}
+                          className="category-color-dot-btn group p-1 -m-1 rounded-full hover:bg-black/10 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                          title="Click to assign colour code to this category"
+                          aria-label="Assign category colour"
+                        >
+                          <span
+                            className={`block w-3.5 h-3.5 rounded-full ${catTheme.dot} shadow-xs ring-2 ring-white group-hover:scale-125 transition-transform`}
+                          />
+                        </button>
+                      </div>
+
                       <h2 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2">
                         {group.name}
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${catStyle.badgeBg}`}>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${catTheme.badgeBg}`}>
                           {group.items.length} {group.items.length === 1 ? 'item' : 'items'}
                         </span>
                         {categorySorts[group.name] && (
@@ -1355,6 +1656,105 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Category Colour Picker Popover Portal */}
+      {activeColorPicker && typeof document !== 'undefined' && createPortal(
+        (() => {
+          const catName = activeColorPicker;
+          const customColor = categoryColors[catName];
+          const currentTheme = getCategoryTheme(catName, customColor);
+
+          return (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                top: `${colorPickerPos.top}px`,
+                left: `${colorPickerPos.left}px`,
+              }}
+              className="category-color-picker-popover fixed z-[9999] w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 p-3.5 animate-in fade-in-0 zoom-in-95 text-left select-none"
+            >
+              <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-slate-100">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                  <Palette className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Category Colour Code</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveColorPicker(null);
+                  }}
+                  className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <p className="text-[11px] text-slate-500 mb-2.5 font-normal">
+                Select a colour theme for <strong className="text-slate-800">{catName}</strong>:
+              </p>
+
+              <div className="grid grid-cols-4 gap-2">
+                {CATEGORY_THEMES.map((th) => {
+                  const isSelected = currentTheme.id === th.id;
+                  return (
+                    <button
+                      key={th.id}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSetCategoryColor(catName, th.id);
+                        setActiveColorPicker(null);
+                      }}
+                      className={`flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all cursor-pointer border ${
+                        isSelected
+                          ? 'border-slate-800 bg-slate-100/80 ring-2 ring-slate-900/10 shadow-xs'
+                          : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                      title={th.name}
+                    >
+                      <span
+                        className={`w-6 h-6 rounded-full ${th.dot} shadow-xs flex items-center justify-center text-white ring-2 ring-white`}
+                      >
+                        {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </span>
+                      <span className="text-[10px] font-semibold text-slate-700 truncate max-w-full">
+                        {th.name.split(' ')[0]}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {customColor && (
+                <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-[10px] text-slate-400">Custom theme active</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleResetCategoryColor(catName);
+                      setActiveColorPicker(null);
+                    }}
+                    className="text-[10px] text-amber-600 hover:text-amber-800 font-semibold hover:underline cursor-pointer"
+                  >
+                    Reset to default
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })(),
+        document.body
+      )}
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-slate-700 text-xs font-semibold flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <span>{toastMessage}</span>
         </div>
       )}
     </div>

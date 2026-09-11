@@ -369,6 +369,11 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
             <div className="flex gap-2">
               <input
                 type="url"
+                autoComplete="off"
+                data-lpignore="true"
+                data-1p-ignore="true"
+                autoCorrect="off"
+                spellCheck={false}
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
                 placeholder="https://script.google.com/macros/s/.../exec"

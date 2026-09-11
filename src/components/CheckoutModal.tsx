@@ -83,7 +83,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
+        <form
+          onSubmit={handleSubmit}
+          autoComplete="off"
+          data-lpignore="true"
+          data-1p-ignore="true"
+          className="p-6 space-y-4 text-xs"
+        >
           {/* Items Summary Pill list */}
           <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 max-h-32 overflow-y-auto">
             <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -104,6 +110,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <label className="block text-slate-700 font-semibold mb-1">Production Shoot / Project Name</label>
               <input
                 type="text"
+                autoComplete="off"
+                data-lpignore="true"
+                data-1p-ignore="true"
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
                 placeholder="e.g. Apex Commercial, Ep. 4 Studio A"
@@ -132,6 +141,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <label className="block text-slate-700 font-semibold mb-1">Lead Operator / DP Name</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   value={assigneeName}
                   onChange={(e) => setAssigneeName(e.target.value)}
                   className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 font-medium"
@@ -143,6 +155,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <label className="block text-slate-700 font-semibold mb-1">Work Email (M365 or Google)</label>
                 <input
                   type="email"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   value={assigneeEmail}
                   onChange={(e) => setAssigneeEmail(e.target.value)}
                   className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 font-medium"
@@ -155,6 +170,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <label className="block text-slate-700 font-semibold mb-1">Expected Return Date</label>
               <input
                 type="date"
+                autoComplete="off"
                 value={expectedReturnDate}
                 onChange={(e) => setExpectedReturnDate(e.target.value)}
                 className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 focus:outline-none focus:bg-white focus:border-amber-500 font-medium"

@@ -442,6 +442,9 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
       {showAddForm && (
         <form
           onSubmit={handleSubmit}
+          autoComplete="off"
+          data-lpignore="true"
+          data-1p-ignore="true"
           className="p-6 rounded-2xl bg-white border border-slate-200 space-y-4 shadow-sm"
         >
           <div className="flex items-center justify-between pb-3 border-b border-slate-200">
@@ -484,7 +487,8 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
                 <option value="Optical Inspection">Optical Inspection</option>
                 <option value="Shutter Repair">Shutter Repair</option>
                 <option value="Cable Re-termination">Cable Re-termination</option>
-                <option value="General Overhaul">General Overhaul</option>
+                <option value="Part Replacement">Part Replacement</option>
+                <option value="General Servicing">General Servicing</option>
               </select>
             </div>
 
@@ -493,6 +497,9 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
               <label className="block text-slate-700 font-semibold mb-1">Technician</label>
               <input
                 type="text"
+                autoComplete="off"
+                data-lpignore="true"
+                data-1p-ignore="true"
                 value={technician}
                 onChange={(e) => setTechnician(e.target.value)}
                 className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 font-medium"
@@ -506,6 +513,9 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
               <label className="block text-slate-700 font-semibold mb-1">Vendor / Service Facility</label>
               <input
                 type="text"
+                autoComplete="off"
+                data-lpignore="true"
+                data-1p-ignore="true"
                 value={vendor}
                 onChange={(e) => setVendor(e.target.value)}
                 className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 font-medium"
@@ -518,6 +528,9 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
               <label className="block text-slate-700 font-semibold mb-1">Service Cost ($ USD)</label>
               <input
                 type="number"
+                autoComplete="off"
+                data-lpignore="true"
+                data-1p-ignore="true"
                 value={cost}
                 onChange={(e) => setCost(e.target.value)}
                 className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 font-medium"
@@ -547,6 +560,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
               <label className="block text-slate-700 font-semibold mb-1">Next Service Due Date</label>
               <input
                 type="date"
+                autoComplete="off"
                 value={nextServiceDueDate}
                 onChange={(e) => setNextServiceDueDate(e.target.value)}
                 className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 focus:outline-none focus:bg-white focus:border-amber-500 font-medium"
@@ -626,6 +640,10 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
+                autoComplete="off"
+                data-lpignore="true"
+                data-1p-ignore="true"
+                spellCheck={false}
                 placeholder="Filter horizon..."
                 value={horizonSearch}
                 onChange={(e) => setHorizonSearch(e.target.value)}
@@ -1153,6 +1171,10 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
           <div className="flex items-center gap-2">
             <input
               type="text"
+              autoComplete="off"
+              data-lpignore="true"
+              data-1p-ignore="true"
+              spellCheck={false}
               placeholder="Search service logs..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

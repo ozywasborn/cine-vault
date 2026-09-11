@@ -1,4 +1,5 @@
 import { GearItem, ShootProject, MaintenanceRecord, AuditLog } from '../types';
+import { normalizeDateToYMD } from '../utils/dateUtils';
 
 export interface GoogleSheetsConfig {
   webAppUrl: string;
@@ -192,6 +193,17 @@ function readSheetAsJson(ss, sheetName) {
         } catch(e) {
           obj['assignedGearIds'] = val ? val.split(',').map(function(s) { return s.trim(); }) : [];
         }
+      } else if (val instanceof Date) {
+        try {
+          var y = val.getFullYear();
+          var m = String(val.getMonth() + 1);
+          if (m.length < 2) m = '0' + m;
+          var d = String(val.getDate());
+          if (d.length < 2) d = '0' + d;
+          obj[header] = y + '-' + m + '-' + d;
+        } catch(e) {
+          obj[header] = val.toISOString().split('T')[0];
+        }
       } else {
         obj[header] = val;
       }
@@ -346,19 +358,28 @@ function updateOrInsertRow(ss, sheetName, item, idKey) {
     }
   }
   
-  var newRow = headers.map(function(h) {
-    var v = flat[h];
-    if (v === undefined || v === null) return '';
-    if (typeof v === 'object') {
-      try { return JSON.stringify(v); } catch(e) { return String(v); }
-    }
-    return v;
-  });
-  
   if (foundRowIdx !== -1) {
-    sheet.getRange(foundRowIdx, 1, 1, headers.length).setValues([newRow]);
+    var existingRow = data[foundRowIdx - 1];
+    var mergedRow = headers.map(function(h, idx) {
+      var v = flat[h];
+      if (v !== undefined && v !== null && v !== '') {
+        if (typeof v === 'object') {
+          try { return JSON.stringify(v); } catch(e) { return String(v); }
+        }
+        return v;
+      }
+      return existingRow[idx] !== undefined ? existingRow[idx] : '';
+    });
+    sheet.getRange(foundRowIdx, 1, 1, headers.length).setValues([mergedRow]);
   } else {
-    // SAFE FALLBACK: Append row to existing sheet, NEVER clear existing items
+    var newRow = headers.map(function(h) {
+      var v = flat[h];
+      if (v === undefined || v === null) return '';
+      if (typeof v === 'object') {
+        try { return JSON.stringify(v); } catch(e) { return String(v); }
+      }
+      return v;
+    });
     sheet.appendRow(newRow);
   }
 }
@@ -461,6 +482,25 @@ export function saveStoredSheetsConfig(config: GoogleSheetsConfig) {
 }
 
 export const googleSheetsService = {
+  // Safe helper to parse backend responses without throwing Unexpected token '<'
+  async _parseResponse(res: Response, fallbackError: string): Promise<any> {
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      if (res.status === 413 || text.includes('PayloadTooLargeError') || text.includes('too large')) {
+        return {
+          success: false,
+          error: 'Payload too large. Your fleet inventory exceeds the server upload limit.',
+        };
+      }
+      return {
+        success: false,
+        error: `${fallbackError} (${res.status} ${res.statusText}): ${text.replace(/<[^>]*>/g, '').trim().substring(0, 150) || text.substring(0, 150)}`,
+      };
+    }
+  },
+
   // Test connection to the Google Apps Script Web App
   async testConnection(webAppUrl: string): Promise<{
     success: boolean;
@@ -475,7 +515,7 @@ export const googleSheetsService = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ webAppUrl }),
       });
-      return await res.json();
+      return await this._parseResponse(res, 'Failed to test Google Sheets connection');
     } catch (err: any) {
       return { success: false, error: err.message || 'Network error connecting to backend proxy' };
     }
@@ -498,7 +538,15 @@ export const googleSheetsService = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ webAppUrl }),
       });
-      return await res.json();
+      const data = await this._parseResponse(res, 'Failed to fetch from Google Sheets');
+      if (data && Array.isArray(data.projects)) {
+        data.projects = data.projects.map((p: any) => ({
+          ...p,
+          startDate: normalizeDateToYMD(p.startDate) || p.startDate,
+          endDate: normalizeDateToYMD(p.endDate) || p.endDate,
+        }));
+      }
+      return data;
     } catch (err: any) {
       return { success: false, error: err.message || 'Error fetching from Google Sheets' };
     }
@@ -530,7 +578,7 @@ export const googleSheetsService = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ webAppUrl, ...data }),
       });
-      return await res.json();
+      return await this._parseResponse(res, 'Failed to push to Google Sheets');
     } catch (err: any) {
       return { success: false, error: err.message || 'Error pushing to Google Sheets' };
     }
@@ -550,7 +598,7 @@ export const googleSheetsService = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
+      const data = await this._parseResponse(res, 'Error updating item in Google Sheets');
       return !!data.success;
     } catch {
       return false;
@@ -560,12 +608,17 @@ export const googleSheetsService = {
   // Incremental project update
   async syncProject(webAppUrl: string, project: ShootProject): Promise<boolean> {
     try {
+      const cleanProject: ShootProject = {
+        ...project,
+        startDate: normalizeDateToYMD(project.startDate) || project.startDate,
+        endDate: normalizeDateToYMD(project.endDate) || project.endDate,
+      };
       const res = await fetch('/api/sheets/update-project', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ webAppUrl, project }),
+        body: JSON.stringify({ webAppUrl, project: cleanProject }),
       });
-      const data = await res.json();
+      const data = await this._parseResponse(res, 'Error updating project in Google Sheets');
       return !!data.success;
     } catch {
       return false;

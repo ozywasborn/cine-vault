@@ -64,7 +64,13 @@ export const CheckinModal: React.FC<CheckinModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
+        <form
+          onSubmit={handleSubmit}
+          autoComplete="off"
+          data-lpignore="true"
+          data-1p-ignore="true"
+          className="p-6 space-y-4 text-xs"
+        >
           <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
             <div className="font-mono text-amber-800 font-bold text-xs bg-amber-50 border border-amber-200 px-2 py-0.5 rounded w-fit">[{item.assetTag}]</div>
             <div className="text-slate-900 font-bold text-sm mt-1.5">{item.name}</div>

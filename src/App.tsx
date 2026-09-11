@@ -39,6 +39,7 @@ import {
   saveStoredSheetsConfig,
   googleSheetsService,
 } from './services/googleSheetsService';
+import { normalizeDateToYMD } from './utils/dateUtils';
 
 const LOCAL_STORAGE_GEAR_KEY = 'cinevault_live_gear_v2';
 const LOCAL_STORAGE_MAINT_KEY = 'cinevault_live_maint_v2';
@@ -46,8 +47,22 @@ const LOCAL_STORAGE_AUDIT_KEY = 'cinevault_live_audit_v2';
 const LOCAL_STORAGE_PROJECTS_KEY = 'cinevault_live_projects_v2';
 
 export default function App() {
-  // Navigation (Dashboard is the default page on each new access)
-  const [activeTab, setActiveTab] = useState<'field' | 'inventory' | 'dashboard' | 'maintenance' | 'qr'>('dashboard');
+  // Navigation (Persists across reloads so user stays on current tab, default 'dashboard')
+  const [activeTab, setActiveTab] = useState<'field' | 'inventory' | 'dashboard' | 'maintenance' | 'qr'>(() => {
+    try {
+      const saved = sessionStorage.getItem('cinevault_active_tab');
+      if (saved && ['field', 'inventory', 'dashboard', 'maintenance', 'qr'].includes(saved)) {
+        return saved as any;
+      }
+    } catch {}
+    return 'dashboard';
+  });
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('cinevault_active_tab', activeTab);
+    } catch {}
+  }, [activeTab]);
 
   // Core App State with Real-Time Local Storage Hydration
   const [gear, setGear] = useState<GearItem[]>(() => {
@@ -74,11 +89,24 @@ export default function App() {
   const [projects, setProjects] = useState<ProjectShoot[]>(() => {
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_PROJECTS_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved) as ProjectShoot[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((p) => ({
+            ...p,
+            startDate: normalizeDateToYMD(p.startDate) || p.startDate,
+            endDate: normalizeDateToYMD(p.endDate) || p.endDate,
+          }));
+        }
+      }
     } catch {
       // fallback
     }
-    return INITIAL_PROJECTS;
+    return INITIAL_PROJECTS.map((p) => ({
+      ...p,
+      startDate: normalizeDateToYMD(p.startDate) || p.startDate,
+      endDate: normalizeDateToYMD(p.endDate) || p.endDate,
+    }));
   });
   const [maintenance, setMaintenance] = useState<MaintenanceRecord[]>(() => {
     try {
@@ -202,7 +230,35 @@ export default function App() {
           setMaintenance(maintData);
         }
         if (projData && projData.length > 0) {
-          setProjects(projData);
+          const normalized = projData.map((p) => ({
+            ...p,
+            startDate: normalizeDateToYMD(p.startDate) || p.startDate,
+            endDate: normalizeDateToYMD(p.endDate) || p.endDate,
+          }));
+          setProjects((prevLocal) => {
+            if (!prevLocal || prevLocal.length === 0) return normalized;
+            const merged = prevLocal.map((localP) => {
+              const remoteP = normalized.find((r) => r.id === localP.id || r.name === localP.name);
+              if (!remoteP) return localP;
+              return {
+                ...remoteP,
+                ...localP,
+                client: localP.client || remoteP.client,
+                leadDP: localP.leadDP || remoteP.leadDP,
+                location: localP.location || remoteP.location,
+                startDate: normalizeDateToYMD(localP.startDate) || normalizeDateToYMD(remoteP.startDate) || localP.startDate,
+                endDate: normalizeDateToYMD(localP.endDate) || normalizeDateToYMD(remoteP.endDate) || localP.endDate,
+              };
+            });
+            const localNames = new Set(prevLocal.map((p) => p.name));
+            const localIds = new Set(prevLocal.map((p) => p.id));
+            normalized.forEach((r) => {
+              if (!localNames.has(r.name) && !localIds.has(r.id)) {
+                merged.push(r);
+              }
+            });
+            return merged;
+          });
         }
         if (auditData && auditData.length > 0 && !localStorage.getItem(LOCAL_STORAGE_AUDIT_KEY)) {
           setAuditLogs(auditData);
@@ -248,7 +304,37 @@ export default function App() {
                 return res.gear!;
               });
             }
-            if (res.projects && res.projects.length > 0) setProjects(res.projects);
+            if (res.projects && res.projects.length > 0) {
+              const normalized = res.projects.map((p) => ({
+                ...p,
+                startDate: normalizeDateToYMD(p.startDate) || p.startDate,
+                endDate: normalizeDateToYMD(p.endDate) || p.endDate,
+              }));
+              setProjects((prevLocal) => {
+                if (!prevLocal || prevLocal.length === 0) return normalized;
+                const merged = prevLocal.map((localP) => {
+                  const remoteP = normalized.find((r) => r.id === localP.id || r.name === localP.name);
+                  if (!remoteP) return localP;
+                  return {
+                    ...remoteP,
+                    ...localP,
+                    client: localP.client || remoteP.client,
+                    leadDP: localP.leadDP || remoteP.leadDP,
+                    location: localP.location || remoteP.location,
+                    startDate: normalizeDateToYMD(localP.startDate) || normalizeDateToYMD(remoteP.startDate) || localP.startDate,
+                    endDate: normalizeDateToYMD(localP.endDate) || normalizeDateToYMD(remoteP.endDate) || localP.endDate,
+                  };
+                });
+                const localNames = new Set(prevLocal.map((p) => p.name));
+                const localIds = new Set(prevLocal.map((p) => p.id));
+                normalized.forEach((r) => {
+                  if (!localNames.has(r.name) && !localIds.has(r.id)) {
+                    merged.push(r);
+                  }
+                });
+                return merged;
+              });
+            }
             if (res.maintenance && res.maintenance.length > 0) {
               setMaintenance((prevMaint) => {
                 if (prevMaint.length > res.maintenance!.length) {
@@ -395,7 +481,7 @@ export default function App() {
             id: `maint-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
             gearId: finalItem.id,
             date: finalItem.lastServiceDate,
-            serviceType: 'General Overhaul',
+            serviceType: 'General Servicing',
             technician: currentUser.name || 'Field Tech',
             cost: 0,
             conditionAfter: finalItem.condition || 'Good',
@@ -1003,8 +1089,18 @@ export default function App() {
             }}
             onUpdateGear={handleUpdateGear}
             onAddProject={(newProject) => {
-              setProjects((prev) => [newProject, ...prev]);
-              syncProjectToSheetsIfNeeded(newProject);
+              const cleanNew: ProjectShoot = {
+                ...newProject,
+                startDate: normalizeDateToYMD(newProject.startDate) || newProject.startDate,
+                endDate: normalizeDateToYMD(newProject.endDate) || newProject.endDate,
+              };
+              const updated = [cleanNew, ...projects.filter((p) => p.id !== cleanNew.id && p.name !== cleanNew.name)];
+              setProjects(updated);
+              try {
+                localStorage.setItem(LOCAL_STORAGE_PROJECTS_KEY, JSON.stringify(updated));
+              } catch {}
+              apiClient.saveProjects(updated).catch(() => {});
+              syncProjectToSheetsIfNeeded(cleanNew);
               const now = new Date().toISOString();
               const auditEntry: AuditLog = {
                 id: `audit-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -1014,16 +1110,34 @@ export default function App() {
                 userRole: currentUser.role,
                 provider: currentUser.provider,
                 action: 'CREATE',
-                targetAssetTag: newProject.name,
-                targetName: newProject.name,
-                details: `Scheduled new shoot deployment: "${newProject.name}" (Date: ${newProject.startDate})`,
+                targetAssetTag: cleanNew.name,
+                targetName: cleanNew.name,
+                details: `Scheduled new shoot deployment: "${cleanNew.name}" (Date: ${cleanNew.startDate})`,
                 ipOrDevice: 'Web Client',
               };
               setAuditLogs((prev) => [auditEntry, ...prev]);
             }}
-            onProjectsChange={(updatedProjects) => {
-              setProjects(updatedProjects);
-              updatedProjects.forEach((p) => syncProjectToSheetsIfNeeded(p));
+            onProjectsChange={(updatedProjects, changedProject) => {
+              const cleanProjects = updatedProjects.map((p) => ({
+                ...p,
+                startDate: normalizeDateToYMD(p.startDate) || p.startDate,
+                endDate: normalizeDateToYMD(p.endDate) || p.endDate,
+              }));
+              setProjects(cleanProjects);
+              try {
+                localStorage.setItem(LOCAL_STORAGE_PROJECTS_KEY, JSON.stringify(cleanProjects));
+              } catch {}
+              apiClient.saveProjects(cleanProjects).catch(() => {});
+              if (changedProject) {
+                const cleanChanged: ProjectShoot = {
+                  ...changedProject,
+                  startDate: normalizeDateToYMD(changedProject.startDate) || changedProject.startDate,
+                  endDate: normalizeDateToYMD(changedProject.endDate) || changedProject.endDate,
+                };
+                syncProjectToSheetsIfNeeded(cleanChanged);
+              } else {
+                cleanProjects.forEach((p) => syncProjectToSheetsIfNeeded(p));
+              }
             }}
           />
         )}

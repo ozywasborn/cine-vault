@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Film,
@@ -28,8 +28,11 @@ import {
   LayoutList,
   CalendarDays,
   Palette,
+  Trash2,
 } from 'lucide-react';
 import { GearItem, ShootProject, UserAccount, ConditionRating } from '../types';
+import { AddressAutocompleteInput } from './AddressAutocompleteInput';
+import { normalizeDateToYMD } from '../utils/dateUtils';
 
 interface DeploymentColorTheme {
   id: string;
@@ -224,8 +227,321 @@ interface FieldShootSummaryProps {
   onReportIssue?: (item: GearItem) => void;
   onUpdateGear?: (item: GearItem) => void;
   onAddProject?: (project: ShootProject) => void;
-  onProjectsChange?: (projects: ShootProject[]) => void;
+  onProjectsChange?: (projects: ShootProject[], changedProject?: ShootProject) => void;
 }
+
+interface InlineAddGearRowProps {
+  projectName: string;
+  theme: DeploymentColorTheme;
+  availableGear: GearItem[];
+  onAddGear: (item: GearItem, targetProject: string) => void;
+}
+
+const InlineAddGearRow: React.FC<InlineAddGearRowProps> = ({
+  projectName,
+  availableGear,
+  onAddGear,
+}) => {
+  const [inlineQuery, setInlineQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [dropdownCoords, setDropdownCoords] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    placement: 'bottom' | 'top';
+  } | null>(null);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const updatePosition = () => {
+    if (!inputContainerRef.current) return;
+    const rect = inputContainerRef.current.getBoundingClientRect();
+    if (rect.bottom < 50 || rect.top > window.innerHeight - 30) {
+      setIsOpen(false);
+      return;
+    }
+    const dropdownHeight = 280;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const showAbove = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
+
+    const width = Math.max(320, rect.width);
+    const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
+
+    setDropdownCoords({
+      top: showAbove ? rect.top - 6 : rect.bottom + 6,
+      left,
+      width,
+      placement: showAbove ? 'top' : 'bottom',
+    });
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    updatePosition();
+    const handleScroll = () => updatePosition();
+    window.addEventListener('scroll', handleScroll, true);
+    window.addEventListener('resize', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('resize', handleScroll);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node) &&
+        !dropdownRef.current?.contains(e.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [isOpen]);
+
+  const filteredGear = useMemo(() => {
+    const q = inlineQuery.trim().toLowerCase();
+    if (!q) {
+      return availableGear.slice(0, 10);
+    }
+    return availableGear
+      .filter((g) => {
+        return (
+          String(g.assetTag || '').toLowerCase().includes(q) ||
+          String(g.name || '').toLowerCase().includes(q) ||
+          String(g.category || '').toLowerCase().includes(q) ||
+          String(g.serialNumber || '').toLowerCase().includes(q) ||
+          String(g.model || '').toLowerCase().includes(q) ||
+          String(g.brand || '').toLowerCase().includes(q)
+        );
+      })
+      .slice(0, 20);
+  }, [availableGear, inlineQuery]);
+
+  const handleSelect = (item: GearItem) => {
+    onAddGear(item, projectName);
+    setInlineQuery('');
+    setIsOpen(false);
+    setSelectedIndex(0);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      setIsOpen(true);
+      updatePosition();
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (filteredGear.length > 0) {
+        setSelectedIndex((prev) => (prev + 1) % filteredGear.length);
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (filteredGear.length > 0) {
+        setSelectedIndex((prev) => (prev - 1 + filteredGear.length) % filteredGear.length);
+      }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filteredGear.length > 0) {
+        const targetIndex =
+          selectedIndex >= 0 && selectedIndex < filteredGear.length ? selectedIndex : 0;
+        handleSelect(filteredGear[targetIndex]);
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setIsOpen(false);
+      inputRef.current?.blur();
+    }
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className="p-3 sm:px-4 sm:py-3 bg-slate-50/50 hover:bg-slate-50/90 transition-colors border-t border-dashed border-slate-200"
+    >
+      <div className="flex items-center gap-3">
+        {/* Plus / Add Icon Pill */}
+        <div
+          onClick={() => {
+            inputRef.current?.focus();
+            setIsOpen(true);
+            updatePosition();
+          }}
+          className="w-7 h-7 rounded-lg bg-amber-50 border border-amber-200/80 text-amber-700 hover:bg-amber-500 hover:text-white flex items-center justify-center shrink-0 cursor-pointer transition-all shadow-2xs group"
+          title="Add new equipment to this deployment"
+        >
+          <Plus className="w-4 h-4 stroke-[2.5] group-hover:scale-110 transition-transform" />
+        </div>
+
+        {/* Input container */}
+        <div className="relative flex-1 min-w-0" ref={inputContainerRef}>
+          <div className="relative flex items-center">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 pointer-events-none" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={inlineQuery}
+              onChange={(e) => {
+                setInlineQuery(e.target.value);
+                if (!isOpen) setIsOpen(true);
+                setSelectedIndex(0);
+                updatePosition();
+              }}
+              onFocus={() => {
+                setIsOpen(true);
+                updatePosition();
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder="+ Add equipment to this deployment (type asset tag, name, or model)..."
+              autoComplete="off"
+              data-lpignore="true"
+              data-1p-ignore="true"
+              autoCorrect="off"
+              spellCheck={false}
+              className="w-full pl-9 pr-8 py-2 rounded-xl bg-white border border-slate-200/90 hover:border-slate-300 focus:border-amber-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-xs text-slate-900 placeholder:text-slate-400 transition-all font-medium shadow-2xs"
+            />
+            {inlineQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setInlineQuery('');
+                  setIsOpen(false);
+                  inputRef.current?.focus();
+                }}
+                className="absolute right-2.5 p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                title="Clear search"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Available Equipment Counter Badge */}
+        <div className="hidden sm:flex items-center gap-1.5 shrink-0 text-[11px] font-semibold text-slate-500 bg-white border border-slate-200/80 px-2.5 py-1 rounded-lg shadow-2xs">
+          <Box className="w-3 h-3 text-amber-500" />
+          <span>{availableGear.length} available</span>
+        </div>
+      </div>
+
+      {/* Floating Suggestions Portal */}
+      {isOpen && dropdownCoords && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={dropdownRef}
+          style={{
+            position: 'fixed',
+            top: dropdownCoords.placement === 'top' ? undefined : `${dropdownCoords.top}px`,
+            bottom: dropdownCoords.placement === 'top' ? `${window.innerHeight - dropdownCoords.top}px` : undefined,
+            left: `${dropdownCoords.left}px`,
+            width: `${dropdownCoords.width}px`,
+            zIndex: 99999,
+          }}
+          className="bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-98 duration-150"
+        >
+          {/* Header of suggestions */}
+          <div className="px-3.5 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[11px] font-semibold text-slate-600">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="w-3 h-3 text-amber-500" />
+              <span>
+                {inlineQuery.trim()
+                  ? `Matching Available Gear (${filteredGear.length})`
+                  : `Available Inventory in Cage (${availableGear.length})`}
+              </span>
+            </div>
+            <span className="text-[10px] text-slate-400">
+              Use ↑↓ to navigate • ↵ Enter to add
+            </span>
+          </div>
+
+          {/* List of items */}
+          <div className="max-h-64 overflow-y-auto divide-y divide-slate-50 p-1">
+            {filteredGear.length === 0 ? (
+              <div className="p-4 text-center">
+                <p className="text-xs text-slate-500 font-medium">
+                  {inlineQuery.trim()
+                    ? `No available inventory items match "${inlineQuery}".`
+                    : 'All inventory equipment is currently deployed.'}
+                </p>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Check-in equipment from other shoots or inspect inventory status.
+                </p>
+              </div>
+            ) : (
+              filteredGear.map((item, idx) => {
+                const isSelected = idx === selectedIndex;
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => handleSelect(item)}
+                    onMouseEnter={() => setSelectedIndex(idx)}
+                    className={`px-3 py-2 rounded-xl flex items-center justify-between gap-3 cursor-pointer transition-all ${
+                      isSelected
+                        ? 'bg-amber-50/90 text-amber-950 ring-1 ring-amber-300'
+                        : 'hover:bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    {/* Left: Asset tag pill + Name & info */}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      {/* Standardised Tag Column */}
+                      <span className="w-[100px] shrink-0 font-mono font-bold text-[11px] text-amber-900 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md text-center shadow-2xs">
+                        {item.assetTag}
+                      </span>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-bold text-slate-900 truncate">
+                          {item.name}
+                        </div>
+                        <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
+                          <span>{item.category}</span>
+                          <span>•</span>
+                          <span>Loc: {item.location}</span>
+                          {item.serialNumber && (
+                            <>
+                              <span>•</span>
+                              <span>SN: {item.serialNumber}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: Quick Add Button / Action */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        {item.condition || 'Available'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelect(item);
+                        }}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold shadow-2xs transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3 stroke-[2.5]" />
+                        <span>Add</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+};
 
 export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
   gear,
@@ -350,6 +666,38 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
     };
   }, [activeColorPicker]);
 
+  // Right-Click Context Menu for Equipment in Deployment Window
+  const [equipmentContextMenu, setEquipmentContextMenu] = useState<{
+    isOpen: boolean;
+    x: number;
+    y: number;
+    item: GearItem;
+    projectName: string;
+  } | null>(null);
+
+  // Close context menu on click outside, scroll, resize, or Escape
+  useEffect(() => {
+    if (!equipmentContextMenu) return;
+    const handleDismiss = () => {
+      setEquipmentContextMenu(null);
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setEquipmentContextMenu(null);
+      }
+    };
+    window.addEventListener('mousedown', handleDismiss);
+    window.addEventListener('scroll', handleDismiss, true);
+    window.addEventListener('resize', handleDismiss);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('mousedown', handleDismiss);
+      window.removeEventListener('scroll', handleDismiss, true);
+      window.removeEventListener('resize', handleDismiss);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [equipmentContextMenu]);
+
   // Filter checked out gear
   const checkedOutGear = useMemo(() => gear.filter((g) => g.status === 'Checked Out'), [gear]);
   const availableGear = useMemo(() => gear.filter((g) => g.status === 'Available'), [gear]);
@@ -377,8 +725,8 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
         projectObj: p,
         location: p.location,
         leadDP: p.leadDP,
-        deploymentDate: p.startDate,
-        expectedReturnDate: p.endDate,
+        deploymentDate: normalizeDateToYMD(p.startDate) || p.startDate,
+        expectedReturnDate: normalizeDateToYMD(p.endDate) || p.endDate,
         client: p.client,
       });
     });
@@ -392,8 +740,8 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
           name: pName,
           location: item.currentCheckout?.shootLocation,
           leadDP: item.currentCheckout?.userName,
-          deploymentDate: item.currentCheckout?.checkoutDate?.split('T')[0],
-          expectedReturnDate: item.currentCheckout?.expectedReturnDate?.split('T')[0],
+          deploymentDate: normalizeDateToYMD(item.currentCheckout?.checkoutDate),
+          expectedReturnDate: normalizeDateToYMD(item.currentCheckout?.expectedReturnDate),
           notes: item.currentCheckout?.notes,
         });
       }
@@ -424,6 +772,41 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
 
   const projectNames = Object.keys(gearByProject);
 
+  // Visible projects based on active project filter
+  const visibleProjectNames = useMemo(() => {
+    return projectNames.filter(
+      (projName) => selectedProjectId === 'all' || selectedProjectId === projName
+    );
+  }, [projectNames, selectedProjectId]);
+
+  // Check if all visible projects are collapsed
+  const isAllProjectsCollapsed = useMemo(() => {
+    if (visibleProjectNames.length === 0) return false;
+    return visibleProjectNames.every((pName) => expandedProjects[pName] === false);
+  }, [visibleProjectNames, expandedProjects]);
+
+  // Expand all visible deployments
+  const handleExpandAllProjects = () => {
+    setExpandedProjects((prev) => {
+      const next = { ...prev };
+      visibleProjectNames.forEach((pName) => {
+        next[pName] = true;
+      });
+      return next;
+    });
+  };
+
+  // Collapse all visible deployments
+  const handleCollapseAllProjects = () => {
+    setExpandedProjects((prev) => {
+      const next = { ...prev };
+      visibleProjectNames.forEach((pName) => {
+        next[pName] = false;
+      });
+      return next;
+    });
+  };
+
   // Compute Gantt Timeline Data
   const ganttData = useMemo(() => {
     const activeProjects = allDeploymentProjects.filter(
@@ -439,12 +822,12 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
       const assignedItems = gearByProject[p.name] || [];
       const firstCheckout = assignedItems[0]?.currentCheckout;
       const startStr =
-        p.deploymentDate ||
-        firstCheckout?.checkoutDate?.split('T')[0] ||
+        normalizeDateToYMD(p.deploymentDate) ||
+        normalizeDateToYMD(firstCheckout?.checkoutDate) ||
         new Date().toISOString().split('T')[0];
       const endStr =
-        p.expectedReturnDate ||
-        firstCheckout?.expectedReturnDate?.split('T')[0] ||
+        normalizeDateToYMD(p.expectedReturnDate) ||
+        normalizeDateToYMD(firstCheckout?.expectedReturnDate) ||
         new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0];
 
       const startDate = new Date(startStr + 'T00:00:00');
@@ -602,23 +985,26 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
     if (onProjectsChange && projects) {
       const existing = projects.find((p) => p.name === projName);
       if (existing) {
-        const updated = projects.map((p) => (p.name === projName ? { ...p, color: colorId } : p));
-        onProjectsChange(updated);
+        const updatedObj = { ...existing, color: colorId };
+        const updated = projects.map((p) => (p.name === projName ? updatedObj : p));
+        onProjectsChange(updated, updatedObj);
       } else {
         const projectMeta = allDeploymentProjects.find((p) => p.name === projName);
+        const cleanStart = normalizeDateToYMD(projectMeta?.deploymentDate) || new Date().toISOString().split('T')[0];
+        const cleanEnd = normalizeDateToYMD(projectMeta?.expectedReturnDate) || new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0];
         const newProj: ShootProject = {
           id: `proj-${Date.now()}`,
           name: projName,
           client: projectMeta?.client || '',
           leadDP: projectMeta?.leadDP || currentUser?.name || 'Lead DP',
           location: projectMeta?.location || 'Studio',
-          startDate: projectMeta?.deploymentDate || new Date().toISOString().split('T')[0],
-          endDate: projectMeta?.expectedReturnDate || new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
+          startDate: cleanStart,
+          endDate: cleanEnd,
           assignedGearIds: (gearByProject[projName] || []).map((g) => g.id),
           status: 'On Shoot',
           color: colorId,
         };
-        onProjectsChange([newProj, ...projects]);
+        onProjectsChange([newProj, ...projects], newProj);
       }
     }
   };
@@ -645,7 +1031,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
   const toggleProjectExpand = (projName: string) => {
     setExpandedProjects((prev) => ({
       ...prev,
-      [projName]: !prev[projName],
+      [projName]: prev[projName] === false ? true : false,
     }));
   };
 
@@ -665,6 +1051,8 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
     if (!newProjName.trim()) return;
 
     const trimmedName = newProjName.trim();
+    const cleanStartDate = normalizeDateToYMD(newProjDeploymentDate) || newProjDeploymentDate || new Date().toISOString().split('T')[0];
+    const cleanEndDate = normalizeDateToYMD(newProjReturnDate) || newProjReturnDate || new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0];
 
     const newProject: ShootProject = {
       id: `proj-${Date.now()}`,
@@ -672,8 +1060,8 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
       client: newProjClient.trim() || 'Internal Production',
       leadDP: newProjLeadDP.trim() || currentUser?.name || 'Production Lead',
       location: newProjLocation.trim() || 'Field Location',
-      startDate: newProjDeploymentDate,
-      endDate: newProjReturnDate,
+      startDate: cleanStartDate,
+      endDate: cleanEndDate,
       assignedGearIds: selectedInitialGearIds,
       status: 'On Shoot',
     };
@@ -700,11 +1088,11 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
               userEmail: newProjEmail.trim() || currentUser?.email || 'crew@production.com',
               projectName: trimmedName,
               shootLocation: newProjLocation.trim() || 'Field Location',
-              checkoutDate: `${newProjDeploymentDate}T08:00:00Z`,
-              expectedReturnDate: `${newProjReturnDate}T18:00:00Z`,
+              checkoutDate: `${cleanStartDate}T08:00:00Z`,
+              expectedReturnDate: `${cleanEndDate}T18:00:00Z`,
               status: 'Active',
               conditionOnCheckout: item.condition,
-              notes: newProjNotes.trim() || `Deployed on ${newProjDeploymentDate}`,
+              notes: newProjNotes.trim() || `Deployed on ${cleanStartDate}`,
             },
             updatedAt: new Date().toISOString(),
           };
@@ -745,13 +1133,13 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
     setEditingDeploymentName(projName);
     setEditProjName(projName);
     setEditProjDeploymentDate(
-      projectMeta?.deploymentDate ||
-        firstCheckout?.checkoutDate?.split('T')[0] ||
+      normalizeDateToYMD(projectMeta?.deploymentDate) ||
+        normalizeDateToYMD(firstCheckout?.checkoutDate) ||
         new Date().toISOString().split('T')[0]
     );
     setEditProjReturnDate(
-      projectMeta?.expectedReturnDate ||
-        firstCheckout?.expectedReturnDate?.split('T')[0] ||
+      normalizeDateToYMD(projectMeta?.expectedReturnDate) ||
+        normalizeDateToYMD(firstCheckout?.expectedReturnDate) ||
         new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0]
     );
     setEditProjLocation(initialLocation);
@@ -771,21 +1159,27 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
     if (!trimmedNewName) return;
     const oldName = editingDeploymentName;
 
+    const cleanStartDate = normalizeDateToYMD(editProjDeploymentDate) || editProjDeploymentDate;
+    const cleanEndDate = normalizeDateToYMD(editProjReturnDate) || editProjReturnDate;
+
     // 1. Update ShootProject[] list if callback available
     if (onProjectsChange) {
-      const existingProjIndex = (projects || []).findIndex((p) => p.name === oldName);
+      const existingProjIndex = (projects || []).findIndex(
+        (p) => p.name === oldName || (editingDeploymentName && p.name === editingDeploymentName)
+      );
       if (existingProjIndex >= 0) {
         const updatedProjects = [...(projects || [])];
-        updatedProjects[existingProjIndex] = {
+        const updatedObj: ShootProject = {
           ...updatedProjects[existingProjIndex],
           name: trimmedNewName,
-          client: editProjClient.trim() || 'Internal Production',
-          leadDP: editProjLeadDP.trim() || currentUser?.name || 'Production Lead',
-          location: editProjLocation.trim() || 'Field Location',
-          startDate: editProjDeploymentDate,
-          endDate: editProjReturnDate,
+          client: editProjClient.trim() || updatedProjects[existingProjIndex].client || 'Internal Production',
+          leadDP: editProjLeadDP.trim() || updatedProjects[existingProjIndex].leadDP || currentUser?.name || 'Production Lead',
+          location: editProjLocation.trim() || updatedProjects[existingProjIndex].location || 'Field Location',
+          startDate: cleanStartDate,
+          endDate: cleanEndDate,
         };
-        onProjectsChange(updatedProjects);
+        updatedProjects[existingProjIndex] = updatedObj;
+        onProjectsChange(updatedProjects, updatedObj);
       } else {
         const newProjObj: ShootProject = {
           id: `proj-${Date.now()}`,
@@ -793,12 +1187,13 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
           client: editProjClient.trim() || 'Internal Production',
           leadDP: editProjLeadDP.trim() || currentUser?.name || 'Production Lead',
           location: editProjLocation.trim() || 'Field Location',
-          startDate: editProjDeploymentDate,
-          endDate: editProjReturnDate,
+          startDate: cleanStartDate,
+          endDate: cleanEndDate,
           assignedGearIds: (gearByProject[oldName] || []).map((g) => g.id),
           status: 'On Shoot',
         };
-        onProjectsChange([...(projects || []), newProjObj]);
+        const updatedProjects = [...(projects || []), newProjObj];
+        onProjectsChange(updatedProjects, newProjObj);
       }
     }
 
@@ -815,11 +1210,11 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
               shootLocation: editProjLocation.trim(),
               userName: editProjLeadDP.trim() || item.currentCheckout.userName,
               userEmail: editProjEmail.trim() || item.currentCheckout.userEmail,
-              checkoutDate: editProjDeploymentDate
-                ? `${editProjDeploymentDate}T08:00:00Z`
+              checkoutDate: cleanStartDate
+                ? `${cleanStartDate}T08:00:00Z`
                 : item.currentCheckout.checkoutDate,
-              expectedReturnDate: editProjReturnDate
-                ? `${editProjReturnDate}T18:00:00Z`
+              expectedReturnDate: cleanEndDate
+                ? `${cleanEndDate}T18:00:00Z`
                 : item.currentCheckout.expectedReturnDate,
               notes: editProjNotes.trim() || item.currentCheckout.notes,
             },
@@ -845,6 +1240,57 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
 
     setEditingDeploymentName(null);
     showToast(`Deployment "${trimmedNewName}" details updated successfully.`);
+  };
+
+  // Open right-click context menu on equipment in deployment window
+  const handleEquipmentContextMenu = (e: React.MouseEvent, item: GearItem, projName: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Prevent menu going off-screen (compact delete-only context menu)
+    const menuWidth = 130;
+    const menuHeight = 46;
+    const x = Math.min(e.clientX, window.innerWidth - menuWidth - 8);
+    const y = Math.min(e.clientY, window.innerHeight - menuHeight - 8);
+
+    setEquipmentContextMenu({
+      isOpen: true,
+      x: Math.max(8, x),
+      y: Math.max(8, y),
+      item,
+      projectName: projName,
+    });
+  };
+
+  // Delete / unassign equipment item from shoot deployment (returns to available cage inventory)
+  const handleDeleteGearFromDeployment = (item: GearItem, projName: string) => {
+    // 1. Check in / return item back to available inventory
+    if (onCheckinGear) {
+      onCheckinGear(item.id, item.condition, `Removed from deployment "${projName}"`);
+    } else if (onUpdateGear) {
+      onUpdateGear({
+        ...item,
+        status: 'Available',
+        currentCheckout: undefined,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    // 2. Remove gearId from ShootProject.assignedGearIds
+    if (onProjectsChange && projects) {
+      const updatedProjects = projects.map((p) => {
+        if (p.name === projName && Array.isArray(p.assignedGearIds)) {
+          return {
+            ...p,
+            assignedGearIds: p.assignedGearIds.filter((id) => id !== item.id),
+          };
+        }
+        return p;
+      });
+      onProjectsChange(updatedProjects);
+    }
+
+    showToast(`Removed "${item.name}" from "${projName}" (returned to cage).`);
   };
 
   // Drag and drop: Move gear item to a target deployment project
@@ -882,9 +1328,28 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
     };
 
     onUpdateGear(updatedItem);
-    showToast(`Transferred ${item.assetTag} (${item.name}) to "${targetProjName}".`);
 
-    // Ensure target project is expanded so user sees the dropped item
+    // Sync target project's assignedGearIds if project exists in ShootProject[]
+    if (onProjectsChange && projects) {
+      const updatedProjects = projects.map((p) => {
+        if (p.name === targetProjName) {
+          const prevIds = Array.isArray(p.assignedGearIds) ? p.assignedGearIds : [];
+          if (!prevIds.includes(item.id)) {
+            return {
+              ...p,
+              assignedGearIds: [...prevIds, item.id],
+            };
+          }
+        }
+        return p;
+      });
+      onProjectsChange(updatedProjects);
+    }
+
+    const actionWord = item.status === 'Available' ? 'Added' : 'Transferred';
+    showToast(`${actionWord} ${item.assetTag} (${item.name}) to "${targetProjName}".`);
+
+    // Ensure target project is expanded so user sees the added item
     setExpandedProjects((prev) => ({ ...prev, [targetProjName]: true }));
   };
 
@@ -989,82 +1454,57 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
         </div>
       )}
 
-      {/* Field Mode Banner */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-              Active Shoot Deployments
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">
+      {/* Condensed Active Shoots Header Banner */}
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          {/* Left: Title & Live Summary */}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center shrink-0 shadow-2xs">
+                <Film className="w-4 h-4" />
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+                Active Shoot Deployments
+              </h1>
+            </div>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1 pl-10.5">
               Currently tracking{' '}
               <strong className="text-amber-600 font-semibold">
                 {checkedOutGear.length} assets
               </strong>{' '}
-              deployed across {projectNames.length} production units.
+              deployed across{' '}
+              <strong className="text-slate-700 font-semibold">
+                {projectNames.length} {projectNames.length === 1 ? 'production unit' : 'production units'}
+              </strong>.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Add New Deployment Button */}
-            <button
-              onClick={() => setIsAddDeploymentOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-xs cursor-pointer hover:shadow-sm"
-              title="Add a new production shoot deployment with date and details"
-            >
-              <Plus className="w-4 h-4 text-white stroke-[2.5]" />
-              <span>Add New Deployment</span>
-            </button>
-
-            {/* Toggle Available Equipment Drawer */}
-            <button
-              onClick={() => setShowStagingDrawer(!showStagingDrawer)}
-              className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                showStagingDrawer
-                  ? 'bg-slate-900 text-white border-slate-900'
-                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-2xs'
-              }`}
-              title="View and allocate available equipment into any deployment"
-            >
-              <Box className="w-4 h-4 text-amber-500" />
-              <span>Available Equipment ({availableGear.length})</span>
-            </button>
-
-            <div className="hidden sm:flex items-center gap-3">
-              <div className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-left">
-                <div className="text-[10px] uppercase font-bold text-slate-400">Deployed</div>
-                <div className="text-base font-bold text-slate-900 font-mono">
+          {/* Right: Metrics, Project Dropdown & View Mode Switcher */}
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+            {/* Quick Metrics Badges */}
+            <div className="flex items-center gap-2">
+              <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-2">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Deployed</span>
+                <span className="text-xs font-bold text-slate-900 font-mono">
                   {checkedOutGear.length} Units
-                </div>
+                </span>
               </div>
-              <div className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-left">
-                <div className="text-[10px] uppercase font-bold text-slate-400">Verified</div>
-                <div className="text-base font-bold text-amber-600 font-mono">
-                  {Object.values(packChecklist).filter(Boolean).length} / {checkedOutGear.length}
-                </div>
+              <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-2">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Verified</span>
+                <span className="text-xs font-bold text-amber-600 font-mono">
+                  {Object.values(packChecklist).filter(Boolean).length}/{checkedOutGear.length}
+                </span>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Filter controls */}
-        <div className="mt-6 flex flex-col sm:flex-row items-center gap-3 pt-4 border-t border-slate-200">
-          <div className="relative flex-1 w-full">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search field assets by tag, camera model, kit, or serial..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 transition-all"
-            />
-          </div>
+            <div className="h-6 w-px bg-slate-200 hidden md:block" />
 
-          <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+            {/* Project Filter Select */}
             <select
               value={selectedProjectId}
               onChange={(e) => setSelectedProjectId(e.target.value)}
-              className="bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 px-3.5 py-2 focus:outline-none focus:bg-white focus:border-amber-500 cursor-pointer font-medium"
+              className="bg-slate-50 hover:bg-slate-100/70 border border-slate-200 rounded-xl text-xs text-slate-800 px-3 py-1.5 focus:outline-none focus:bg-white focus:border-amber-500 cursor-pointer font-medium transition-colors shadow-2xs"
+              title="Filter by production project"
             >
               <option value="all">All Active Shoots ({projectNames.length})</option>
               {projectNames.map((name) => (
@@ -1075,11 +1515,11 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
             </select>
 
             {/* View Mode Switcher (Combined / Gantt / Cards) */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <div className="flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200 shadow-2xs">
               <button
                 type="button"
                 onClick={() => setViewMode('combined')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   viewMode === 'combined'
                     ? 'bg-white text-slate-900 shadow-2xs'
                     : 'text-slate-500 hover:text-slate-800'
@@ -1092,7 +1532,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
               <button
                 type="button"
                 onClick={() => setViewMode('gantt')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   viewMode === 'gantt'
                     ? 'bg-white text-slate-900 shadow-2xs'
                     : 'text-slate-500 hover:text-slate-800'
@@ -1105,7 +1545,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
               <button
                 type="button"
                 onClick={() => setViewMode('cards')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   viewMode === 'cards'
                     ? 'bg-white text-slate-900 shadow-2xs'
                     : 'text-slate-500 hover:text-slate-800'
@@ -1120,74 +1560,6 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
         </div>
       </div>
 
-      {/* Available Equipment (Collapsible Shelf) */}
-      {showStagingDrawer && (
-        <div className="bg-white rounded-2xl border border-amber-200 p-5 shadow-sm space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Box className="w-4 h-4 text-amber-600" />
-              <h3 className="text-sm font-bold text-slate-900">
-                Available Equipment ({availableGear.length})
-              </h3>
-              <span className="text-xs text-slate-500">
-                Drag any unit directly into a deployment card below to dispatch
-              </span>
-            </div>
-            <button
-              onClick={() => setShowStagingDrawer(false)}
-              className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-60 overflow-y-auto pr-1">
-            {availableGear.length === 0 ? (
-              <p className="text-xs text-slate-400 italic col-span-full py-4 text-center">
-                All equipment is currently deployed on shoot.
-              </p>
-            ) : (
-              availableGear.map((item) => (
-                <div
-                  key={item.id}
-                  draggable={true}
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData('text/plain', item.id);
-                    setDraggedItemId(item.id);
-                    setDragSourceProject('Cage');
-                  }}
-                  onDragEnd={() => {
-                    setDraggedItemId(null);
-                    setDragSourceProject(null);
-                  }}
-                  className={`p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white hover:border-amber-400 transition-all cursor-grab active:cursor-grabbing flex items-center justify-between gap-2 shadow-2xs ${
-                    draggedItemId === item.id ? 'opacity-40 ring-2 ring-amber-500' : ''
-                  }`}
-                  title="Drag this available item into any deployment below to dispatch"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <GripVertical className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span className="font-mono text-[11px] font-bold text-amber-800 truncate">
-                        {item.assetTag}
-                      </span>
-                    </div>
-                    <div className="text-xs font-semibold text-slate-800 truncate mt-0.5">
-                      {item.name}
-                    </div>
-                    <div className="text-[10px] text-slate-500 truncate">
-                      {item.category} • {item.location}
-                    </div>
-                  </div>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-                    Available
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* GANTT TIMELINE & OVERLAP SCHEDULE VIEW */}
@@ -1410,20 +1782,183 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
       {/* Grouped by Shoot Project Cards */}
       {(viewMode === 'combined' || viewMode === 'cards') && (
         <div className="space-y-6">
+          {/* Sticky Deployment Controls Header Bar & In-Viewport Available Equipment Shelf */}
+          <div className="sticky top-16 z-30 space-y-3">
+            <div className="bg-slate-50/95 backdrop-blur-md p-3 sm:p-3.5 rounded-2xl border border-slate-200/90 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
+              {/* Left: Section Title, Count & Expand all / Collapse all switch */}
+              <div className="flex items-center gap-3 flex-wrap shrink-0">
+                <div className="flex items-center gap-2">
+                  <LayoutList className="w-4 h-4 text-slate-700" />
+                  <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+                    Deployments
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-700 text-xs font-bold font-mono">
+                    {visibleProjectNames.length}
+                  </span>
+                </div>
+
+                {/* Expand all / Collapse all button switch */}
+                {visibleProjectNames.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={isAllProjectsCollapsed ? handleExpandAllProjects : handleCollapseAllProjects}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 hover:text-amber-800 transition-colors cursor-pointer px-2.5 py-1 rounded-xl bg-amber-50/90 hover:bg-amber-100/80 border border-amber-200 shadow-2xs"
+                    title={isAllProjectsCollapsed ? 'Expand all visible deployments' : 'Collapse all visible deployments'}
+                  >
+                    {isAllProjectsCollapsed ? (
+                      <>
+                        <ChevronDown className="w-3.5 h-3.5 text-amber-700" />
+                        <span>Expand All</span>
+                      </>
+                    ) : (
+                      <>
+                        <ChevronUp className="w-3.5 h-3.5 text-amber-700" />
+                        <span>Collapse All</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {/* Center: Relocated Search Field in Empty Space */}
+              <div className="relative flex-1 min-w-[200px] max-w-sm sm:max-w-md w-full md:w-auto">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search field assets by tag, model, kit, serial..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
+                  spellCheck={false}
+                  className="w-full pl-8 pr-7 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 transition-all shadow-2xs"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                    title="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Right: Add New Deployment & Available Equipment toggle */}
+              <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsAddDeploymentOpen(true)}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-xs cursor-pointer hover:shadow-sm"
+                  title="Add a new production shoot deployment with date and details"
+                >
+                  <Plus className="w-3.5 h-3.5 text-white stroke-[2.5]" />
+                  <span>Add New Deployment</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowStagingDrawer(!showStagingDrawer)}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                    showStagingDrawer
+                      ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                      : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-2xs'
+                  }`}
+                  title="View and allocate available equipment into any deployment"
+                >
+                  <Box className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Available Equipment ({availableGear.length})</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Available Equipment (Collapsible Shelf Docked in Sticky Viewport) */}
+            {showStagingDrawer && (
+              <div className="bg-white/98 backdrop-blur-md rounded-2xl border border-amber-300 p-4 shadow-lg space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Box className="w-4 h-4 text-amber-600" />
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Available Equipment ({availableGear.length})
+                    </h3>
+                    <span className="text-xs text-slate-500 hidden sm:inline">
+                      Drag any unit directly into a deployment card below to dispatch
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowStagingDrawer(false)}
+                    className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 cursor-pointer transition-colors"
+                    title="Close available equipment shelf"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 max-h-56 overflow-y-auto pr-1">
+                  {availableGear.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic col-span-full py-4 text-center">
+                      All equipment is currently deployed on shoot.
+                    </p>
+                  ) : (
+                    availableGear.map((item) => (
+                      <div
+                        key={item.id}
+                        draggable={true}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', item.id);
+                          setDraggedItemId(item.id);
+                          setDragSourceProject('Cage');
+                        }}
+                        onDragEnd={() => {
+                          setDraggedItemId(null);
+                          setDragSourceProject(null);
+                        }}
+                        className={`p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white hover:border-amber-400 transition-all cursor-grab active:cursor-grabbing flex items-center justify-between gap-2 shadow-2xs ${
+                          draggedItemId === item.id ? 'opacity-40 ring-2 ring-amber-500' : ''
+                        }`}
+                        title="Drag this available item into any deployment below to dispatch"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <GripVertical className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span className="font-mono text-[11px] font-bold text-amber-800 truncate">
+                              {item.assetTag}
+                            </span>
+                          </div>
+                          <div className="text-xs font-semibold text-slate-800 truncate mt-0.5">
+                            {item.name}
+                          </div>
+                          <div className="text-[10px] text-slate-500 truncate">
+                            {item.category} • {item.location}
+                          </div>
+                        </div>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                          Available
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* No gear checked out state */}
-          {projectNames.length === 0 && (
+          {visibleProjectNames.length === 0 && (
             <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 shadow-xs">
               <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
               <h3 className="text-lg font-bold text-slate-900">All Equipment Is In the Cage</h3>
               <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
-                There are no active deployments. Click "+ Add New Deployment" above or use the Inventory
+                There are no active deployments matching the filter. Click "+ Add New Deployment" above or use the Inventory
                 catalog to dispatch equipment.
               </p>
             </div>
           )}
 
-          {projectNames
-            .filter((projName) => selectedProjectId === 'all' || selectedProjectId === projName)
+          {visibleProjectNames
             .map((projName, projectIndex) => {
               const projectMeta = allDeploymentProjects.find((p) => p.name === projName);
               const customColor = deploymentColors[projName] || projectMeta?.projectObj?.color;
@@ -1450,12 +1985,12 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                 dragOverProject === projName && dragSourceProject !== projName;
 
               const deploymentDate =
-                projectMeta?.deploymentDate ||
-                firstCheckout?.checkoutDate?.split('T')[0] ||
+                normalizeDateToYMD(projectMeta?.deploymentDate) ||
+                normalizeDateToYMD(firstCheckout?.checkoutDate) ||
                 'Active';
               const returnDate =
-                projectMeta?.expectedReturnDate ||
-                firstCheckout?.expectedReturnDate?.split('T')[0] ||
+                normalizeDateToYMD(projectMeta?.expectedReturnDate) ||
+                normalizeDateToYMD(firstCheckout?.expectedReturnDate) ||
                 'TBD';
               const shootLoc =
                 projectMeta?.location || firstCheckout?.shootLocation || '';
@@ -1485,12 +2020,16 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                       : theme.containerBorder
                   }`}
                 >
-                  {/* Project Card Header */}
-                  <div className={`p-5 ${theme.headerBg} flex flex-col md:flex-row md:items-center justify-between gap-4`}>
+                  {/* Project Card Header (Clickable anywhere to Expand/Collapse) */}
+                  <div
+                    onClick={() => toggleProjectExpand(projName)}
+                    className={`p-5 ${theme.headerBg} flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer select-none transition-colors hover:brightness-[0.98]`}
+                    title={isExpanded ? 'Click to collapse deployment' : 'Click to expand deployment'}
+                  >
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         {/* Interactive Deployment Coloured Dot */}
-                        <div className="relative inline-flex items-center">
+                        <div className="relative inline-flex items-center" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
                             onClick={(e) => {
@@ -1526,109 +2065,124 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                             Client: {projectMeta.client}
                           </span>
                         )}
-                    {isFullyVerified && (
-                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> Pack Verified
-                      </span>
-                    )}
-                  </div>
+                        {isFullyVerified && (
+                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" /> Pack Verified
+                          </span>
+                        )}
+                      </div>
 
-                  <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 mt-2.5 font-medium">
-                    {/* Date of deployment */}
-                    <span className="flex items-center gap-1.5 text-slate-800 font-semibold bg-white px-2 py-0.5 rounded-md border border-slate-200">
-                      <Calendar className="w-3.5 h-3.5 text-amber-600" />
-                      Deployment Date:{' '}
-                      <span className="text-amber-700 font-bold">{deploymentDate}</span>
-                    </span>
-
-                    <span className="flex items-center gap-1 text-slate-700">
-                      <Clock className="w-3.5 h-3.5 text-slate-400" />
-                      ETA Return: {returnDate}
-                    </span>
-
-                    {shootLoc ? (
-                      <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shootLoc)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-slate-700 hover:text-amber-600 transition-colors group cursor-pointer"
-                        title="Click to view address on Google Maps"
-                      >
-                        <MapPin className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                        <span className="group-hover:underline">{shootLoc}</span>
-                        <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                      </a>
-                    ) : (
-                      <span className="flex items-center gap-1 text-slate-400 italic">
-                        <MapPin className="w-3.5 h-3.5 text-slate-300" />
-                        No location set
-                      </span>
-                    )}
-
-                    <span className="flex items-center gap-1 text-slate-700">
-                      <User className="w-3.5 h-3.5 text-blue-500" />
-                      Lead: <strong>{leadDP}</strong>
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 self-end md:self-center flex-wrap">
-                  {/* Edit button placed to the left of Verify All */}
-                  <button
-                    onClick={() => handleOpenEditDeployment(projName)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700 transition-colors cursor-pointer shadow-2xs"
-                    title="Edit deployment details"
-                  >
-                    <Pencil className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Edit</span>
-                  </button>
-
-                  {items.length > 0 && (
-                    <>
-                      <button
-                        onClick={() => markAllVerified(items)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700 transition-colors cursor-pointer shadow-2xs"
-                        title="Mark all items verified for strike"
-                      >
-                        <PackageCheck className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>
-                          Verify All ({verifiedCount}/{items.length})
+                      <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 mt-2.5 font-medium">
+                        {/* Date of deployment */}
+                        <span className="flex items-center gap-1.5 text-slate-800 font-semibold bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                          <Calendar className="w-3.5 h-3.5 text-amber-600" />
+                          Deployment Date:{' '}
+                          <span className="text-amber-700 font-bold">{deploymentDate}</span>
                         </span>
+
+                        <span className="flex items-center gap-1 text-slate-700">
+                          <Clock className="w-3.5 h-3.5 text-slate-400" />
+                          ETA Return: {returnDate}
+                        </span>
+
+                        {shootLoc ? (
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shootLoc)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center gap-1 text-slate-700 hover:text-amber-600 transition-colors group cursor-pointer"
+                            title="Click to view address on Google Maps"
+                          >
+                            <MapPin className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                            <span className="group-hover:underline">{shootLoc}</span>
+                            <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                          </a>
+                        ) : (
+                          <span className="flex items-center gap-1 text-slate-400 italic">
+                            <MapPin className="w-3.5 h-3.5 text-slate-300" />
+                            No location set
+                          </span>
+                        )}
+
+                        <span className="flex items-center gap-1 text-slate-700">
+                          <User className="w-3.5 h-3.5 text-blue-500" />
+                          Lead: <strong>{leadDP}</strong>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end md:self-center flex-wrap">
+                      {/* Edit button placed to the left of Verify All */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenEditDeployment(projName);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700 transition-colors cursor-pointer shadow-2xs"
+                        title="Edit deployment details"
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Edit</span>
                       </button>
+
+                      {items.length > 0 && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              markAllVerified(items);
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700 transition-colors cursor-pointer shadow-2xs"
+                            title="Mark all items verified for strike"
+                          >
+                            <PackageCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>
+                              Verify All ({verifiedCount}/{items.length})
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (
+                                confirm(
+                                  `Check in all ${items.length} items from "${projName}" back to the cage?`
+                                )
+                              ) {
+                                if (onBatchCheckin) {
+                                  onBatchCheckin(items.map((i) => i.id));
+                                }
+                              }
+                            }}
+                            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                          >
+                            <ArrowDownLeft className="w-3.5 h-3.5 text-white" />
+                            <span>Return Full Kit</span>
+                          </button>
+                        </>
+                      )}
 
                       <button
-                        onClick={() => {
-                          if (
-                            confirm(
-                              `Check in all ${items.length} items from "${projName}" back to the cage?`
-                            )
-                          ) {
-                            if (onBatchCheckin) {
-                              onBatchCheckin(items.map((i) => i.id));
-                            }
-                          }
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleProjectExpand(projName);
                         }}
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                        className="p-1.5 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-slate-800 cursor-pointer shadow-2xs hover:bg-slate-50 transition-colors"
+                        title={isExpanded ? 'Collapse deployment' : 'Expand deployment'}
                       >
-                        <ArrowDownLeft className="w-3.5 h-3.5 text-white" />
-                        <span>Return Full Kit</span>
+                        {isExpanded ? (
+                          <ChevronUp className="w-4 h-4" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4" />
+                        )}
                       </button>
-                    </>
-                  )}
-
-                  <button
-                    onClick={() => toggleProjectExpand(projName)}
-                    className="p-1.5 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-slate-800 cursor-pointer shadow-2xs"
-                    title={isExpanded ? 'Collapse deployment' : 'Expand deployment'}
-                  >
-                    {isExpanded ? (
-                      <ChevronUp className="w-4 h-4" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
+                    </div>
+                  </div>
 
               {/* Drag Target Banner Indicator */}
               {isDragTarget && (
@@ -1647,8 +2201,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                         No equipment currently assigned to this deployment.
                       </p>
                       <p className="text-[11px] text-amber-700 font-semibold mt-1">
-                        Drag and drop equipment cards from other deployments or Available
-                        Equipment to allocate gear!
+                        Use the row below to type-search and allocate gear, or drag from Available Equipment!
                       </p>
                     </div>
                   ) : (
@@ -1687,6 +2240,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                             }
                           }}
                           onDrop={(e) => handleDropOnGearItem(e, item)}
+                          onContextMenu={(e) => handleEquipmentContextMenu(e, item, projName)}
                           className={`p-4 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                             isHoveredSwap
                               ? 'bg-amber-100/80 border-2 border-amber-500 shadow-md ring-2 ring-amber-400/50'
@@ -1698,10 +2252,10 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                           }`}
                         >
                           {/* Checkbox, Drag Handle & Item info */}
-                          <div className="flex items-start gap-3">
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
                             {/* Grip Drag Handle */}
                             <div
-                              className="mt-0.5 p-1 text-slate-400 hover:text-amber-600 hover:bg-slate-100 rounded cursor-grab active:cursor-grabbing transition-colors"
+                              className="mt-0.5 p-1 text-slate-400 hover:text-amber-600 hover:bg-slate-100 rounded cursor-grab active:cursor-grabbing transition-colors shrink-0"
                               title="Drag to swap or transfer between shoot deployments"
                             >
                               <GripVertical className="w-4 h-4" />
@@ -1709,7 +2263,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
 
                             <button
                               onClick={() => toggleChecklistItem(item.id)}
-                              className={`mt-0.5 w-5 h-5 rounded-md flex items-center justify-center border transition-all cursor-pointer ${
+                              className={`mt-0.5 w-5 h-5 rounded-md flex items-center justify-center border transition-all cursor-pointer shrink-0 ${
                                 isChecked
                                   ? 'bg-amber-500 border-amber-500 text-white'
                                   : 'border-slate-300 hover:border-amber-500 bg-white'
@@ -1721,35 +2275,41 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                               )}
                             </button>
 
-                            <div>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <button
-                                  type="button"
-                                  onClick={() => onSelectGear(item)}
-                                  className="font-mono text-xs font-bold text-amber-800 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded border border-amber-200 cursor-pointer transition-colors"
-                                  title="Click to view equipment details"
-                                >
-                                  {item.assetTag}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => onSelectGear(item)}
-                                  className="text-xs sm:text-sm font-bold text-slate-900 hover:text-amber-600 transition-colors text-left cursor-pointer hover:underline"
-                                  title="Click to open equipment details"
-                                >
-                                  {item.name}
-                                </button>
-                                {item.kitName && (
-                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 font-medium">
-                                    {item.kitName}
-                                  </span>
-                                )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-3">
+                                {/* Standardised Asset Tag Column (matching Inventory page tag size & uniform column alignment) */}
+                                <div className="w-[125px] sm:w-[130px] shrink-0 flex items-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => onSelectGear(item)}
+                                    className="font-mono font-bold text-xs text-amber-900 hover:text-amber-950 px-2.5 py-0.5 rounded-md bg-amber-50 hover:bg-amber-100 border border-amber-200 cursor-pointer whitespace-nowrap inline-flex items-center shadow-2xs transition-colors"
+                                    title="Click to view equipment details"
+                                  >
+                                    {item.assetTag}
+                                  </button>
+                                </div>
 
-                                {isHoveredSwap && (
-                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-white font-bold flex items-center gap-1 shadow-2xs">
-                                    <ArrowLeftRight className="w-3 h-3" /> Drop to Swap
-                                  </span>
-                                )}
+                                <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => onSelectGear(item)}
+                                    className="text-xs sm:text-sm font-bold text-slate-900 hover:text-amber-600 transition-colors text-left cursor-pointer hover:underline truncate"
+                                    title="Click to open equipment details"
+                                  >
+                                    {item.name}
+                                  </button>
+                                  {item.kitName && (
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 font-medium shrink-0">
+                                      {item.kitName}
+                                    </span>
+                                  )}
+
+                                  {isHoveredSwap && (
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-white font-bold flex items-center gap-1 shadow-2xs shrink-0">
+                                      <ArrowLeftRight className="w-3 h-3" /> Drop to Swap
+                                    </span>
+                                  )}
+                                </div>
                               </div>
 
                               <div className="text-[11px] text-slate-500 flex flex-wrap items-center gap-3 mt-1.5 font-medium">
@@ -1844,6 +2404,14 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                       );
                     })
                   )}
+
+                  {/* Empty line under the last item of each deployment */}
+                  <InlineAddGearRow
+                    projectName={projName}
+                    theme={theme}
+                    availableGear={availableGear}
+                    onAddGear={handleTransferGearToProject}
+                  />
                 </div>
               )}
             </div>
@@ -1857,7 +2425,6 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
       {/* ========================================================================= */}
       {isAddDeploymentOpen && (
         <div
-          onClick={() => setIsAddDeploymentOpen(false)}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto"
         >
           <div
@@ -1886,7 +2453,13 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleCreateDeployment} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+            <form
+              onSubmit={handleCreateDeployment}
+              autoComplete="off"
+              data-lpignore="true"
+              data-1p-ignore="true"
+              className="p-6 space-y-4 max-h-[75vh] overflow-y-auto"
+            >
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                   Deployment / Project Name *
@@ -1894,6 +2467,9 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                 <input
                   type="text"
                   required
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   value={newProjName}
                   onChange={(e) => setNewProjName(e.target.value)}
                   placeholder="e.g. Commercial Day 3 - Mojave Exterior"
@@ -1911,6 +2487,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                   <input
                     type="date"
                     required
+                    autoComplete="off"
                     value={newProjDeploymentDate}
                     onChange={(e) => setNewProjDeploymentDate(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-semibold focus:outline-none focus:bg-white focus:border-amber-500 transition-colors cursor-pointer"
@@ -1926,6 +2503,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                   <input
                     type="date"
                     required
+                    autoComplete="off"
                     value={newProjReturnDate}
                     onChange={(e) => setNewProjReturnDate(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-semibold focus:outline-none focus:bg-white focus:border-amber-500 transition-colors cursor-pointer"
@@ -1955,15 +2533,13 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                       </a>
                     )}
                   </div>
-                  <input
-                    type="text"
+                  <AddressAutocompleteInput
                     value={newProjLocation}
-                    onChange={(e) => setNewProjLocation(e.target.value)}
+                    onChange={setNewProjLocation}
                     placeholder="e.g. 1438 N Gower St, Hollywood, CA"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-medium focus:outline-none focus:bg-white focus:border-amber-500 transition-colors"
                   />
                   <p className="text-[10px] text-slate-400 mt-1">
-                    Enter street address, studio stage, or landmark for Google Maps lookup
+                    Enter street address, studio stage, or landmark for Google Maps suggestions
                   </p>
                 </div>
 
@@ -1973,6 +2549,9 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                   </label>
                   <input
                     type="text"
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     value={newProjClient}
                     onChange={(e) => setNewProjClient(e.target.value)}
                     placeholder="e.g. Apex Automotive Studios"
@@ -1990,6 +2569,9 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                   </label>
                   <input
                     type="text"
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     value={newProjLeadDP}
                     onChange={(e) => setNewProjLeadDP(e.target.value)}
                     placeholder="e.g. Devon Brooks"
@@ -2003,6 +2585,9 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                   </label>
                   <input
                     type="email"
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     value={newProjEmail}
                     onChange={(e) => setNewProjEmail(e.target.value)}
                     placeholder="devon.dp@production.com"
@@ -2115,7 +2700,6 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
       {/* ========================================================================= */}
       {editingDeploymentName && (
         <div
-          onClick={() => setEditingDeploymentName(null)}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto"
         >
           <div
@@ -2145,7 +2729,13 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSaveEditDeployment} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+            <form
+              onSubmit={handleSaveEditDeployment}
+              autoComplete="off"
+              data-lpignore="true"
+              data-1p-ignore="true"
+              className="p-6 space-y-4 max-h-[75vh] overflow-y-auto"
+            >
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                   Deployment / Project Name *
@@ -2153,6 +2743,9 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                 <input
                   type="text"
                   required
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   value={editProjName}
                   onChange={(e) => setEditProjName(e.target.value)}
                   placeholder="e.g. Commercial Day 3 - Mojave Exterior"
@@ -2170,6 +2763,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                   <input
                     type="date"
                     required
+                    autoComplete="off"
                     value={editProjDeploymentDate}
                     onChange={(e) => setEditProjDeploymentDate(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-semibold focus:outline-none focus:bg-white focus:border-amber-500 transition-colors cursor-pointer"
@@ -2185,6 +2779,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                   <input
                     type="date"
                     required
+                    autoComplete="off"
                     value={editProjReturnDate}
                     onChange={(e) => setEditProjReturnDate(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-semibold focus:outline-none focus:bg-white focus:border-amber-500 transition-colors cursor-pointer"
@@ -2214,15 +2809,13 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                       </a>
                     )}
                   </div>
-                  <input
-                    type="text"
+                  <AddressAutocompleteInput
                     value={editProjLocation}
-                    onChange={(e) => setEditProjLocation(e.target.value)}
+                    onChange={setEditProjLocation}
                     placeholder="e.g. 1438 N Gower St, Hollywood, CA"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-medium focus:outline-none focus:bg-white focus:border-amber-500 transition-colors"
                   />
                   <p className="text-[10px] text-slate-400 mt-1">
-                    Enter street address, studio stage, or landmark for Google Maps lookup
+                    Enter street address, studio stage, or landmark for Google Maps suggestions
                   </p>
                 </div>
 
@@ -2232,6 +2825,9 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                   </label>
                   <input
                     type="text"
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     value={editProjClient}
                     onChange={(e) => setEditProjClient(e.target.value)}
                     placeholder="e.g. Apex Automotive Studios"
@@ -2249,6 +2845,9 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                   </label>
                   <input
                     type="text"
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     value={editProjLeadDP}
                     onChange={(e) => setEditProjLeadDP(e.target.value)}
                     placeholder="e.g. Devon Brooks"
@@ -2262,6 +2861,9 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                   </label>
                   <input
                     type="email"
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     value={editProjEmail}
                     onChange={(e) => setEditProjEmail(e.target.value)}
                     placeholder="devon.dp@production.com"
@@ -2396,6 +2998,39 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
             </div>
           );
         })(),
+        document.body
+      )}
+
+      {/* Equipment Right-Click Context Menu Portal */}
+      {equipmentContextMenu && equipmentContextMenu.isOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          onClick={(e) => e.stopPropagation()}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          style={{
+            top: `${equipmentContextMenu.y}px`,
+            left: `${equipmentContextMenu.x}px`,
+          }}
+          className="equipment-context-menu fixed z-[99999] min-w-[120px] bg-white rounded-xl shadow-xl border border-slate-200 p-1 text-xs animate-in fade-in-0 zoom-in-95 select-none"
+        >
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteGearFromDeployment(
+                equipmentContextMenu.item,
+                equipmentContextMenu.projectName
+              );
+              setEquipmentContextMenu(null);
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-rose-600 hover:bg-rose-50 font-semibold transition-colors text-left cursor-pointer group"
+          >
+            <Trash2 className="w-4 h-4 text-rose-500 group-hover:scale-110 transition-transform" />
+            <span>Delete</span>
+          </button>
+        </div>,
         document.body
       )}
     </div>

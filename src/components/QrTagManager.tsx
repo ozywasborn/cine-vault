@@ -192,6 +192,11 @@ export const QrTagManager: React.FC<QrTagManagerProps> = ({
                 <div className="flex gap-2">
                   <input
                     type="text"
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    autoCorrect="off"
+                    spellCheck={false}
                     placeholder="Enter tag (e.g. CAM-ALEXA-01, CAM-FX6-02)..."
                     value={scanInputText}
                     onChange={(e) => setScanInputText(e.target.value)}
@@ -331,6 +336,10 @@ export const QrTagManager: React.FC<QrTagManagerProps> = ({
           </h3>
           <input
             type="text"
+            autoComplete="off"
+            data-lpignore="true"
+            data-1p-ignore="true"
+            spellCheck={false}
             placeholder="Quick search gear..."
             value={searchFilter}
             onChange={(e) => setSearchFilter(e.target.value)}

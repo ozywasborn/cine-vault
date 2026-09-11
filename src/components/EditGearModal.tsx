@@ -206,7 +206,7 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
             id: `maint-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
             gearId: item.id,
             date: newDate,
-            serviceType: 'Routine Service',
+            serviceType: 'General Servicing',
             technician: currentUser.name || 'Field Tech',
             vendor: '',
             cost: 0,
@@ -314,7 +314,8 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
     'Optical Inspection',
     'Shutter Repair',
     'Cable Re-termination',
-    'General Overhaul',
+    'Part Replacement',
+    'General Servicing',
   ];
 
   const categories: GearCategory[] = [
@@ -385,7 +386,7 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
         <div className="py-7 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
           <Wrench className="w-6 h-6 text-slate-400 mx-auto mb-1.5" />
           <p className="text-xs font-semibold text-slate-700">No service records for this equipment yet</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Log sensor cleanings, optical overhauls, and repairs directly here.</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Log sensor cleanings, general servicing, part replacements, and repairs directly here.</p>
           {!isAuditor && (
             <button
               type="button"
@@ -448,6 +449,9 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                       }
                       className="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:border-amber-500"
                     >
+                      {rec.serviceType === 'General Overhaul' && (
+                        <option value="General Overhaul">General Overhaul (Legacy)</option>
+                      )}
                       {serviceTypes.map((st) => (
                         <option key={st} value={st}>
                           {st}
@@ -462,6 +466,7 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                     </label>
                     <input
                       type="date"
+                      autoComplete="off"
                       value={rec.date || ''}
                       disabled={isAuditor}
                       onChange={(e) => handleUpdateRecord(rec.id, 'date', e.target.value)}
@@ -475,6 +480,9 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                     </label>
                     <input
                       type="text"
+                      autoComplete="off"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
                       value={rec.technician || ''}
                       disabled={isAuditor}
                       onChange={(e) => handleUpdateRecord(rec.id, 'technician', e.target.value)}
@@ -488,6 +496,9 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                     </label>
                     <input
                       type="text"
+                      autoComplete="off"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
                       value={rec.vendor || ''}
                       disabled={isAuditor}
                       onChange={(e) => handleUpdateRecord(rec.id, 'vendor', e.target.value)}
@@ -502,6 +513,9 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                     </label>
                     <input
                       type="number"
+                      autoComplete="off"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
                       min="0"
                       step="any"
                       value={rec.cost !== undefined ? rec.cost : 0}
@@ -547,6 +561,7 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                     </label>
                     <input
                       type="date"
+                      autoComplete="off"
                       value={rec.nextServiceDueDate || ''}
                       disabled={isAuditor}
                       onChange={(e) =>
@@ -562,6 +577,9 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                     </label>
                     <input
                       type="text"
+                      autoComplete="off"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
                       value={rec.notes || ''}
                       disabled={isAuditor}
                       onChange={(e) => handleUpdateRecord(rec.id, 'notes', e.target.value)}
@@ -672,7 +690,14 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
         </div>
 
         {/* Form Container */}
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col flex-1 min-h-0">
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          autoComplete="off"
+          data-lpignore="true"
+          data-1p-ignore="true"
+          className="flex flex-col flex-1 min-h-0"
+        >
           {/* Scrollable Tab Content Body */}
           <div className="p-6 flex-1 overflow-y-auto min-h-0 text-xs">
             {/* Tab 1: General & Status */}
@@ -683,6 +708,11 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                     <label className="block text-slate-700 font-semibold mb-1">Asset Tag</label>
                     <input
                       type="text"
+                      autoComplete="off"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
+                      autoCorrect="off"
+                      spellCheck={false}
                       value={assetTag}
                       disabled={isAuditor}
                       onChange={(e) => setAssetTag(e.target.value)}
@@ -702,6 +732,9 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                     </div>
                     <input
                       type="text"
+                      autoComplete="off"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
                       value={name}
                       disabled={isAuditor}
                       onChange={(e) => setName(e.target.value)}
@@ -731,6 +764,9 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                     <label className="block text-slate-700 font-semibold mb-1">Brand / Manufacturer</label>
                     <input
                       type="text"
+                      autoComplete="off"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
                       value={brand}
                       disabled={isAuditor}
                       onChange={(e) => setBrand(e.target.value)}
@@ -743,6 +779,9 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                     <label className="block text-slate-700 font-semibold mb-1">Model Name</label>
                     <input
                       type="text"
+                      autoComplete="off"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
                       value={model}
                       disabled={isAuditor}
                       onChange={(e) => setModel(e.target.value)}
@@ -755,6 +794,11 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                     <label className="block text-slate-700 font-semibold mb-1">Serial Number</label>
                     <input
                       type="text"
+                      autoComplete="off"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
+                      autoCorrect="off"
+                      spellCheck={false}
                       value={serialNumber}
                       disabled={isAuditor}
                       onChange={(e) => setSerialNumber(e.target.value)}
@@ -846,6 +890,9 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                     <label className="block text-slate-700 font-semibold mb-1">Production Kit Allocation (Optional)</label>
                     <input
                       type="text"
+                      autoComplete="off"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
                       value={kitName}
                       disabled={isAuditor}
                       onChange={(e) => setKitName(e.target.value)}
@@ -860,6 +907,7 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                     <label className="block text-slate-700 font-semibold mb-1">Purchase Date</label>
                     <input
                       type="date"
+                      autoComplete="off"
                       value={purchaseDate}
                       disabled={isAuditor}
                       onChange={(e) => setPurchaseDate(e.target.value)}
@@ -871,6 +919,9 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                     <label className="block text-slate-700 font-semibold mb-1">Purchase Price ($ USD)</label>
                     <input
                       type="number"
+                      autoComplete="off"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
                       step="any"
                       value={purchasePrice}
                       disabled={isAuditor}
@@ -886,6 +937,7 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                     <label className="block text-slate-700 font-semibold mb-1">Last Serviced Date</label>
                     <input
                       type="date"
+                      autoComplete="off"
                       value={lastServiceDate}
                       disabled={isAuditor}
                       onChange={(e) => handleLastServiceDateChange(e.target.value)}
@@ -897,6 +949,9 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                     <label className="block text-slate-700 font-semibold mb-1">Service Interval (Days)</label>
                     <input
                       type="number"
+                      autoComplete="off"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
                       min="1"
                       value={maintenanceIntervalDays}
                       disabled={isAuditor}
@@ -949,6 +1004,9 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                           <div key={index} className="flex items-center gap-2">
                             <input
                               type="text"
+                              autoComplete="off"
+                              data-lpignore="true"
+                              data-1p-ignore="true"
                               value={spec.key}
                               disabled={isAuditor}
                               onChange={(e) => handleUpdateSpec(index, 'key', e.target.value)}
@@ -957,6 +1015,9 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                             />
                             <input
                               type="text"
+                              autoComplete="off"
+                              data-lpignore="true"
+                              data-1p-ignore="true"
                               value={spec.value}
                               disabled={isAuditor}
                               onChange={(e) => handleUpdateSpec(index, 'value', e.target.value)}
@@ -982,6 +1043,9 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                       <div className="flex items-center gap-2 pt-2 border-t border-slate-200/70">
                         <input
                           type="text"
+                          autoComplete="off"
+                          data-lpignore="true"
+                          data-1p-ignore="true"
                           value={newSpecKey}
                           onChange={(e) => setNewSpecKey(e.target.value)}
                           placeholder="New Spec (e.g. Sensor Size)"
@@ -989,6 +1053,9 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                         />
                         <input
                           type="text"
+                          autoComplete="off"
+                          data-lpignore="true"
+                          data-1p-ignore="true"
                           value={newSpecValue}
                           onChange={(e) => setNewSpecValue(e.target.value)}
                           placeholder="Value (e.g. Large Format 36.7 x 25.54 mm)"

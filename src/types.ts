@@ -37,11 +37,22 @@ export interface UserAccount {
   department: string;
 }
 
+export type ServiceType =
+  | 'Sensor Cleaning'
+  | 'Firmware Update'
+  | 'Calibration'
+  | 'Optical Inspection'
+  | 'Shutter Repair'
+  | 'Cable Re-termination'
+  | 'Part Replacement'
+  | 'General Servicing'
+  | 'General Overhaul';
+
 export interface MaintenanceRecord {
   id: string;
   gearId: string;
   date: string;
-  serviceType: 'Sensor Cleaning' | 'Firmware Update' | 'Calibration' | 'Optical Inspection' | 'Shutter Repair' | 'Cable Re-termination' | 'General Overhaul';
+  serviceType: ServiceType;
   technician: string;
   vendor?: string;
   cost: number;

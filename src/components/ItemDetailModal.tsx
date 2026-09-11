@@ -265,6 +265,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
               {!isAuditor && onUpdateGear ? (
                 <input
                   type="date"
+                  autoComplete="off"
                   value={item.lastServiceDate || ''}
                   onChange={(e) => {
                     const newDate = e.target.value || undefined;

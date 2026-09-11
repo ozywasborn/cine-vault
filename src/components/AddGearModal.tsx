@@ -123,7 +123,13 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 text-xs">
+        <form
+          onSubmit={handleSubmit}
+          autoComplete="off"
+          data-lpignore="true"
+          data-1p-ignore="true"
+          className="p-6 space-y-5 text-xs"
+        >
           {/* Core Identification & Classification Section */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5 pb-1 border-b border-slate-100">
@@ -136,6 +142,11 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
                 <label className="block text-slate-700 font-semibold mb-1">Asset Tag (ID) *</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
+                  autoCorrect="off"
+                  spellCheck={false}
                   value={assetTag}
                   onChange={(e) => setAssetTag(e.target.value)}
                   placeholder="e.g. CAM-RED-02, LNS-35-01"
@@ -167,6 +178,9 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
                 <label className="block text-slate-700 font-semibold mb-1">Equipment Name *</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Canon C300 Mark III Cinema Body"
@@ -179,6 +193,9 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
                 <label className="block text-slate-700 font-semibold mb-1">Brand / Manufacturer</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   value={brand}
                   onChange={(e) => setBrand(e.target.value)}
                   placeholder="e.g. Canon, Sony, ARRI, Cooke"
@@ -190,6 +207,9 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
                 <label className="block text-slate-700 font-semibold mb-1">Model</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
                   placeholder="e.g. EOS C300 Mark III, FX9, Mini LF"
@@ -201,6 +221,11 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
                 <label className="block text-slate-700 font-semibold mb-1">Serial Number</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
+                  autoCorrect="off"
+                  spellCheck={false}
                   value={serialNumber}
                   onChange={(e) => setSerialNumber(e.target.value)}
                   placeholder="e.g. SN-558291"
@@ -267,6 +292,9 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
                 <label className="block text-slate-700 font-semibold mb-1">Kit Assignment (Optional)</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   value={kitName}
                   onChange={(e) => setKitName(e.target.value)}
                   placeholder="e.g. A-Cam Commercial Rig"
@@ -288,6 +316,7 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
                 <label className="block text-slate-700 font-semibold mb-1">Purchase Date</label>
                 <input
                   type="date"
+                  autoComplete="off"
                   value={purchaseDate}
                   onChange={(e) => setPurchaseDate(e.target.value)}
                   className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 focus:outline-none focus:bg-white focus:border-amber-500 font-medium"
@@ -298,6 +327,9 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
                 <label className="block text-slate-700 font-semibold mb-1">Cost of Purchase ($ USD)</label>
                 <input
                   type="number"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   value={purchasePrice}
                   onChange={(e) => setPurchasePrice(e.target.value)}
                   placeholder="e.g. 8500"
@@ -309,6 +341,7 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
                 <label className="block text-slate-700 font-semibold mb-1">Last Serviced Date</label>
                 <input
                   type="date"
+                  autoComplete="off"
                   value={lastServiceDate}
                   onChange={(e) => setLastServiceDate(e.target.value)}
                   className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 font-medium font-mono"
