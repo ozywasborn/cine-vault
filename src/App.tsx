@@ -13,6 +13,7 @@ import {
   AddGearModal,
   ItemDetailModal,
   EditGearModal,
+  EditModalTab,
   NotificationsDrawer,
   GoogleSheetsModal,
 } from './components';
@@ -24,6 +25,7 @@ import {
   InventoryNotification,
   UserAccount,
   ConditionRating,
+  DEFAULT_GEAR_CATEGORIES,
 } from './types';
 import {
   INITIAL_GEAR,
@@ -39,7 +41,7 @@ import {
   saveStoredSheetsConfig,
   googleSheetsService,
 } from './services/googleSheetsService';
-import { normalizeDateToYMD } from './utils/dateUtils';
+import { normalizeDateToYMD, formatDateDDMMYYYY } from './utils/dateUtils';
 
 const LOCAL_STORAGE_GEAR_KEY = 'cinevault_live_gear_v2';
 const LOCAL_STORAGE_MAINT_KEY = 'cinevault_live_maint_v2';
@@ -148,8 +150,25 @@ export default function App() {
   // Item interaction states
   const [selectedGearItem, setSelectedGearItem] = useState<GearItem | null>(null);
   const [editingGearItem, setEditingGearItem] = useState<GearItem | null>(null);
+  const [editGearInitialTab, setEditGearInitialTab] = useState<EditModalTab>('general');
   const [checkoutQueue, setCheckoutQueue] = useState<GearItem[]>([]);
   const [checkinTarget, setCheckinTarget] = useState<GearItem | null>(null);
+
+  // Dynamic custom categories persisted locally
+  const [customCategories, setCustomCategories] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('cinevault_custom_categories_v1');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [selectedCategoryForAdd, setSelectedCategoryForAdd] = useState<string | undefined>(undefined);
+
+  const handleOpenEditGear = (item: GearItem, tab: EditModalTab = 'general') => {
+    setEditingGearItem(item);
+    setEditGearInitialTab(tab);
+  };
 
   // Derived state: equipment service dates ALWAYS follow the latest date input under Individual Maintenance records
   const synchronizedGear = useMemo(() => {
@@ -158,12 +177,19 @@ export default function App() {
         .filter((m) => m.gearId === item.id && m.date && String(m.date).trim())
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       const latest = itemRecs[0];
-      if (!latest) return item;
+      if (!latest) {
+        return {
+          ...item,
+          lastServiceDate: item.lastServiceDate ? item.lastServiceDate.split('T')[0] : item.lastServiceDate,
+          nextServiceDate: item.nextServiceDate ? item.nextServiceDate.split('T')[0] : item.nextServiceDate,
+        };
+      }
 
-      let nextDue = latest.nextServiceDueDate ? String(latest.nextServiceDueDate).trim() : undefined;
-      if (!nextDue && latest.date) {
+      const normalizedLastDate = latest.date ? latest.date.split('T')[0] : '';
+      let nextDue = latest.nextServiceDueDate ? String(latest.nextServiceDueDate).trim().split('T')[0] : undefined;
+      if (!nextDue && normalizedLastDate) {
         try {
-          const d = new Date(latest.date);
+          const d = new Date(normalizedLastDate);
           if (!isNaN(d.getTime())) {
             const interval = item.maintenanceIntervalDays || 120;
             d.setDate(d.getDate() + interval);
@@ -174,11 +200,49 @@ export default function App() {
 
       return {
         ...item,
-        lastServiceDate: latest.date,
-        nextServiceDate: nextDue || item.nextServiceDate,
+        lastServiceDate: normalizedLastDate,
+        nextServiceDate: nextDue || (item.nextServiceDate ? item.nextServiceDate.split('T')[0] : item.nextServiceDate),
       };
     });
   }, [gear, maintenance]);
+
+  const allCategories = useMemo(() => {
+    return Array.from(
+      new Set([
+        ...DEFAULT_GEAR_CATEGORIES,
+        ...synchronizedGear.map((g) => g.category),
+        ...customCategories,
+      ])
+    );
+  }, [synchronizedGear, customCategories]);
+
+  const handleAddCategory = (newCat: string, _colorId?: string) => {
+    setCustomCategories((prev) => {
+      if (prev.includes(newCat)) return prev;
+      const updated = [...prev, newCat];
+      try {
+        localStorage.setItem('cinevault_custom_categories_v1', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    const now = new Date().toISOString();
+    const auditEntry: AuditLog = {
+      id: `audit-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      timestamp: now,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userRole: currentUser.role,
+      provider: currentUser.provider,
+      action: 'CREATE',
+      targetAssetTag: newCat,
+      targetName: newCat,
+      details: `Created new inventory category: "${newCat}"`,
+      ipOrDevice: 'Web Client',
+    };
+    setAuditLogs((prev) => [auditEntry, ...prev]);
+    showToast(`Category "${newCat}" created`);
+  };
 
   // Continuous Real-Time Synchronization
   useEffect(() => {
@@ -296,12 +360,24 @@ export default function App() {
           if (res.success) {
             if (res.gear && res.gear.length > 0) {
               setGear((prevLocal) => {
-                if (prevLocal.length > res.gear!.length) {
-                  const remoteIds = new Set(res.gear!.map((g) => g.id));
-                  const missingFromRemote = prevLocal.filter((g) => !remoteIds.has(g.id));
-                  return [...res.gear!, ...missingFromRemote];
-                }
-                return res.gear!;
+                const merged = res.gear!.map((remoteItem) => {
+                  const localItem = prevLocal.find((l) => l.id === remoteItem.id || l.assetTag === remoteItem.assetTag);
+                  let comps = remoteItem.components;
+                  if (typeof comps === 'string') {
+                    try { comps = JSON.parse(comps); } catch { comps = undefined; }
+                  }
+                  if ((!comps || !Array.isArray(comps)) && localItem?.components && Array.isArray(localItem.components)) {
+                    comps = localItem.components;
+                  }
+                  return {
+                    ...remoteItem,
+                    components: Array.isArray(comps) ? comps : (localItem?.components || undefined),
+                  };
+                });
+                const remoteIds = new Set(res.gear!.map((g) => g.id));
+                const remoteTags = new Set(res.gear!.map((g) => g.assetTag));
+                const missingFromRemote = prevLocal.filter((g) => !remoteIds.has(g.id) && !remoteTags.has(g.assetTag));
+                return [...merged, ...missingFromRemote];
               });
             }
             if (res.projects && res.projects.length > 0) {
@@ -415,6 +491,7 @@ export default function App() {
       nextServiceDate: nextDue,
       maintenanceIntervalDays: interval,
       notes: newItemData.notes,
+      components: newItemData.components,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -471,21 +548,24 @@ export default function App() {
 
     // If finalItem.lastServiceDate is provided, ensure maintenance records have a matching entry
     if (finalItem.lastServiceDate && String(finalItem.lastServiceDate).trim()) {
+      const normalizedFinalDate = String(finalItem.lastServiceDate).split('T')[0];
       setMaintenance((prevMaint) => {
-        const itemRecs = prevMaint
-          .filter((m) => m.gearId === finalItem.id && m.date && String(m.date).trim())
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        const latest = itemRecs[0];
-        if (!latest || latest.date !== finalItem.lastServiceDate) {
+        const itemRecs = prevMaint.filter(
+          (m) => m.gearId === finalItem.id && m.date && String(m.date).trim()
+        );
+        const hasMatchingDate = itemRecs.some(
+          (m) => (m.date ? String(m.date).split('T')[0] : '') === normalizedFinalDate
+        );
+        if (!hasMatchingDate) {
           const newRec: MaintenanceRecord = {
             id: `maint-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
             gearId: finalItem.id,
-            date: finalItem.lastServiceDate,
+            date: normalizedFinalDate,
             serviceType: 'General Servicing',
             technician: currentUser.name || 'Field Tech',
             cost: 0,
             conditionAfter: finalItem.condition || 'Good',
-            nextServiceDueDate: finalItem.nextServiceDate || '',
+            nextServiceDueDate: finalItem.nextServiceDate ? String(finalItem.nextServiceDate).split('T')[0] : '',
             resolved: true,
             notes: 'Service logged via inventory updates',
           };
@@ -894,7 +974,13 @@ export default function App() {
     updatedRecords: MaintenanceRecord[],
     shouldSyncGear = false
   ) => {
-    const validRecords = [...updatedRecords]
+    const normalizedRecords = updatedRecords.map((r) => ({
+      ...r,
+      date: r.date ? String(r.date).split('T')[0] : '',
+      nextServiceDueDate: r.nextServiceDueDate ? String(r.nextServiceDueDate).split('T')[0] : '',
+    }));
+
+    const validRecords = [...normalizedRecords]
       .filter((r) => r.date && String(r.date).trim())
       .sort((a, b) => {
         const timeA = new Date(a.date).getTime();
@@ -907,7 +993,7 @@ export default function App() {
     let newCombined: MaintenanceRecord[] = [];
     setMaintenance((prevMaintenance) => {
       const otherGearRecords = prevMaintenance.filter((r) => r.gearId !== gearId);
-      newCombined = [...updatedRecords, ...otherGearRecords].sort((a, b) => {
+      newCombined = [...normalizedRecords, ...otherGearRecords].sort((a, b) => {
         const timeA = a.date ? new Date(a.date).getTime() : 0;
         const timeB = b.date ? new Date(b.date).getTime() : 0;
         return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
@@ -939,8 +1025,8 @@ export default function App() {
             }
             return {
               ...g,
-              lastServiceDate: latest.date,
-              nextServiceDate: nextDue || g.nextServiceDate,
+              lastServiceDate: latest.date ? latest.date.split('T')[0] : '',
+              nextServiceDate: nextDue ? nextDue.split('T')[0] : (g.nextServiceDate ? g.nextServiceDate.split('T')[0] : undefined),
               updatedAt: new Date().toISOString(),
             };
           }
@@ -962,7 +1048,7 @@ export default function App() {
 
     // 3. Sync individual maintenance record operations to backend API
     const previousForGear = maintenance.filter((r) => r.gearId === gearId);
-    const updatedIds = new Set(updatedRecords.map((r) => r.id));
+    const updatedIds = new Set(normalizedRecords.map((r) => r.id));
     const deletedRecords = previousForGear.filter((r) => !updatedIds.has(r.id));
     const previousMap = new Map(previousForGear.map((r) => [r.id, r]));
 
@@ -970,7 +1056,7 @@ export default function App() {
       for (const del of deletedRecords) {
         await apiClient.deleteMaintenance(del.id, currentUser);
       }
-      for (const rec of updatedRecords) {
+      for (const rec of normalizedRecords) {
         if (!previousMap.has(rec.id)) {
           await apiClient.addMaintenance(rec, currentUser);
         } else {
@@ -1024,7 +1110,7 @@ export default function App() {
       'Purchase Date',
       'Serial Number',
       'Last Serviced Date',
-      'Purchase Cost',
+      'Purchase Cost (SGD)',
     ];
     const rows = synchronizedGear.map((g) => [
       g.assetTag,
@@ -1035,16 +1121,16 @@ export default function App() {
       g.status,
       g.condition,
       `"${(g.location || '').replace(/"/g, '""')}"`,
-      g.purchaseDate || '',
+      g.purchaseDate ? formatDateDDMMYYYY(g.purchaseDate) : '',
       g.serialNumber,
-      g.lastServiceDate || 'Never',
+      g.lastServiceDate ? formatDateDDMMYYYY(g.lastServiceDate) : 'Never',
       g.purchasePrice || 0,
     ]);
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `cinevault-inventory-${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `cinevault-inventory-${formatDateDDMMYYYY(new Date())}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1146,12 +1232,21 @@ export default function App() {
           <InventoryView
             gear={synchronizedGear}
             currentUser={currentUser}
+            categories={allCategories}
+            onAddCategory={handleAddCategory}
+            onOpenAddModalWithCategory={(cat) => {
+              setSelectedCategoryForAdd(cat);
+              setIsAddGearOpen(true);
+            }}
             onSelectGear={(item) => setSelectedGearItem(item)}
-            onEditGear={(item) => setEditingGearItem(item)}
+            onEditGear={handleOpenEditGear}
             onUpdateGear={handleUpdateGear}
             onDuplicateGear={handleDuplicateGear}
             onDeleteGear={handleDeleteGear}
-            onOpenAddModal={() => setIsAddGearOpen(true)}
+            onOpenAddModal={() => {
+              setSelectedCategoryForAdd(undefined);
+              setIsAddGearOpen(true);
+            }}
             onOpenCheckoutModal={openCheckoutForItems}
             onOpenCheckinModal={openCheckinForItem}
             onOpenQrModal={(item) => {
@@ -1165,7 +1260,10 @@ export default function App() {
             onExportCsv={handleExportCsv}
             onCheckoutGear={(item) => openCheckoutForItems([item])}
             onCheckinGear={openCheckinForItem}
-            onAddGearClick={() => setIsAddGearOpen(true)}
+            onAddGearClick={() => {
+              setSelectedCategoryForAdd(undefined);
+              setIsAddGearOpen(true);
+            }}
             onBatchCheckout={openCheckoutForItems}
           />
         )}
@@ -1285,9 +1383,14 @@ export default function App() {
 
       <AddGearModal
         isOpen={isAddGearOpen}
-        onClose={() => setIsAddGearOpen(false)}
+        onClose={() => {
+          setIsAddGearOpen(false);
+          setSelectedCategoryForAdd(undefined);
+        }}
         currentUser={currentUser}
         onAddGear={handleAddGear}
+        categories={allCategories}
+        initialCategory={selectedCategoryForAdd}
       />
 
       <ItemDetailModal
@@ -1302,7 +1405,7 @@ export default function App() {
           setActiveTab('maintenance');
           setSelectedGearItem(null);
         }}
-        onEditGear={(item) => setEditingGearItem(item)}
+        onEditGear={handleOpenEditGear}
         onUpdateGear={handleUpdateGear}
       />
 
@@ -1315,6 +1418,8 @@ export default function App() {
         maintenanceRecords={maintenance}
         onSaveMaintenanceRecords={handleSaveGearMaintenance}
         onSwitchUser={handleSwitchUser}
+        initialTab={editGearInitialTab}
+        categories={allCategories}
       />
 
       <NotificationsDrawer

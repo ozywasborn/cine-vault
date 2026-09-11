@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { UserAccount, UserRole, AuditLog } from '../types';
 import { INITIAL_USERS } from '../data/mockData';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface UserAuthModalProps {
   isOpen: boolean;
@@ -296,7 +297,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                     </div>
 
                     <div className="text-[10px] text-slate-400 font-mono shrink-0">
-                      {new Date(log.timestamp).toLocaleString()}
+                      {formatDateDDMMYYYY(log.timestamp)} {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
                 ))}

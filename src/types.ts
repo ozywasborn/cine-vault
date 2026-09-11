@@ -7,7 +7,20 @@ export type GearCategory =
   | 'Drones & Gimbals'
   | 'Power & Batteries'
   | 'Media & Storage'
-  | 'Accessories';
+  | 'Accessories'
+  | (string & {});
+
+export const DEFAULT_GEAR_CATEGORIES: GearCategory[] = [
+  'Cameras',
+  'Lenses',
+  'Lighting',
+  'Audio',
+  'Grip & Support',
+  'Drones & Gimbals',
+  'Power & Batteries',
+  'Media & Storage',
+  'Accessories',
+];
 
 export type GearStatus =
   | 'Available'
@@ -82,6 +95,14 @@ export interface CheckoutRecord {
   returnNotes?: string;
 }
 
+export interface GearComponent {
+  id: string;
+  name: string;              // e.g. "Bodypack Transmitter SK 100 G3"
+  serialNumber: string;      // e.g. "SN-TX-449821"
+  condition?: ConditionRating;
+  notes?: string;
+}
+
 export interface GearItem {
   id: string;
   assetTag: string;
@@ -105,6 +126,7 @@ export interface GearItem {
   imageUrl?: string;
   notes?: string;
   totalShootsCompleted?: number;
+  components?: GearComponent[]; // Sub-items within a kit set, each with unique serial numbers
   createdAt?: string;
   updatedAt?: string;
 }

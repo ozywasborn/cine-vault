@@ -25,6 +25,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { GearItem, MaintenanceRecord, UserAccount, ConditionRating } from '../types';
+import { formatDateDDMMYYYY, formatCurrencySGD } from '../utils/dateUtils';
 
 interface MaintenanceViewProps {
   gear: GearItem[];
@@ -199,7 +200,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
       const dayName = itemDate.toLocaleDateString('en-US', { weekday: 'short' });
       const dayNumber = itemDate.getDate();
       const monthAbbr = itemDate.toLocaleDateString('en-US', { month: 'short' });
-      const formattedDate = `${monthAbbr} ${dayNumber}, ${itemDate.getFullYear()}`;
+      const formattedDate = formatDateDDMMYYYY(item.nextServiceDate || itemDate);
 
       let urgencyLabel = '';
       if (isOverdue) {
@@ -430,7 +431,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
             </div>
           </div>
           <div className="text-2xl font-bold text-slate-900 mt-2 font-mono">
-            ${totalMaintenanceCost.toLocaleString()}
+            {formatCurrencySGD(totalMaintenanceCost)}
           </div>
           <div className="text-xs text-slate-500 mt-1 font-medium">
             Across {maintenance.length} recorded service sessions
@@ -525,7 +526,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
 
             {/* Cost */}
             <div>
-              <label className="block text-slate-700 font-semibold mb-1">Service Cost ($ USD)</label>
+              <label className="block text-slate-700 font-semibold mb-1">Service Cost (SGD)</label>
               <input
                 type="number"
                 autoComplete="off"
@@ -1202,7 +1203,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
                   <p className="text-xs text-slate-600 font-medium">{log.notes}</p>
 
                   <div className="text-[11px] text-slate-500 flex flex-wrap items-center gap-3 pt-1 font-medium">
-                    <span>Date: <strong className="text-slate-800">{log.date}</strong></span>
+                    <span>Date: <strong className="text-slate-800">{formatDateDDMMYYYY(log.date)}</strong></span>
                     <span className="text-slate-300">•</span>
                     <span>Tech: <strong className="text-slate-800">{log.technician}</strong></span>
                     {log.vendor && (
@@ -1218,11 +1219,11 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
 
                 <div className="text-right shrink-0">
                   <div className="font-mono text-xs font-bold text-slate-900">
-                    {log.cost > 0 ? `$${log.cost.toLocaleString()}` : 'In-House'}
+                    {log.cost > 0 ? formatCurrencySGD(log.cost) : 'In-House'}
                   </div>
                   {log.nextServiceDueDate && (
                     <div className="text-[10px] text-slate-500 font-medium mt-0.5">
-                      Next: {log.nextServiceDueDate}
+                      Next: {formatDateDDMMYYYY(log.nextServiceDueDate)}
                     </div>
                   )}
                 </div>

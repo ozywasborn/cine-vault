@@ -7,6 +7,8 @@ import {
   UserAccount,
   GearItem,
   AVAILABLE_LOCATIONS,
+  GearComponent,
+  DEFAULT_GEAR_CATEGORIES,
 } from '../types';
 
 interface AddGearModalProps {
@@ -14,6 +16,8 @@ interface AddGearModalProps {
   onClose: () => void;
   currentUser: UserAccount;
   onAddGear: (gear: Partial<GearItem>) => void;
+  categories?: string[];
+  initialCategory?: string;
 }
 
 export const AddGearModal: React.FC<AddGearModalProps> = ({
@@ -21,12 +25,20 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
   onClose,
   currentUser,
   onAddGear,
+  categories = DEFAULT_GEAR_CATEGORIES,
+  initialCategory,
 }) => {
   const [assetTag, setAssetTag] = useState('');
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
-  const [category, setCategory] = useState<GearCategory>('Cameras');
+  const [category, setCategory] = useState<GearCategory>(initialCategory || 'Cameras');
+
+  useEffect(() => {
+    if (initialCategory) {
+      setCategory(initialCategory);
+    }
+  }, [initialCategory, isOpen]);
   const [serialNumber, setSerialNumber] = useState('');
   const [status, setStatus] = useState<GearStatus>('Available');
   const [condition, setCondition] = useState<ConditionRating>('Mint');
@@ -36,6 +48,7 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
   const [purchasePrice, setPurchasePrice] = useState<number | string>('');
   const [lastServiceDate, setLastServiceDate] = useState<string>('');
   const [notes, setNotes] = useState('');
+  const [components, setComponents] = useState<GearComponent[]>([]);
 
   const resetForm = () => {
     setAssetTag('');
@@ -52,6 +65,7 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
     setPurchasePrice('');
     setLastServiceDate('');
     setNotes('');
+    setComponents([]);
   };
 
   useEffect(() => {
@@ -71,6 +85,8 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
     e.preventDefault();
     if (!name || !assetTag) return;
 
+    const filteredComponents = components.filter(c => c.name.trim() || c.serialNumber.trim());
+
     onAddGear({
       assetTag: assetTag.toUpperCase().trim(),
       name: name.trim(),
@@ -87,6 +103,7 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
       replacementValue: Number(purchasePrice) || 0,
       lastServiceDate: lastServiceDate || undefined,
       notes: notes.trim(),
+      components: filteredComponents.length > 0 ? filteredComponents : undefined,
     });
 
     handleClose();
@@ -162,15 +179,11 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
                   onChange={(e) => setCategory(e.target.value as GearCategory)}
                   className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 focus:outline-none focus:bg-white focus:border-amber-500 font-medium cursor-pointer"
                 >
-                  <option value="Cameras">Cameras</option>
-                  <option value="Lenses">Lenses</option>
-                  <option value="Lighting">Lighting</option>
-                  <option value="Audio">Audio</option>
-                  <option value="Grip & Support">Grip & Support</option>
-                  <option value="Drones & Gimbals">Drones & Gimbals</option>
-                  <option value="Power & Batteries">Power & Batteries</option>
-                  <option value="Media & Storage">Media & Storage</option>
-                  <option value="Accessories">Accessories</option>
+                  {categories.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -263,6 +276,96 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
                 </select>
               </div>
             </div>
+
+            {/* Kit Components Section */}
+            <div className="pt-4 mt-4 border-t border-slate-100">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-700">Kit Components</h4>
+                  <p className="text-xs text-slate-500">Register individual items within this set that have their own serial numbers.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setComponents([...components, { id: `comp-${Date.now()}-${Math.random().toString(36).substr(2,5)}`, name: '', serialNumber: '', condition: condition }])}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-dashed border-slate-300 hover:border-amber-500 hover:text-amber-600 text-slate-600 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Component
+                </button>
+              </div>
+              
+              {components.length > 0 && (
+                <div className="space-y-2 mt-3">
+                  {components.map((comp, index) => (
+                    <div key={comp.id} className="flex items-start gap-2 p-3 rounded-xl bg-slate-100 border border-slate-200">
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          autoComplete="off"
+                          data-lpignore="true"
+                          data-1p-ignore="true"
+                          value={comp.name}
+                          onChange={(e) => {
+                            const newComps = [...components];
+                            newComps[index].name = e.target.value;
+                            setComponents(newComps);
+                          }}
+                          placeholder="e.g. Bodypack Transmitter"
+                          className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-amber-500 text-xs font-medium"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          autoComplete="off"
+                          data-lpignore="true"
+                          data-1p-ignore="true"
+                          autoCorrect="off"
+                          spellCheck={false}
+                          value={comp.serialNumber}
+                          onChange={(e) => {
+                            const newComps = [...components];
+                            newComps[index].serialNumber = e.target.value;
+                            setComponents(newComps);
+                          }}
+                          placeholder="e.g. SN-TX-449821"
+                          className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-800 placeholder-slate-400 font-mono focus:outline-none focus:border-amber-500 text-xs"
+                        />
+                      </div>
+                      <div className="w-32">
+                        <select
+                          value={comp.condition || condition}
+                          onChange={(e) => {
+                            const newComps = [...components];
+                            newComps[index].condition = e.target.value as ConditionRating;
+                            setComponents(newComps);
+                          }}
+                          className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-800 focus:outline-none focus:border-amber-500 text-xs font-medium cursor-pointer"
+                        >
+                          <option value="Mint">Mint</option>
+                          <option value="Good">Good</option>
+                          <option value="Fair">Fair</option>
+                          <option value="Needs Attention">Needs Attention</option>
+                          <option value="Damaged">Damaged</option>
+                        </select>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newComps = [...components];
+                          newComps.splice(index, 1);
+                          setComponents(newComps);
+                        }}
+                        className="p-2 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 transition-colors cursor-pointer"
+                        title="Remove Component"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Location & Kit Assignment Section */}
@@ -324,7 +427,7 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Cost of Purchase ($ USD)</label>
+                <label className="block text-slate-700 font-semibold mb-1">Cost of Purchase (SGD)</label>
                 <input
                   type="number"
                   autoComplete="off"

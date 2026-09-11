@@ -19,6 +19,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { GearItem, MaintenanceRecord, ShootProject, GearCategory } from '../types';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface DashboardViewProps {
   gear: GearItem[];
@@ -498,7 +499,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           </span>
                         )}
                         <span className="text-xs text-slate-400 font-mono font-medium">
-                          {proj.startDate} → {proj.endDate}
+                          {formatDateDDMMYYYY(proj.startDate)} → {formatDateDDMMYYYY(proj.endDate)}
                         </span>
                       </div>
                     </div>
@@ -764,7 +765,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <p className="text-xs font-bold text-slate-900 truncate">{item.name}</p>
                       <span className="text-[10px] font-mono font-bold text-rose-600">OVERDUE</span>
                     </div>
-                    <p className="text-[11px] text-slate-500 truncate mt-0.5">Calibration check needed • Due {item.nextServiceDate}</p>
+                    <p className="text-[11px] text-slate-500 truncate mt-0.5">Calibration check needed • Due {formatDateDDMMYYYY(item.nextServiceDate)}</p>
                   </div>
                 </div>
               ))}
@@ -781,7 +782,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <p className="text-xs font-bold text-slate-900 truncate">{item.name}</p>
                       <span className="text-[10px] font-mono text-slate-400">{item.assetTag}</span>
                     </div>
-                    <p className="text-[11px] text-slate-500 truncate mt-0.5">Scheduled inspection ({item.nextServiceDate})</p>
+                    <p className="text-[11px] text-slate-500 truncate mt-0.5">Scheduled inspection ({formatDateDDMMYYYY(item.nextServiceDate)})</p>
                   </div>
                 </div>
               ))}

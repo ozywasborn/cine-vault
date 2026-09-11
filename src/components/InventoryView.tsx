@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Search,
@@ -31,8 +31,12 @@ import {
   Palette,
   Check,
   CheckCircle2,
+  CornerDownRight,
+  FolderPlus,
 } from 'lucide-react';
-import { GearItem, GearCategory, GearStatus, ConditionRating, UserAccount } from '../types';
+import { GearItem, GearCategory, GearStatus, ConditionRating, UserAccount, GearComponent, DEFAULT_GEAR_CATEGORIES } from '../types';
+import { EditModalTab } from './EditGearModal';
+import { formatDateDDMMYYYY, formatCurrencySGD } from '../utils/dateUtils';
 
 export interface CategoryColorTheme {
   id: string;
@@ -210,8 +214,11 @@ interface InventoryViewProps {
   gear: GearItem[];
   currentUser?: UserAccount;
   initialCategory?: string;
+  categories?: string[];
+  onAddCategory?: (categoryName: string, colorId?: string) => void;
+  onOpenAddModalWithCategory?: (category: string) => void;
   onSelectGear: (item: GearItem) => void;
-  onEditGear?: (item: GearItem) => void;
+  onEditGear?: (item: GearItem, initialTab?: EditModalTab) => void;
   onUpdateGear?: (item: GearItem) => void;
   onDuplicateGear?: (item: GearItem) => void;
   onDeleteGear?: (gearId: string) => void;
@@ -240,6 +247,9 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   gear,
   currentUser,
   initialCategory,
+  categories: externalCategories,
+  onAddCategory,
+  onOpenAddModalWithCategory,
   onSelectGear,
   onEditGear,
   onUpdateGear,
@@ -265,6 +275,47 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const [equipmentSortMode, setEquipmentSortMode] = useState<EquipmentSortMode>('model-asc');
   const [categorySorts, setCategorySorts] = useState<Record<string, EquipmentSortMode>>({});
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+  const [expandedComponents, setExpandedComponents] = useState<Set<string>>(new Set());
+
+  // Dynamic custom categories persisted locally
+  const [customCategories, setCustomCategories] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('cinevault_custom_categories_v1');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Split Add Equipment / Category Dropdown state
+  const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [selectedThemeColor, setSelectedThemeColor] = useState('amber');
+  const [categoryError, setCategoryError] = useState('');
+  const addDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close Add Category dropdown on outside click or Esc
+  useEffect(() => {
+    if (!isAddDropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (addDropdownRef.current && !addDropdownRef.current.contains(e.target as Node)) {
+        setIsAddDropdownOpen(false);
+        setCategoryError('');
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsAddDropdownOpen(false);
+        setCategoryError('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isAddDropdownOpen]);
 
   // Category custom colour codes stored in localStorage
   const [categoryColors, setCategoryColors] = useState<Record<string, string>>(() => {
@@ -383,17 +434,59 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const canMaintain = userRole === 'Admin' || userRole === 'Equipment Manager';
   const isAuditor = userRole === 'Auditor';
 
-  const categories: GearCategory[] = [
-    'Cameras',
-    'Lenses',
-    'Lighting',
-    'Audio',
-    'Grip & Support',
-    'Drones & Gimbals',
-    'Power & Batteries',
-    'Media & Storage',
-    'Accessories',
-  ];
+  const categories: GearCategory[] = useMemo(() => {
+    const base =
+      externalCategories && externalCategories.length > 0
+        ? externalCategories
+        : DEFAULT_GEAR_CATEGORIES;
+    const gearCats = gear.map((g) => g.category);
+    return Array.from(new Set([...base, ...gearCats, ...customCategories]));
+  }, [externalCategories, gear, customCategories]);
+
+  const handleAddCategorySubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = newCategoryName.trim();
+    if (!trimmed) {
+      setCategoryError('Please enter a category name.');
+      return;
+    }
+    const alreadyExists = categories.some(
+      (c) => String(c).toLowerCase() === trimmed.toLowerCase()
+    );
+    if (alreadyExists) {
+      setCategoryError('Category already exists.');
+      return;
+    }
+
+    // Save locally
+    const updatedCustom = Array.from(new Set([...customCategories, trimmed]));
+    setCustomCategories(updatedCustom);
+    try {
+      localStorage.setItem('cinevault_custom_categories_v1', JSON.stringify(updatedCustom));
+    } catch {}
+
+    // Assign chosen color theme
+    handleSetCategoryColor(trimmed, selectedThemeColor);
+
+    // Call parent handler if provided
+    if (onAddCategory) {
+      onAddCategory(trimmed, selectedThemeColor);
+    }
+
+    setNewCategoryName('');
+    setCategoryError('');
+    setIsAddDropdownOpen(false);
+    showToast(`Category "${trimmed}" created successfully!`);
+
+    // Smooth scroll to the newly created category card after render
+    setTimeout(() => {
+      const cardId = `category-card-${trimmed.replace(/\s+/g, '-').toLowerCase()}`;
+      const elem = document.getElementById(cardId);
+      if (elem) {
+        elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 150);
+  };
 
   const statuses: GearStatus[] = [
     'Available',
@@ -419,20 +512,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       updatedAt: new Date().toISOString(),
     };
 
-    if (field === 'lastServiceDate') {
-      const dateVal = value || undefined;
-      let nextDue = item.nextServiceDate;
-      if (dateVal && item.maintenanceIntervalDays) {
-        const d = new Date(dateVal);
-        d.setDate(d.getDate() + item.maintenanceIntervalDays);
-        nextDue = d.toISOString().split('T')[0];
-      }
-      updated = {
-        ...updated,
-        lastServiceDate: dateVal,
-        nextServiceDate: nextDue,
-      };
-    }
 
     if (field === 'status') {
       if (value === 'Available') {
@@ -548,9 +627,9 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
     else onSelectGear(item);
   };
 
-  const handleOpenEdit = (item: GearItem) => {
+  const handleOpenEdit = (item: GearItem, initialTab?: EditModalTab) => {
     if (onEditGear) {
-      onEditGear(item);
+      onEditGear(item, initialTab);
     } else {
       onSelectGear(item);
     }
@@ -561,7 +640,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       onExportCsv();
       return;
     }
-    const headers = ['Asset Tag', 'Name', 'Brand', 'Model', 'Category', 'Status', 'Condition', 'Location', 'Purchase Date', 'Serial Number', 'Last Serviced Date', 'Purchase Cost'];
+    const headers = ['Asset Tag', 'Name', 'Brand', 'Model', 'Category', 'Status', 'Condition', 'Location', 'Purchase Date', 'Serial Number', 'Last Serviced Date', 'Purchase Cost (SGD)'];
     const rows = gear.map((g) => [
       g.assetTag,
       `"${(g.name || '').replace(/"/g, '""')}"`,
@@ -571,16 +650,16 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       g.status,
       g.condition,
       `"${(g.location || '').replace(/"/g, '""')}"`,
-      g.purchaseDate || '2024-01-15',
+      g.purchaseDate ? formatDateDDMMYYYY(g.purchaseDate) : '15-01-2024',
       g.serialNumber,
-      g.lastServiceDate || 'Never',
+      g.lastServiceDate ? formatDateDDMMYYYY(g.lastServiceDate) : 'Never',
       g.purchasePrice || 0,
     ]);
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `cinevault-inventory-${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `cinevault-inventory-${formatDateDDMMYYYY(new Date())}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -598,6 +677,14 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
 
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
+        const comps: GearComponent[] = Array.isArray(item.components)
+          ? item.components
+          : typeof item.components === 'string'
+          ? (() => { try { const p = JSON.parse(item.components as string); return Array.isArray(p) ? p : []; } catch { return []; } })()
+          : [];
+        const componentMatch = comps.some(
+          (c) => String(c.name || '').toLowerCase().includes(q) || String(c.serialNumber || '').toLowerCase().includes(q)
+        );
         const match =
           String(item.name || '').toLowerCase().includes(q) ||
           String(item.assetTag || '').toLowerCase().includes(q) ||
@@ -605,12 +692,37 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           String(item.model || '').toLowerCase().includes(q) ||
           String(item.serialNumber || '').toLowerCase().includes(q) ||
           String(item.location || '').toLowerCase().includes(q) ||
-          (item.kitName && String(item.kitName).toLowerCase().includes(q));
+          (item.kitName && String(item.kitName).toLowerCase().includes(q)) ||
+          componentMatch;
         if (!match) return false;
       }
       return true;
     });
   }, [gear, selectedCategory, selectedStatus, selectedKit, searchQuery]);
+
+  // Auto-expand components if they match search
+  useEffect(() => {
+    if (!searchQuery) return;
+    const q = searchQuery.toLowerCase();
+    setExpandedComponents((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      gear.forEach((item) => {
+        const comps: GearComponent[] = Array.isArray(item.components)
+          ? item.components
+          : typeof item.components === 'string'
+          ? (() => { try { const p = JSON.parse(item.components as string); return Array.isArray(p) ? p : []; } catch { return []; } })()
+          : [];
+        if (comps.some((c) => String(c.name || '').toLowerCase().includes(q) || String(c.serialNumber || '').toLowerCase().includes(q))) {
+          if (!next.has(item.id)) {
+            next.add(item.id);
+            changed = true;
+          }
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [searchQuery, gear]);
 
   // Quick fleet metrics for header banner
   const totalFleetValuation = useMemo(
@@ -668,13 +780,14 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   // Grouped items by category with equipment sorted within each specific category
   const groupedCategories = useMemo(() => {
     const map = new Map<string, GearItem[]>();
+    const isSearching = !!searchQuery.trim() || selectedStatus !== 'All' || selectedKit !== 'All';
     const targetCats = selectedCategory === 'All' ? categories : [selectedCategory];
 
     targetCats.forEach((cat) => {
       const items = filteredGear.filter((g) => g.category === cat);
       const activeSort = categorySorts[cat] || equipmentSortMode;
       const sorted = sortItemList(items, activeSort);
-      if (sorted.length > 0) {
+      if (sorted.length > 0 || !isSearching) {
         map.set(cat, sorted);
       }
     });
@@ -697,7 +810,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       checkedOutCount: items.filter((it) => it.status === 'Checked Out').length,
       maintenanceCount: items.filter((it) => it.status === 'In Maintenance').length,
     }));
-  }, [filteredGear, selectedCategory, categories, equipmentSortMode, categorySorts]);
+  }, [filteredGear, selectedCategory, categories, equipmentSortMode, categorySorts, searchQuery, selectedStatus, selectedKit]);
 
   // Toggle Equipment / Model sorting within a specific category
   const toggleCategoryModelSort = (categoryName: string) => {
@@ -793,18 +906,43 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
 
   const selectedItems = gear.filter((g) => selectedGearIds.includes(g.id));
 
+  const toggleComponents = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedComponents((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   // Render a gear row
   const renderGearRow = (item: GearItem) => {
     const isSelected = selectedGearIds.includes(item.id);
+    const itemComponents: GearComponent[] = Array.isArray(item.components)
+      ? item.components
+      : typeof item.components === 'string'
+      ? (() => {
+          try {
+            const p = JSON.parse(item.components as string);
+            return Array.isArray(p) ? p : [];
+          } catch {
+            return [];
+          }
+        })()
+      : [];
+    const hasComponents = itemComponents.length > 0;
+    const isExpanded = expandedComponents.has(item.id);
+
     return (
-      <tr
-        key={item.id}
-        onContextMenu={(e) => handleRowContextMenu(e, item)}
-        className={`hover:bg-slate-50 transition-colors select-none ${
-          isSelected ? 'bg-amber-50/40' : ''
-        }`}
-        title="Right-click for actions: Edit, Duplicate item, Delete"
-      >
+      <React.Fragment key={item.id}>
+        <tr
+          onContextMenu={(e) => handleRowContextMenu(e, item)}
+          className={`hover:bg-slate-50 transition-colors select-none ${
+            isSelected ? 'bg-amber-50/40' : ''
+          }`}
+          title="Right-click for actions: Edit, Duplicate item, Delete"
+        >
         {/* Checkbox */}
         <td className="py-2.5 px-3 text-center">
           <input
@@ -815,20 +953,36 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           />
         </td>
 
-        {/* Tag - Guaranteed Single Line */}
+        {/* Tag - Guaranteed Single Line with drop-down toggle */}
         <td className="py-2.5 px-3 whitespace-nowrap">
-          <button
-            onClick={() => onSelectGear(item)}
-            className="font-mono font-bold text-xs text-amber-900 hover:text-amber-950 px-2.5 py-1 rounded-md bg-amber-50 hover:bg-amber-100 border border-amber-200 cursor-pointer whitespace-nowrap inline-flex items-center shadow-2xs transition-colors"
-            title="Inspect gear asset details"
-          >
-            {item.assetTag}
-          </button>
+          <div className="flex items-center justify-between gap-1.5">
+            <button
+              onClick={() => onSelectGear(item)}
+              className="font-mono font-bold text-xs text-amber-900 hover:text-amber-950 px-2.5 py-1 rounded-md bg-amber-50 hover:bg-amber-100 border border-amber-200 cursor-pointer whitespace-nowrap inline-flex items-center shadow-2xs transition-colors"
+              title="Inspect gear asset details"
+            >
+              {item.assetTag}
+            </button>
+            {hasComponents && (
+              <button
+                type="button"
+                onClick={(e) => toggleComponents(item.id, e)}
+                className={`w-5 h-5 flex items-center justify-center rounded-md transition-all cursor-pointer shrink-0 ${
+                  isExpanded
+                    ? 'bg-amber-100 text-amber-800 border border-amber-300 shadow-2xs'
+                    : 'text-slate-400 hover:text-amber-700 hover:bg-amber-50/80 border border-transparent'
+                }`}
+                title={isExpanded ? 'Collapse sub-items' : 'Expand sub-items'}
+              >
+                {isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-amber-700" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500" />}
+              </button>
+            )}
+          </div>
         </td>
 
-        {/* Equipment Name - Clean layout */}
-        <td className="py-2.5 px-3 overflow-hidden">
-          <div className="flex items-center gap-1.5 group/name">
+        {/* Equipment Name - Clean layout with identical alignment across all rows */}
+        <td className="py-2.5 px-3">
+          <div className="flex items-center gap-1.5 group/name min-w-0">
             <div
               onClick={() => onSelectGear(item)}
               className="font-bold text-slate-900 hover:text-amber-600 transition-colors cursor-pointer text-xs sm:text-sm truncate"
@@ -865,9 +1019,27 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             {item.kitName && (
               <>
                 <span className="text-slate-300">•</span>
-                <span className="px-1.5 py-0.2 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-[10px]">
+                <span className="px-1.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-[10px]">
                   {item.kitName}
                 </span>
+              </>
+            )}
+            {hasComponents && (
+              <>
+                <span className="text-slate-300">•</span>
+                <button
+                  type="button"
+                  className={`px-1.5 py-0.5 rounded-full border text-[10px] whitespace-nowrap cursor-pointer transition-colors inline-flex items-center gap-1 ${
+                    isExpanded 
+                      ? 'bg-amber-100 border-amber-300 text-amber-800 font-semibold' 
+                      : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-slate-800'
+                  }`}
+                  onClick={(e) => toggleComponents(item.id, e)}
+                  title={isExpanded ? "Click to collapse components" : "Click to expand components"}
+                >
+                  {isExpanded ? <ChevronDown className="w-2.5 h-2.5" /> : <ChevronRight className="w-2.5 h-2.5" />}
+                  <span>{itemComponents.length} components</span>
+                </button>
               </>
             )}
           </div>
@@ -981,22 +1153,33 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           </div>
         </td>
 
-        {/* Last Serviced Date - Key-in input */}
-        <td className="py-2 px-2 whitespace-nowrap">
-          <input
-            type="date"
-            autoComplete="off"
-            disabled={isAuditor}
-            value={item.lastServiceDate || ''}
-            onChange={(e) => handleFieldChange(item, 'lastServiceDate', e.target.value)}
-            className="w-[116px] text-xs font-mono font-medium text-slate-800 bg-slate-50 hover:bg-slate-100/90 focus:bg-white focus:text-slate-900 border border-slate-200 rounded-lg px-1.5 py-1 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
-            title={isAuditor ? 'Auditor role is read-only' : 'Key in or select Last Serviced Date'}
-          />
+        {/* Last Serviced Date - Read-only display (managed via Maintenance Log in Edit modal) */}
+        <td className="py-2.5 px-2 whitespace-nowrap">
+          {item.lastServiceDate ? (
+            <button
+              type="button"
+              onClick={() => handleOpenEdit(item, 'maintenance')}
+              className="group text-xs font-mono font-medium text-slate-700 bg-slate-100/90 hover:bg-amber-50 hover:text-amber-900 hover:border-amber-300 px-2 py-1 rounded-lg border border-slate-200/80 inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+              title="Managed via Maintenance Log. Click to view or add service records in Edit Equipment."
+            >
+              <Wrench className="w-3 h-3 text-slate-400 group-hover:text-amber-600 transition-colors shrink-0" />
+              <span>{formatDateDDMMYYYY(item.lastServiceDate)}</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => handleOpenEdit(item, 'maintenance')}
+              className="text-xs text-slate-400 italic px-2 py-1 rounded-lg hover:bg-slate-100/80 hover:text-amber-700 cursor-pointer transition-colors inline-block"
+              title="Not yet serviced. Click to add a service record in Edit Equipment."
+            >
+              Not Serviced
+            </button>
+          )}
         </td>
 
         {/* Cost of Purchase */}
         <td className="py-2.5 px-2 text-slate-900 font-mono font-medium whitespace-nowrap text-xs sm:text-sm">
-          ${(item.purchasePrice || 0).toLocaleString()}
+          {formatCurrencySGD(item.purchasePrice)}
         </td>
 
         {/* Actions Column */}
@@ -1063,6 +1246,50 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           </div>
         </td>
       </tr>
+      {isExpanded && hasComponents && (
+        itemComponents.map((comp, idx) => (
+          <tr key={`${item.id}-comp-${comp.id || idx}`} className="bg-slate-50/50 hover:bg-slate-100/60 transition-colors">
+            {/* Empty columns for Checkbox (2.8%) and Asset Tag (8.0%) */}
+            <td colSpan={2} className="py-2 px-3 border-b border-slate-100/70" />
+            {/* Component item details aligned directly below Equipment / Model column with a single clean branch icon */}
+            <td colSpan={8} className="py-2 pr-5 pl-3 border-b border-slate-100/70">
+              <div className="flex items-center gap-2.5 w-full">
+                <CornerDownRight className="w-3.5 h-3.5 text-amber-500/80 shrink-0" />
+                <span className="font-semibold text-slate-800 text-xs truncate max-w-[280px]">
+                  {comp.name}
+                </span>
+                {comp.serialNumber && (
+                  <span className="text-[11px] text-slate-500 whitespace-nowrap shrink-0 flex items-center gap-1 font-medium">
+                    <span>SN:</span>
+                    <strong className="font-mono font-bold text-slate-800">{comp.serialNumber}</strong>
+                  </span>
+                )}
+                {comp.condition && (
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap shrink-0 ${
+                    comp.condition === 'Mint'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : comp.condition === 'Good'
+                      ? 'bg-slate-50 text-slate-700 border border-slate-200'
+                      : comp.condition === 'Fair'
+                      ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                      : comp.condition === 'Needs Attention'
+                      ? 'bg-orange-50 text-orange-700 border border-orange-200'
+                      : 'bg-rose-50 text-rose-700 border border-rose-200'
+                  }`}>
+                    {comp.condition}
+                  </span>
+                )}
+                {comp.notes && (
+                  <span className="text-[11px] text-slate-400 italic truncate flex-1 min-w-0 pl-2 text-right" title={comp.notes}>
+                    {comp.notes}
+                  </span>
+                )}
+              </div>
+            </td>
+          </tr>
+        ))
+      )}
+      </React.Fragment>
     );
   };
 
@@ -1117,7 +1344,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-2">
               <span className="text-[10px] uppercase font-bold text-slate-400">Valuation</span>
               <span className="text-xs font-bold text-slate-900 font-mono">
-                ${totalFleetValuation.toLocaleString()}
+                {formatCurrencySGD(totalFleetValuation)}
               </span>
             </div>
           </div>
@@ -1318,34 +1545,208 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               <span className="hidden sm:inline">Export CSV</span>
             </button>
 
-            {/* Primary Sticky "Add Equipment" Button - ALWAYS ACCESSIBLE AT ANY SCROLL DEPTH */}
-            {canAddGear ? (
+            {/* Primary Split "Add Equipment" Button with Category Creation Dropdown */}
+            <div ref={addDropdownRef} className="relative inline-flex items-stretch rounded-xl shadow-xs overflow-visible">
+              {/* Left segment: Add Equipment action */}
               <button
                 type="button"
                 onClick={handleOpenAdd}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-xs cursor-pointer hover:shadow-sm"
-                title="Add a new equipment asset to inventory"
+                className={`px-3.5 py-1.5 rounded-l-xl text-xs font-bold transition-colors flex items-center ${
+                  canAddGear
+                    ? 'bg-amber-500 hover:bg-amber-600 text-white cursor-pointer active:bg-amber-700'
+                    : 'bg-slate-100 text-slate-400 cursor-not-allowed border-y border-l border-slate-200'
+                }`}
+                title={
+                  canAddGear
+                    ? 'Add a new equipment asset to inventory'
+                    : `Registration restricted to Admin / Equipment Manager (Role: ${userRole})`
+                }
               >
-                <Plus className="w-3.5 h-3.5 text-white stroke-[2.5]" />
-                <span>Add Equipment</span>
+                <span>{canAddGear ? 'Add Equipment' : 'Add Equipment (Locked)'}</span>
               </button>
-            ) : (
+
+              {/* Vertical divider */}
+              <div className={canAddGear ? 'w-[1px] bg-amber-600/50' : 'w-[1px] bg-slate-200'} />
+
+              {/* Right segment: Chevron dropdown toggle for Category creation */}
               <button
                 type="button"
-                onClick={handleOpenAdd}
-                title={`Registration restricted to Admin / Equipment Manager (Current role: ${userRole})`}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-400 text-xs font-semibold cursor-not-allowed border border-slate-200"
+                onClick={() => {
+                  if (!canAddGear) return;
+                  setIsAddDropdownOpen((prev) => !prev);
+                  setCategoryError('');
+                }}
+                disabled={!canAddGear}
+                className={`px-2 py-1.5 rounded-r-xl transition-colors flex items-center justify-center ${
+                  canAddGear
+                    ? 'bg-amber-500 hover:bg-amber-600 text-white cursor-pointer active:bg-amber-700'
+                    : 'bg-slate-100 text-slate-400 cursor-not-allowed border-y border-r border-slate-200'
+                }`}
+                title={canAddGear ? 'Add new equipment category' : undefined}
+                aria-expanded={isAddDropdownOpen}
+                aria-haspopup="true"
               >
-                <Plus className="w-3.5 h-3.5 text-slate-400" />
-                <span>Add Equipment (Locked)</span>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                    isAddDropdownOpen ? 'rotate-180 text-amber-100' : 'text-white'
+                  }`}
+                />
               </button>
-            )}
+
+              {/* Drop-down Popover */}
+              {isAddDropdownOpen && canAddGear && (
+                <div
+                  className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 z-50 animate-in fade-in zoom-in-95 duration-150"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2 text-slate-800">
+                      <div className="w-6 h-6 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+                        <FolderPlus className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="text-xs font-bold text-slate-800">Add New Category</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddDropdownOpen(false)}
+                      className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleAddCategorySubmit} className="space-y-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                        Category Name
+                      </label>
+                      <input
+                        type="text"
+                        value={newCategoryName}
+                        onChange={(e) => {
+                          setNewCategoryName(e.target.value);
+                          if (categoryError) setCategoryError('');
+                        }}
+                        placeholder="e.g. Wireless Video, Monitors, Filters..."
+                        autoFocus
+                        className={`w-full text-xs px-3 py-2 rounded-xl border bg-slate-50 focus:bg-white focus:outline-none transition-colors ${
+                          categoryError
+                            ? 'border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
+                            : 'border-slate-200 focus:border-amber-500 focus:ring-1 focus:ring-amber-500'
+                        }`}
+                      />
+                      {categoryError && (
+                        <p className="text-[11px] text-rose-600 font-medium mt-1">{categoryError}</p>
+                      )}
+                    </div>
+
+                    {/* Theme color swatch picker */}
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1.5">
+                        Category Badge Theme
+                      </label>
+                      <div className="grid grid-cols-6 gap-1.5">
+                        {CATEGORY_THEMES.map((theme) => (
+                          <button
+                            key={theme.id}
+                            type="button"
+                            onClick={() => setSelectedThemeColor(theme.id)}
+                            title={theme.name}
+                            className={`h-6 rounded-lg flex items-center justify-center border transition-all ${
+                              selectedThemeColor === theme.id
+                                ? 'ring-2 ring-amber-500 ring-offset-1 scale-105 border-transparent'
+                                : 'border-slate-200 hover:scale-105'
+                            }`}
+                            style={{
+                              backgroundColor:
+                                theme.id === 'amber'
+                                  ? '#fef3c7'
+                                  : theme.id === 'blue'
+                                  ? '#dbeafe'
+                                  : theme.id === 'emerald'
+                                  ? '#d1fae5'
+                                  : theme.id === 'purple'
+                                  ? '#f3e8ff'
+                                  : theme.id === 'rose'
+                                  ? '#ffe4e6'
+                                  : theme.id === 'indigo'
+                                  ? '#e0e7ff'
+                                  : theme.id === 'teal'
+                                  ? '#ccfbf1'
+                                  : theme.id === 'orange'
+                                  ? '#ffedd5'
+                                  : theme.id === 'red'
+                                  ? '#fee2e2'
+                                  : theme.id === 'cyan'
+                                  ? '#cffafe'
+                                  : theme.id === 'lime'
+                                  ? '#ecfccb'
+                                  : '#fae8ff',
+                            }}
+                          >
+                            <span
+                              className="w-2.5 h-2.5 rounded-full"
+                              style={{
+                                backgroundColor:
+                                  theme.id === 'amber'
+                                    ? '#f59e0b'
+                                    : theme.id === 'blue'
+                                    ? '#3b82f6'
+                                    : theme.id === 'emerald'
+                                    ? '#10b981'
+                                    : theme.id === 'purple'
+                                    ? '#a855f7'
+                                    : theme.id === 'rose'
+                                    ? '#f43f5e'
+                                    : theme.id === 'indigo'
+                                    ? '#6366f1'
+                                    : theme.id === 'teal'
+                                    ? '#14b8a6'
+                                    : theme.id === 'orange'
+                                    ? '#f97316'
+                                    : theme.id === 'red'
+                                    ? '#ef4444'
+                                    : theme.id === 'cyan'
+                                    ? '#06b6d4'
+                                    : theme.id === 'lime'
+                                    ? '#84cc16'
+                                    : '#d946ef',
+                              }}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAddDropdownOpen(false);
+                          setCategoryError('');
+                        }}
+                        className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>Create Category</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Main Inventory Content */}
-      {filteredGear.length === 0 ? (
+      {groupedCategories.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
           <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto text-slate-400 mb-3">
             <Search className="w-6 h-6" />
@@ -1368,6 +1769,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             return (
               <div
                 key={group.name}
+                id={`category-card-${group.name.replace(/\s+/g, '-').toLowerCase()}`}
                 className={`bg-white rounded-2xl border ${catTheme.containerBorder} overflow-hidden shadow-xs transition-all`}
               >
                 {/* Category Drop-down Header */}
@@ -1525,12 +1927,44 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                           <th className="py-2.5 px-2 whitespace-nowrap">Condition</th>
                           <th className="py-2.5 px-2 whitespace-nowrap">Location</th>
                           <th className="py-2.5 px-2 whitespace-nowrap">Last Serviced Date</th>
-                          <th className="py-2.5 px-2 whitespace-nowrap">Cost of Purchase</th>
+                          <th className="py-2.5 px-2 whitespace-nowrap">Cost of Purchase (SGD)</th>
                           <th className="py-2.5 pl-2 pr-5 text-right whitespace-nowrap">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {group.items.map((item) => renderGearRow(item))}
+                        {group.items.length === 0 ? (
+                          <tr>
+                            <td colSpan={10} className="py-8 px-4 text-center bg-slate-50/50">
+                              <div className="max-w-md mx-auto flex flex-col items-center justify-center gap-2">
+                                <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200/80 flex items-center justify-center text-amber-600">
+                                  <FolderPlus className="w-5 h-5" />
+                                </div>
+                                <p className="text-xs font-semibold text-slate-700">
+                                  No equipment registered under {group.name} yet
+                                </p>
+                                <p className="text-[11px] text-slate-500">
+                                  Add an equipment asset to this category to get started.
+                                </p>
+                                {canAddGear && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      onOpenAddModalWithCategory
+                                        ? onOpenAddModalWithCategory(group.name)
+                                        : onOpenAddModal?.()
+                                    }
+                                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
+                                  >
+                                    <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                                    <span>Add Equipment to {group.name}</span>
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ) : (
+                          group.items.map((item) => renderGearRow(item))
+                        )}
                       </tbody>
                     </table>
                   </div>

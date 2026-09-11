@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import { GearItem, ShootProject, UserAccount, ConditionRating } from '../types';
 import { AddressAutocompleteInput } from './AddressAutocompleteInput';
-import { normalizeDateToYMD } from '../utils/dateUtils';
+import { normalizeDateToYMD, formatDateDDMMYYYY, formatCurrencySGD } from '../utils/dateUtils';
 
 interface DeploymentColorTheme {
   id: string;
@@ -916,13 +916,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
           overlaps.push({
             projA: a.name,
             projB: b.name,
-            range: `${overlapStart.toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-            })} – ${overlapEnd.toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-            })}`,
+            range: `${formatDateDDMMYYYY(overlapStart)} – ${formatDateDDMMYYYY(overlapEnd)}`,
           });
         }
       }
@@ -1322,7 +1316,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
             new Date(Date.now() + 86400000 * 3).toISOString(),
         status: 'Active',
         conditionOnCheckout: item.condition,
-        notes: `Transferred to ${targetProjName} on ${new Date().toLocaleDateString()}`,
+        notes: `Transferred to ${targetProjName} on ${formatDateDDMMYYYY(new Date())}`,
       },
       updatedAt: new Date().toISOString(),
     };
@@ -1985,13 +1979,15 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                 dragOverProject === projName && dragSourceProject !== projName;
 
               const deploymentDate =
-                normalizeDateToYMD(projectMeta?.deploymentDate) ||
-                normalizeDateToYMD(firstCheckout?.checkoutDate) ||
-                'Active';
+                formatDateDDMMYYYY(
+                  projectMeta?.deploymentDate || firstCheckout?.checkoutDate,
+                  'Active'
+                );
               const returnDate =
-                normalizeDateToYMD(projectMeta?.expectedReturnDate) ||
-                normalizeDateToYMD(firstCheckout?.expectedReturnDate) ||
-                'TBD';
+                formatDateDDMMYYYY(
+                  projectMeta?.expectedReturnDate || firstCheckout?.expectedReturnDate,
+                  'TBD'
+                );
               const shootLoc =
                 projectMeta?.location || firstCheckout?.shootLocation || '';
               const leadDP = projectMeta?.leadDP || firstCheckout?.userName || 'Lead DP';

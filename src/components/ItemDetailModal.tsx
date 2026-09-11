@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { GearItem, UserAccount, MaintenanceRecord } from '../types';
 import { generateQrDataUrl } from '../services/qr';
+import { formatDateDDMMYYYY, formatCurrencySGD } from '../utils/dateUtils';
 
 interface ItemDetailModalProps {
   isOpen: boolean;
@@ -201,16 +202,73 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
               <div className="text-slate-500 text-xs font-medium">
                 Purchase Date:{' '}
                 <strong className="text-slate-900 font-mono font-bold">
-                  {item.purchaseDate || '2024-03-15'}
+                  {formatDateDDMMYYYY(item.purchaseDate) || '15-03-2024'}
                 </strong>
               </div>
 
               <div className="text-slate-500 text-xs font-medium">
                 Cost of Purchase:{' '}
-                <strong className="text-slate-900 font-mono font-bold">${(item.purchasePrice || 0).toLocaleString()}</strong>
+                <strong className="text-slate-900 font-mono font-bold">{formatCurrencySGD(item.purchasePrice)}</strong>
               </div>
             </div>
           </div>
+
+          {/* Kit Components (Sub-Items) */}
+          {item.components && item.components.length > 0 && (
+            <div className="p-4 rounded-xl bg-amber-50/40 border border-amber-200/60 space-y-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-amber-100/80 border border-amber-200 flex items-center justify-center text-amber-700 shadow-2xs">
+                  <Layers className="w-3.5 h-3.5" />
+                </div>
+                <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                  Kit Components
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                  {item.components.length} {item.components.length === 1 ? 'Item' : 'Items'}
+                </span>
+              </div>
+              <div className="space-y-1.5">
+                {item.components.map((comp, idx) => (
+                  <div
+                    key={comp.id || idx}
+                    className="flex items-center gap-3 px-3 py-2 bg-white rounded-xl border border-slate-200/80 shadow-2xs"
+                  >
+                    <span className="text-slate-400 text-[10px] font-bold w-4 text-center shrink-0">
+                      {idx + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-semibold text-slate-800 truncate">{comp.name}</div>
+                      <div className="text-[11px] text-slate-500 font-mono font-medium">
+                        SN: <strong className="text-amber-800">{comp.serialNumber}</strong>
+                      </div>
+                    </div>
+                    {comp.condition && (
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${
+                          comp.condition === 'Mint'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : comp.condition === 'Good'
+                            ? 'bg-blue-50 text-blue-700 border-blue-200'
+                            : comp.condition === 'Fair'
+                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : comp.condition === 'Needs Attention'
+                            ? 'bg-orange-50 text-orange-700 border-orange-200'
+                            : 'bg-rose-50 text-rose-700 border-rose-200'
+                        }`}
+                      >
+                        {comp.condition}
+                      </span>
+                    )}
+                    {comp.notes && (
+                      <span className="text-[10px] text-slate-400 italic truncate max-w-[120px]" title={comp.notes}>
+                        {comp.notes}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Active Checkout info if checked out */}
           {item.currentCheckout && (
@@ -220,7 +278,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                   <ArrowUpRight className="w-4 h-4 text-blue-600" /> Active Shoot Deployment
                 </span>
                 <span className="text-blue-600 font-medium">
-                  ETA Return: {new Date(item.currentCheckout.expectedReturnDate).toLocaleDateString()}
+                  ETA Return: {formatDateDDMMYYYY(item.currentCheckout.expectedReturnDate)}
                 </span>
               </div>
               <div className="text-xs text-slate-800 font-bold">
@@ -256,39 +314,23 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                 <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">
                   Last Serviced Date
                 </span>
-                {!isAuditor && onUpdateGear && (
-                  <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
-                    Key in Date
-                  </span>
+                {!isAuditor && onEditGear && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onEditGear(item);
+                    }}
+                    className="text-[10px] text-amber-700 font-semibold bg-amber-50 hover:bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200 transition-colors cursor-pointer"
+                    title="Managed via Maintenance Log in Edit Equipment"
+                  >
+                    Via Maintenance Log
+                  </button>
                 )}
               </div>
-              {!isAuditor && onUpdateGear ? (
-                <input
-                  type="date"
-                  autoComplete="off"
-                  value={item.lastServiceDate || ''}
-                  onChange={(e) => {
-                    const newDate = e.target.value || undefined;
-                    let nextDue = item.nextServiceDate;
-                    if (newDate && item.maintenanceIntervalDays) {
-                      const d = new Date(newDate);
-                      d.setDate(d.getDate() + item.maintenanceIntervalDays);
-                      nextDue = d.toISOString().split('T')[0];
-                    }
-                    onUpdateGear({
-                      ...item,
-                      lastServiceDate: newDate,
-                      nextServiceDate: nextDue,
-                    });
-                  }}
-                  className="w-full text-xs font-mono font-semibold text-slate-900 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 shadow-2xs"
-                  title="Key in or update Last Serviced Date"
-                />
-              ) : (
-                <div className="text-slate-800 font-semibold font-mono text-xs">
-                  {item.lastServiceDate || 'Never / Factory Calibrated'}
-                </div>
-              )}
+              <div className="text-slate-800 font-semibold font-mono text-xs pt-1">
+                {formatDateDDMMYYYY(item.lastServiceDate) || 'Never / Factory Calibrated'}
+              </div>
             </div>
 
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
@@ -296,7 +338,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                 Next Calibration Due
               </div>
               <div className="text-amber-800 font-semibold font-mono text-xs pt-1">
-                {item.nextServiceDate || 'Not Scheduled'}
+                {formatDateDDMMYYYY(item.nextServiceDate) || 'Not Scheduled'}
               </div>
               <div className="text-[10px] text-slate-400">
                 Interval: {item.maintenanceIntervalDays || 90} days
@@ -441,7 +483,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                         <div className="flex items-center justify-between flex-wrap gap-2">
                           <div className="flex items-center gap-2">
                             <span className="font-mono text-xs font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                              {record.date}
+                              {formatDateDDMMYYYY(record.date)}
                             </span>
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                               {record.serviceType}
@@ -457,7 +499,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                             </span>
                           </div>
                           <div className="text-xs font-mono font-bold text-slate-800">
-                            Service Cost: ${record.cost.toLocaleString()}
+                            Service Cost: {formatCurrencySGD(record.cost)}
                           </div>
                         </div>
 
@@ -480,7 +522,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                         {record.nextServiceDueDate && (
                           <div className="text-[11px] text-amber-700 font-semibold flex items-center gap-1.5">
                             <Clock className="w-3.5 h-3.5" />
-                            <span>Scheduled Calibration Target: {record.nextServiceDueDate}</span>
+                            <span>Scheduled Calibration Target: {formatDateDDMMYYYY(record.nextServiceDueDate)}</span>
                           </div>
                         )}
                       </div>

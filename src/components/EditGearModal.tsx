@@ -20,10 +20,15 @@ import {
   UserAccount,
   AVAILABLE_LOCATIONS,
   MaintenanceRecord,
+  GearComponent,
+  DEFAULT_GEAR_CATEGORIES,
 } from '../types';
 import { INITIAL_USERS } from '../data/mockData';
+import { formatDateDDMMYYYY, formatCurrencySGD } from '../utils/dateUtils';
 
-interface EditGearModalProps {
+export type EditModalTab = 'general' | 'location-finance' | 'specs-notes' | 'maintenance';
+
+export interface EditGearModalProps {
   isOpen: boolean;
   onClose: () => void;
   item: GearItem | null;
@@ -32,9 +37,9 @@ interface EditGearModalProps {
   maintenanceRecords?: MaintenanceRecord[];
   onSaveMaintenanceRecords?: (gearId: string, updatedRecords: MaintenanceRecord[], shouldSyncGear?: boolean) => void;
   onSwitchUser?: (user: UserAccount) => void;
+  initialTab?: EditModalTab;
+  categories?: string[];
 }
-
-type EditModalTab = 'general' | 'location-finance' | 'specs-notes' | 'maintenance';
 
 export const EditGearModal: React.FC<EditGearModalProps> = ({
   isOpen,
@@ -45,8 +50,10 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
   maintenanceRecords = [],
   onSaveMaintenanceRecords,
   onSwitchUser,
+  initialTab = 'general',
+  categories: categoriesProp = DEFAULT_GEAR_CATEGORIES,
 }) => {
-  const [activeTab, setActiveTab] = useState<EditModalTab>('general');
+  const [activeTab, setActiveTab] = useState<EditModalTab>(initialTab || 'general');
   const [assetTag, setAssetTag] = useState('');
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('');
@@ -67,6 +74,7 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
   const [newSpecValue, setNewSpecValue] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [records, setRecords] = useState<MaintenanceRecord[]>([]);
+  const [components, setComponents] = useState<GearComponent[]>([]);
 
   const userRole = currentUser.role;
   const isAuditor = userRole === 'Auditor';
@@ -91,6 +99,7 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
       const parsedInterval = isNaN(Number(rawInterval)) ? '120' : String(rawInterval);
       setMaintenanceIntervalDays(parsedInterval);
       setNotes(item.notes ? String(item.notes) : '');
+      setComponents(item.components ? [...item.components] : []);
 
       if (item.specs && typeof item.specs === 'object') {
         const parsed = Object.entries(item.specs).map(([key, value]) => ({
@@ -102,11 +111,15 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
         setSpecsList([]);
       }
 
-      let initialLastService = item.lastServiceDate || '';
+      let initialLastService = item.lastServiceDate ? item.lastServiceDate.split('T')[0] : '';
       if (maintenanceRecords && item) {
         const itemRecs = maintenanceRecords
           .filter((r) => r.gearId === item.id)
-          .map((r) => ({ ...r }))
+          .map((r) => ({
+            ...r,
+            date: r.date ? r.date.split('T')[0] : '',
+            nextServiceDueDate: r.nextServiceDueDate ? r.nextServiceDueDate.split('T')[0] : '',
+          }))
           .sort((a, b) => {
             const timeA = a.date ? new Date(a.date).getTime() : 0;
             const timeB = b.date ? new Date(b.date).getTime() : 0;
@@ -121,10 +134,10 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
       }
       setLastServiceDate(initialLastService);
 
-      setActiveTab('general');
+      setActiveTab(initialTab || 'general');
       setSaveSuccess(false);
     }
-  }, [isOpen, item?.id]);
+  }, [isOpen, item?.id, initialTab]);
 
   if (!isOpen || !item) return null;
 
@@ -143,6 +156,29 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
     setSpecsList((prev) =>
       prev.map((item, i) => (i === index ? { ...item, [field]: val } : item))
     );
+  };
+
+  const handleAddComponent = () => {
+    setComponents((prev) => [
+      ...prev,
+      {
+        id: `comp-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        name: '',
+        serialNumber: '',
+        condition: 'Good',
+        notes: '',
+      },
+    ]);
+  };
+
+  const handleUpdateComponent = (id: string, field: keyof GearComponent, val: any) => {
+    setComponents((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, [field]: val } : c))
+    );
+  };
+
+  const handleRemoveComponent = (id: string) => {
+    setComponents((prev) => prev.filter((c) => c.id !== id));
   };
 
   const handleAddRecord = () => {
@@ -290,13 +326,22 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
         maintenanceIntervalDays: Number(maintenanceIntervalDays) || 120,
         notes: String(notes || '').trim(),
         specs: convertedSpecs,
+        components: components.filter(c => c.name.trim() || c.serialNumber.trim()).length > 0 
+          ? components.filter(c => c.name.trim() || c.serialNumber.trim())
+          : undefined,
         updatedAt: new Date().toISOString(),
       };
 
-      onSaveGear(updated);
+      const cleanRecords = records.map((r) => ({
+        ...r,
+        date: r.date ? String(r.date).split('T')[0] : '',
+        nextServiceDueDate: r.nextServiceDueDate ? String(r.nextServiceDueDate).split('T')[0] : '',
+      }));
+
       if (onSaveMaintenanceRecords) {
-        onSaveMaintenanceRecords(item.id, records, false);
+        onSaveMaintenanceRecords(item.id, cleanRecords, false);
       }
+      onSaveGear(updated);
       setSaveSuccess(true);
       setTimeout(() => {
         onClose();
@@ -318,17 +363,9 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
     'General Servicing',
   ];
 
-  const categories: GearCategory[] = [
-    'Cameras',
-    'Lenses',
-    'Lighting',
-    'Audio',
-    'Grip & Support',
-    'Drones & Gimbals',
-    'Power & Batteries',
-    'Media & Storage',
-    'Accessories',
-  ];
+  const categories: GearCategory[] = Array.from(
+    new Set([...categoriesProp, ...(item?.category ? [item.category] : [])])
+  );
 
   const statuses: GearStatus[] = [
     'Available',
@@ -467,7 +504,7 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                     <input
                       type="date"
                       autoComplete="off"
-                      value={rec.date || ''}
+                      value={rec.date ? rec.date.split('T')[0] : ''}
                       disabled={isAuditor}
                       onChange={(e) => handleUpdateRecord(rec.id, 'date', e.target.value)}
                       className="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
@@ -509,7 +546,7 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
 
                   <div>
                     <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-0.5">
-                      Cost ($)
+                      Cost (SGD)
                     </label>
                     <input
                       type="number"
@@ -562,7 +599,7 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                     <input
                       type="date"
                       autoComplete="off"
-                      value={rec.nextServiceDueDate || ''}
+                      value={rec.nextServiceDueDate ? rec.nextServiceDueDate.split('T')[0] : ''}
                       disabled={isAuditor}
                       onChange={(e) =>
                         handleUpdateRecord(rec.id, 'nextServiceDueDate', e.target.value)
@@ -840,6 +877,102 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                   </div>
                 </div>
 
+                {/* Kit Components Section */}
+                <div className="pt-2">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-sm">Kit Components</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Register individual items within this set that have their own serial numbers.
+                      </p>
+                    </div>
+                    {!isAuditor && (
+                      <button
+                        type="button"
+                        onClick={handleAddComponent}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-dashed border-slate-300 text-slate-600 hover:text-amber-700 hover:border-amber-400 hover:bg-amber-50 text-xs font-semibold transition-all cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Component</span>
+                      </button>
+                    )}
+                  </div>
+                  
+                  {components.length > 0 && (
+                    <div className="space-y-3">
+                      {components.map((comp) => (
+                        <div key={comp.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 w-full">
+                            <div>
+                              <input
+                                type="text"
+                                placeholder="Bodypack Transmitter"
+                                value={comp.name}
+                                disabled={isAuditor}
+                                onChange={(e) => handleUpdateComponent(comp.id, 'name', e.target.value)}
+                                autoComplete="off"
+                                data-lpignore="true"
+                                data-1p-ignore="true"
+                                className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900 text-xs font-medium focus:outline-none focus:border-amber-500 disabled:opacity-60"
+                              />
+                            </div>
+                            <div>
+                              <input
+                                type="text"
+                                placeholder="SN-TX-449821"
+                                value={comp.serialNumber}
+                                disabled={isAuditor}
+                                onChange={(e) => handleUpdateComponent(comp.id, 'serialNumber', e.target.value)}
+                                autoComplete="off"
+                                data-lpignore="true"
+                                data-1p-ignore="true"
+                                autoCorrect="off"
+                                spellCheck={false}
+                                className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900 font-mono text-xs focus:outline-none focus:border-amber-500 disabled:opacity-60"
+                              />
+                            </div>
+                            <div>
+                              <select
+                                value={comp.condition || 'Good'}
+                                disabled={isAuditor}
+                                onChange={(e) => handleUpdateComponent(comp.id, 'condition', e.target.value)}
+                                className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900 text-xs font-medium focus:outline-none focus:border-amber-500 disabled:opacity-60"
+                              >
+                                {conditions.map((c) => (
+                                  <option key={c} value={c}>{c}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <input
+                                type="text"
+                                placeholder="Optional notes"
+                                value={comp.notes || ''}
+                                disabled={isAuditor}
+                                onChange={(e) => handleUpdateComponent(comp.id, 'notes', e.target.value)}
+                                autoComplete="off"
+                                data-lpignore="true"
+                                data-1p-ignore="true"
+                                className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900 text-[11px] focus:outline-none focus:border-amber-500 disabled:opacity-60"
+                              />
+                            </div>
+                          </div>
+                          {!isAuditor && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveComponent(comp.id)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shrink-0 cursor-pointer"
+                              title="Remove Component"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 {/* Status info bar */}
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-slate-600 text-xs">
                   <div className="flex items-center gap-2">
@@ -916,7 +1049,7 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-slate-700 font-semibold mb-1">Purchase Price ($ USD)</label>
+                    <label className="block text-slate-700 font-semibold mb-1">Purchase Price (SGD)</label>
                     <input
                       type="number"
                       autoComplete="off"
@@ -934,15 +1067,27 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-3 border-t border-slate-100">
                   <div>
-                    <label className="block text-slate-700 font-semibold mb-1">Last Serviced Date</label>
-                    <input
-                      type="date"
-                      autoComplete="off"
-                      value={lastServiceDate}
-                      disabled={isAuditor}
-                      onChange={(e) => handleLastServiceDateChange(e.target.value)}
-                      className="w-full p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-mono focus:outline-none focus:bg-white focus:border-amber-500 disabled:opacity-60"
-                    />
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-slate-700 font-semibold">Last Serviced Date</label>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('maintenance')}
+                        className="text-[11px] text-amber-700 hover:text-amber-800 font-bold hover:underline cursor-pointer"
+                        title="Switch to Maintenance Log tab"
+                      >
+                        Maintenance Log →
+                      </button>
+                    </div>
+                    <div
+                      onClick={() => setActiveTab('maintenance')}
+                      className="w-full p-2 rounded-xl bg-slate-100/90 border border-slate-200 text-slate-800 font-mono text-xs flex items-center justify-between cursor-pointer hover:bg-amber-50/70 hover:border-amber-300 transition-colors"
+                      title="Managed via Maintenance Log. Click to view or add service records."
+                    >
+                      <span>{lastServiceDate ? formatDateDDMMYYYY(lastServiceDate) : 'Not Serviced'}</span>
+                      <span className="text-[10px] uppercase font-bold text-amber-700 bg-amber-100/80 px-1.5 py-0.5 rounded border border-amber-200/80">
+                        Log
+                      </span>
+                    </div>
                   </div>
 
                   <div>
@@ -967,15 +1112,15 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                     </span>
                     <span className="text-xs font-mono font-bold text-amber-800 mt-0.5">
                       {(() => {
-                        if (!lastServiceDate) return item.nextServiceDate || 'Not Scheduled';
+                        if (!lastServiceDate) return formatDateDDMMYYYY(item.nextServiceDate) || 'Not Scheduled';
                         try {
                           const d = new Date(lastServiceDate);
                           if (!isNaN(d.getTime())) {
                             d.setDate(d.getDate() + (Number(maintenanceIntervalDays) || 120));
-                            return d.toISOString().split('T')[0];
+                            return formatDateDDMMYYYY(d);
                           }
                         } catch {}
-                        return item.nextServiceDate || 'Not Scheduled';
+                        return formatDateDDMMYYYY(item.nextServiceDate) || 'Not Scheduled';
                       })()}
                     </span>
                   </div>
@@ -1109,9 +1254,9 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
           <div className="px-6 py-3.5 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between shrink-0">
             <div className="text-[11px] text-slate-500">
               {lastServiceDate || item.lastServiceDate ? (
-                <span>Last serviced: <strong className="text-slate-700">{lastServiceDate || item.lastServiceDate}</strong></span>
+                <span>Last serviced: <strong className="text-slate-700">{formatDateDDMMYYYY(lastServiceDate || item.lastServiceDate)}</strong></span>
               ) : (
-                <span>Created: {new Date(item.createdAt || Date.now()).toLocaleDateString()}</span>
+                <span>Created: {formatDateDDMMYYYY(item.createdAt || Date.now())}</span>
               )}
             </div>
 

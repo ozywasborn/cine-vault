@@ -29,8 +29,20 @@ function loadPersistedStores() {
     if (fs.existsSync(DB_FILE_PATH)) {
       const raw = fs.readFileSync(DB_FILE_PATH, 'utf-8');
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed.gear) && parsed.gear.length > 0) gearStore = parsed.gear;
-      if (Array.isArray(parsed.maint) && parsed.maint.length > 0) maintenanceStore = parsed.maint;
+      if (Array.isArray(parsed.gear) && parsed.gear.length > 0) {
+        gearStore = parsed.gear.map((g: any) => ({
+          ...g,
+          lastServiceDate: g.lastServiceDate ? g.lastServiceDate.split('T')[0] : g.lastServiceDate,
+          nextServiceDate: g.nextServiceDate ? g.nextServiceDate.split('T')[0] : g.nextServiceDate,
+        }));
+      }
+      if (Array.isArray(parsed.maint) && parsed.maint.length > 0) {
+        maintenanceStore = parsed.maint.map((m: any) => ({
+          ...m,
+          date: m.date ? m.date.split('T')[0] : m.date,
+          nextServiceDueDate: m.nextServiceDueDate ? m.nextServiceDueDate.split('T')[0] : m.nextServiceDueDate,
+        }));
+      }
       if (Array.isArray(parsed.projects) && parsed.projects.length > 0) {
         projectsStore = parsed.projects.map((p: any) => ({
           ...p,
@@ -131,7 +143,12 @@ async function startServer() {
           String(g.brand || '').toLowerCase().includes(q) ||
           String(g.serialNumber || '').toLowerCase().includes(q) ||
           String(g.location || '').toLowerCase().includes(q) ||
-          (g.kitName && String(g.kitName).toLowerCase().includes(q))
+          (g.kitName && String(g.kitName).toLowerCase().includes(q)) ||
+          (Array.isArray(g.components) && g.components.some(
+            (c) =>
+              String(c.name || '').toLowerCase().includes(q) ||
+              String(c.serialNumber || '').toLowerCase().includes(q)
+          ))
       );
     }
 
@@ -174,6 +191,7 @@ async function startServer() {
       totalShootsCompleted: 0,
       notes: body.notes || '',
       maintenanceIntervalDays: Number(body.maintenanceIntervalDays) || 120,
+      components: Array.isArray(body.components) ? body.components : undefined,
     };
 
     gearStore.unshift(newItem);
@@ -442,10 +460,10 @@ async function startServer() {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     const latest = gearRecs[0];
     if (latest) {
-      gear.lastServiceDate = latest.date;
+      gear.lastServiceDate = latest.date ? latest.date.split('T')[0] : latest.date;
       gear.condition = latest.conditionAfter || gear.condition;
       if (latest.nextServiceDueDate) {
-        gear.nextServiceDate = latest.nextServiceDueDate;
+        gear.nextServiceDate = latest.nextServiceDueDate ? latest.nextServiceDueDate.split('T')[0] : latest.nextServiceDueDate;
       }
       if (latest.resolved && gear.status === 'In Maintenance') {
         gear.status = 'Available';
@@ -472,14 +490,14 @@ async function startServer() {
     const newRecord: MaintenanceRecord = {
       id: recordId,
       gearId: body.gearId,
-      date: body.date || new Date().toISOString().split('T')[0],
+      date: body.date ? body.date.split('T')[0] : new Date().toISOString().split('T')[0],
       serviceType: body.serviceType,
       technician: body.technician || 'Internal Tech',
       vendor: body.vendor,
       cost: Number(body.cost) || 0,
       conditionAfter: body.conditionAfter || 'Good',
       notes: body.notes || '',
-      nextServiceDueDate: body.nextServiceDueDate,
+      nextServiceDueDate: body.nextServiceDueDate ? body.nextServiceDueDate.split('T')[0] : '',
       resolved: body.resolved ?? true,
     };
 
@@ -490,6 +508,7 @@ async function startServer() {
     }
 
     syncGearFromMaintenance(body.gearId);
+    persistStoresToDisk();
 
     const gear = gearStore.find((g) => g.id === body.gearId);
     if (gear) {
@@ -518,14 +537,14 @@ async function startServer() {
       updated = {
         id: req.params.id,
         gearId: body.gearId || '',
-        date: body.date || new Date().toISOString().split('T')[0],
-        serviceType: body.serviceType || 'General Overhaul',
+        date: body.date ? body.date.split('T')[0] : new Date().toISOString().split('T')[0],
+        serviceType: body.serviceType || 'General Servicing',
         technician: body.technician || 'Internal Tech',
         vendor: body.vendor !== undefined ? body.vendor : '',
         cost: body.cost !== undefined ? Number(body.cost) : 0,
         conditionAfter: body.conditionAfter || 'Good',
         notes: body.notes !== undefined ? body.notes : '',
-        nextServiceDueDate: body.nextServiceDueDate !== undefined ? body.nextServiceDueDate : '',
+        nextServiceDueDate: body.nextServiceDueDate ? body.nextServiceDueDate.split('T')[0] : '',
         resolved: body.resolved !== undefined ? body.resolved : true,
       };
       maintenanceStore.unshift(updated);
@@ -533,20 +552,21 @@ async function startServer() {
       const current = maintenanceStore[idx];
       updated = {
         ...current,
-        date: body.date || current.date,
+        date: body.date ? body.date.split('T')[0] : current.date,
         serviceType: body.serviceType || current.serviceType,
         technician: body.technician || current.technician,
         vendor: body.vendor !== undefined ? body.vendor : current.vendor,
         cost: body.cost !== undefined ? Number(body.cost) : current.cost,
         conditionAfter: body.conditionAfter || current.conditionAfter,
         notes: body.notes !== undefined ? body.notes : current.notes,
-        nextServiceDueDate: body.nextServiceDueDate !== undefined ? body.nextServiceDueDate : current.nextServiceDueDate,
+        nextServiceDueDate: body.nextServiceDueDate !== undefined ? (body.nextServiceDueDate ? body.nextServiceDueDate.split('T')[0] : '') : current.nextServiceDueDate,
         resolved: body.resolved !== undefined ? body.resolved : current.resolved,
       };
       maintenanceStore[idx] = updated;
     }
 
     syncGearFromMaintenance(updated.gearId);
+    persistStoresToDisk();
 
     const gear = gearStore.find((g) => g.id === updated.gearId);
     if (gear) {
@@ -571,6 +591,7 @@ async function startServer() {
 
     const removed = maintenanceStore.splice(idx, 1)[0];
     syncGearFromMaintenance(removed.gearId);
+    persistStoresToDisk();
 
     const gear = gearStore.find((g) => g.id === removed.gearId);
     if (gear) {
@@ -940,7 +961,23 @@ async function startServer() {
       const data: any = await validateAndFetchGoogleScript(req.body.webAppUrl, 'GET', { action: 'fetchAll' });
       if (data && data.success) {
         if (Array.isArray(data.gear) && data.gear.length > 0) {
-          gearStore = data.gear;
+          const diskMap = new Map(gearStore.map((g: any) => [g.id, g]));
+          const diskTagMap = new Map(gearStore.map((g: any) => [g.assetTag, g]));
+          gearStore = data.gear.map((remoteItem: any) => {
+            const diskItem = diskMap.get(remoteItem.id) || diskTagMap.get(remoteItem.assetTag);
+            let comps = remoteItem.components;
+            if (typeof comps === 'string') {
+              try { comps = JSON.parse(comps); } catch { comps = undefined; }
+            }
+            if ((!comps || !Array.isArray(comps)) && diskItem?.components && Array.isArray(diskItem.components)) {
+              comps = diskItem.components;
+            }
+            return {
+              ...remoteItem,
+              components: Array.isArray(comps) ? comps : (diskItem?.components || undefined),
+            };
+          });
+          data.gear = gearStore;
         }
         if (Array.isArray(data.projects) && data.projects.length > 0) {
           projectsStore = data.projects;
