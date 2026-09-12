@@ -47,6 +47,7 @@ export const INITIAL_PROJECTS: ShootProject[] = [
   {
     id: 'proj-01',
     name: 'Apex Commercial - Day 2',
+    jobNo: 'JN-2026-081',
     client: 'Apex Automotive',
     leadDP: 'Devon Brooks',
     location: 'Mojave Desert Track, Unit B',
@@ -58,6 +59,7 @@ export const INITIAL_PROJECTS: ShootProject[] = [
   {
     id: 'proj-02',
     name: 'Wilderness Echoes Documentary',
+    jobNo: 'JN-2026-094',
     client: 'National Geographic Special',
     leadDP: 'Kai Tanaka',
     location: 'Olympic Peninsula Rainforest',
@@ -69,6 +71,7 @@ export const INITIAL_PROJECTS: ShootProject[] = [
   {
     id: 'proj-03',
     name: 'Urban Beat Music Video',
+    jobNo: 'JN-2026-102',
     client: 'Interscope Records',
     leadDP: 'Maya Lin',
     location: 'Downtown Stage 4 Soundstage',
@@ -114,6 +117,7 @@ export const INITIAL_GEAR: GearItem[] = [
       userName: 'Devon Brooks',
       userEmail: 'devon.dp@production.onmicrosoft.com',
       projectName: 'Apex Commercial - Day 2',
+      jobNo: 'JN-2026-081',
       shootLocation: 'Mojave Desert Track, Unit B',
       checkoutDate: '2026-09-02T08:00:00Z',
       expectedReturnDate: '2026-09-06T18:00:00Z',
@@ -156,6 +160,7 @@ export const INITIAL_GEAR: GearItem[] = [
       userName: 'Elena Rostova (for Kai Tanaka)',
       userEmail: 'elena.rostova@production.onmicrosoft.com',
       projectName: 'Wilderness Echoes Documentary',
+      jobNo: 'JN-2026-094',
       shootLocation: 'Olympic Peninsula Rainforest',
       checkoutDate: '2026-09-01T06:30:00Z',
       expectedReturnDate: '2026-09-10T20:00:00Z',

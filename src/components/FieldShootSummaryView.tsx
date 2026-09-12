@@ -29,6 +29,7 @@ import {
   CalendarDays,
   Palette,
   Trash2,
+  Building2,
 } from 'lucide-react';
 import { GearItem, ShootProject, UserAccount, ConditionRating } from '../types';
 import { AddressAutocompleteInput } from './AddressAutocompleteInput';
@@ -568,6 +569,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
   // Modal State for Adding a New Deployment
   const [isAddDeploymentOpen, setIsAddDeploymentOpen] = useState(false);
   const [newProjName, setNewProjName] = useState('');
+  const [newProjJobNo, setNewProjJobNo] = useState('');
   const [newProjDeploymentDate, setNewProjDeploymentDate] = useState(
     new Date().toISOString().split('T')[0]
   );
@@ -584,6 +586,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
   // Modal State for Editing an Existing Deployment
   const [editingDeploymentName, setEditingDeploymentName] = useState<string | null>(null);
   const [editProjName, setEditProjName] = useState('');
+  const [editProjJobNo, setEditProjJobNo] = useState('');
   const [editProjDeploymentDate, setEditProjDeploymentDate] = useState('');
   const [editProjReturnDate, setEditProjReturnDate] = useState('');
   const [editProjLocation, setEditProjLocation] = useState<string>('');
@@ -591,19 +594,27 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
   const [editProjEmail, setEditProjEmail] = useState('');
   const [editProjClient, setEditProjClient] = useState('');
   const [editProjNotes, setEditProjNotes] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Close modals on Escape key
   useEffect(() => {
-    if (!editingDeploymentName && !isAddDeploymentOpen) return;
+    if (!editingDeploymentName && !isAddDeploymentOpen && !showDeleteConfirm) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (editingDeploymentName) setEditingDeploymentName(null);
+        if (showDeleteConfirm) {
+          setShowDeleteConfirm(false);
+          return;
+        }
+        if (editingDeploymentName) {
+          setEditingDeploymentName(null);
+          setShowDeleteConfirm(false);
+        }
         if (isAddDeploymentOpen) setIsAddDeploymentOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editingDeploymentName, isAddDeploymentOpen]);
+  }, [editingDeploymentName, isAddDeploymentOpen, showDeleteConfirm]);
 
   // Drag & Drop State
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
@@ -706,6 +717,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
   const allDeploymentProjects = useMemo(() => {
     const list: {
       name: string;
+      jobNo?: string;
       projectObj?: ShootProject;
       location?: string;
       leadDP?: string;
@@ -722,6 +734,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
       knownNames.add(p.name);
       list.push({
         name: p.name,
+        jobNo: p.jobNo,
         projectObj: p,
         location: p.location,
         leadDP: p.leadDP,
@@ -738,6 +751,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
         knownNames.add(pName);
         list.push({
           name: pName,
+          jobNo: item.currentCheckout?.jobNo,
           location: item.currentCheckout?.shootLocation,
           leadDP: item.currentCheckout?.userName,
           deploymentDate: normalizeDateToYMD(item.currentCheckout?.checkoutDate),
@@ -772,12 +786,27 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
 
   const projectNames = Object.keys(gearByProject);
 
-  // Visible projects based on active project filter
+  // Visible projects based on active project filter and search query
   const visibleProjectNames = useMemo(() => {
-    return projectNames.filter(
-      (projName) => selectedProjectId === 'all' || selectedProjectId === projName
-    );
-  }, [projectNames, selectedProjectId]);
+    return projectNames.filter((projName) => {
+      if (selectedProjectId !== 'all' && selectedProjectId !== projName) return false;
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.trim().toLowerCase();
+      const meta = allDeploymentProjects.find((p) => p.name === projName);
+      if (projName.toLowerCase().includes(q)) return true;
+      if (meta?.jobNo && meta.jobNo.toLowerCase().includes(q)) return true;
+      if (meta?.client && meta.client.toLowerCase().includes(q)) return true;
+      const items = gearByProject[projName] || [];
+      return items.some(
+        (i) =>
+          String(i.name || '').toLowerCase().includes(q) ||
+          String(i.assetTag || '').toLowerCase().includes(q) ||
+          String(i.serialNumber || '').toLowerCase().includes(q) ||
+          (i.kitName && String(i.kitName).toLowerCase().includes(q)) ||
+          (i.currentCheckout?.jobNo && String(i.currentCheckout.jobNo).toLowerCase().includes(q))
+      );
+    });
+  }, [projectNames, selectedProjectId, searchQuery, allDeploymentProjects, gearByProject]);
 
   // Check if all visible projects are collapsed
   const isAllProjectsCollapsed = useMemo(() => {
@@ -843,6 +872,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
 
       return {
         name: p.name,
+        jobNo: p.jobNo || firstCheckout?.jobNo,
         client: p.client,
         leadDP: p.leadDP || firstCheckout?.userName || 'Lead DP',
         location: p.location || firstCheckout?.shootLocation || 'On Location',
@@ -929,7 +959,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
 
       const leftPercent = Math.max(0, Math.min(100, (startDiff / totalDays) * 100));
       const rightPercent = Math.max(0, Math.min(100, (endDiff / totalDays) * 100));
-      const widthPercent = Math.max(2.5, rightPercent - leftPercent);
+      const widthPercent = Math.max(3.8, rightPercent - leftPercent);
 
       const durationDays = Math.max(
         1,
@@ -1045,12 +1075,14 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
     if (!newProjName.trim()) return;
 
     const trimmedName = newProjName.trim();
+    const cleanJobNo = newProjJobNo.trim() || undefined;
     const cleanStartDate = normalizeDateToYMD(newProjDeploymentDate) || newProjDeploymentDate || new Date().toISOString().split('T')[0];
     const cleanEndDate = normalizeDateToYMD(newProjReturnDate) || newProjReturnDate || new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0];
 
     const newProject: ShootProject = {
       id: `proj-${Date.now()}`,
       name: trimmedName,
+      jobNo: cleanJobNo,
       client: newProjClient.trim() || 'Internal Production',
       leadDP: newProjLeadDP.trim() || currentUser?.name || 'Production Lead',
       location: newProjLocation.trim() || 'Field Location',
@@ -1081,6 +1113,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
               userName: newProjLeadDP.trim() || currentUser?.name || 'Field Crew',
               userEmail: newProjEmail.trim() || currentUser?.email || 'crew@production.com',
               projectName: trimmedName,
+              jobNo: cleanJobNo,
               shootLocation: newProjLocation.trim() || 'Field Location',
               checkoutDate: `${cleanStartDate}T08:00:00Z`,
               expectedReturnDate: `${cleanEndDate}T18:00:00Z`,
@@ -1109,6 +1142,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
 
     // Reset Form
     setNewProjName('');
+    setNewProjJobNo('');
     setNewProjLocation('');
     setNewProjClient('');
     setNewProjNotes('');
@@ -1118,6 +1152,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
 
   // Open Edit Deployment Modal
   const handleOpenEditDeployment = (projName: string) => {
+    setShowDeleteConfirm(false);
     const projectMeta = allDeploymentProjects.find((p) => p.name === projName);
     const assignedItems = gearByProject[projName] || [];
     const firstCheckout = assignedItems[0]?.currentCheckout;
@@ -1126,6 +1161,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
 
     setEditingDeploymentName(projName);
     setEditProjName(projName);
+    setEditProjJobNo(projectMeta?.jobNo || firstCheckout?.jobNo || '');
     setEditProjDeploymentDate(
       normalizeDateToYMD(projectMeta?.deploymentDate) ||
         normalizeDateToYMD(firstCheckout?.checkoutDate) ||
@@ -1151,6 +1187,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
     if (!editingDeploymentName) return;
     const trimmedNewName = editProjName.trim();
     if (!trimmedNewName) return;
+    const cleanJobNo = editProjJobNo.trim() || undefined;
     const oldName = editingDeploymentName;
 
     const cleanStartDate = normalizeDateToYMD(editProjDeploymentDate) || editProjDeploymentDate;
@@ -1166,6 +1203,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
         const updatedObj: ShootProject = {
           ...updatedProjects[existingProjIndex],
           name: trimmedNewName,
+          jobNo: cleanJobNo,
           client: editProjClient.trim() || updatedProjects[existingProjIndex].client || 'Internal Production',
           leadDP: editProjLeadDP.trim() || updatedProjects[existingProjIndex].leadDP || currentUser?.name || 'Production Lead',
           location: editProjLocation.trim() || updatedProjects[existingProjIndex].location || 'Field Location',
@@ -1178,6 +1216,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
         const newProjObj: ShootProject = {
           id: `proj-${Date.now()}`,
           name: trimmedNewName,
+          jobNo: cleanJobNo,
           client: editProjClient.trim() || 'Internal Production',
           leadDP: editProjLeadDP.trim() || currentUser?.name || 'Production Lead',
           location: editProjLocation.trim() || 'Field Location',
@@ -1201,6 +1240,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
             currentCheckout: {
               ...item.currentCheckout,
               projectName: trimmedNewName,
+              jobNo: cleanJobNo,
               shootLocation: editProjLocation.trim(),
               userName: editProjLeadDP.trim() || item.currentCheckout.userName,
               userEmail: editProjEmail.trim() || item.currentCheckout.userEmail,
@@ -1234,6 +1274,66 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
 
     setEditingDeploymentName(null);
     showToast(`Deployment "${trimmedNewName}" details updated successfully.`);
+  };
+
+  // Delete Deployment
+  const handleDeleteDeployment = () => {
+    if (!editingDeploymentName) return;
+    const projNameToDelete = editingDeploymentName;
+    const projectMeta = allDeploymentProjects.find((p) => p.name === projNameToDelete);
+    const assignedItems = gearByProject[projNameToDelete] || [];
+
+    // 1. Return gear assigned to this shoot back to cage
+    if (assignedItems.length > 0) {
+      if (onBatchCheckin) {
+        onBatchCheckin(assignedItems.map((i) => i.id));
+      } else if (onUpdateGear) {
+        assignedItems.forEach((item) => {
+          onUpdateGear({
+            ...item,
+            status: 'Available',
+            currentCheckout: undefined,
+            updatedAt: new Date().toISOString(),
+          });
+        });
+      }
+    }
+
+    // 2. Remove project from ShootProject list
+    if (onProjectsChange) {
+      const updatedProjects = (projects || []).filter(
+        (p) => p.name !== projNameToDelete && p.id !== projectMeta?.projectObj?.id
+      );
+      onProjectsChange(updatedProjects);
+    }
+
+    // 3. Clear selected and expanded states
+    if (selectedProjectId === projNameToDelete) {
+      setSelectedProjectId('all');
+    }
+    setExpandedProjects((prev) => {
+      const next = { ...prev };
+      delete next[projNameToDelete];
+      return next;
+    });
+
+    // 4. Remove custom deployment color if set
+    setDeploymentColors((prev) => {
+      const next = { ...prev };
+      delete next[projNameToDelete];
+      try {
+        localStorage.setItem('cinevault_deployment_colors', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    setShowDeleteConfirm(false);
+    setEditingDeploymentName(null);
+    showToast(
+      `Deployment "${projNameToDelete}" deleted${
+        assignedItems.length > 0 ? ` and ${assignedItems.length} item(s) returned to the cage` : ''
+      }.`
+    );
   };
 
   // Open right-click context menu on equipment in deployment window
@@ -1501,11 +1601,14 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
               title="Filter by production project"
             >
               <option value="all">All Active Shoots ({projectNames.length})</option>
-              {projectNames.map((name) => (
-                <option key={name} value={name}>
-                  {name} ({gearByProject[name]?.length || 0} items)
-                </option>
-              ))}
+              {projectNames.map((name) => {
+                const meta = allDeploymentProjects.find((p) => p.name === name);
+                return (
+                  <option key={name} value={name}>
+                    {name} {meta?.jobNo ? `[${meta.jobNo}]` : ''} ({gearByProject[name]?.length || 0} items)
+                  </option>
+                );
+              })}
             </select>
 
             {/* View Mode Switcher (Combined / Gantt / Cards) */}
@@ -1677,7 +1780,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                     >
                       {/* Left Info Column */}
                       <div className="w-56 shrink-0 pr-3 min-w-0">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 min-w-0">
                           <span
                             className={`w-2 h-2 rounded-full shrink-0 ${bar.theme.dot}`}
                           />
@@ -1689,12 +1792,17 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                           >
                             {bar.name}
                           </button>
+                          {bar.jobNo && (
+                            <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-mono font-bold shrink-0">
+                              {bar.jobNo}
+                            </span>
+                          )}
                         </div>
                         <div className="text-[10px] text-slate-500 truncate mt-0.5 pl-3.5">
                           <span className="font-semibold text-slate-700">
                             {bar.itemCount} assets
                           </span>{' '}
-                          • {bar.leadDP}
+                          • {bar.durationDays}d • {bar.leadDP}
                         </div>
                       </div>
 
@@ -1723,20 +1831,41 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                           style={{
                             left: `${bar.leftPercent}%`,
                             width: `${bar.widthPercent}%`,
+                            minWidth: '56px',
                           }}
-                          className={`absolute top-1 bottom-1 rounded-lg ${bar.theme.ganttBar} flex items-center justify-between px-2.5 shadow-xs cursor-pointer hover:ring-2 hover:ring-amber-400 transition-all z-20 overflow-hidden`}
-                          title={`${bar.name}\nDates: ${bar.startStr} to ${bar.endStr} (${bar.durationDays} days)\nLocation: ${bar.location}\nLead DP: ${bar.leadDP}\nAssets: ${bar.itemCount} deployed\nClick to edit deployment`}
+                          className={`absolute top-1 bottom-1 rounded-lg ${bar.theme.ganttBar} flex items-center justify-between px-2 shadow-xs cursor-pointer hover:ring-2 hover:ring-amber-400 transition-all z-20 overflow-hidden select-none`}
+                          title={`${bar.name}${bar.jobNo ? ` [Job: ${bar.jobNo}]` : ''}\nDates: ${bar.startStr} to ${bar.endStr} (${bar.durationDays} days)\nLocation: ${bar.location}\nLead DP: ${bar.leadDP}\nAssets: ${bar.itemCount} deployed\nClick to edit deployment`}
                         >
-                          <div className="flex items-center gap-1.5 truncate">
+                          {/* Priority 1: Deployment Title & Job No (Never crushed by stats) */}
+                          <div className="flex items-center gap-1 min-w-0 flex-1 mr-1">
                             <span className="text-[11px] font-bold truncate tracking-tight">
                               {bar.name}
                             </span>
+                            {bar.jobNo && bar.widthPercent >= 12 && (
+                              <span className="px-1.5 py-0.2 rounded bg-black/20 text-white/95 text-[9px] font-mono font-bold shrink-0">
+                                {bar.jobNo}
+                              </span>
+                            )}
                           </div>
-                          <div className="flex items-center gap-1.5 text-[10px] font-bold opacity-90 shrink-0 ml-2">
-                            <span>{bar.durationDays}d</span>
-                            <span>•</span>
-                            <span>{bar.itemCount} units</span>
-                          </div>
+
+                          {/* Priority 2: Days & Units Badge (Stays visible when space allows, never crushes the title) */}
+                          {bar.widthPercent >= 14 ? (
+                            <div className="flex items-center gap-1.5 text-[10px] font-bold opacity-90 shrink-0 ml-1.5 whitespace-nowrap">
+                              <span>{bar.durationDays}d</span>
+                              <span>•</span>
+                              <span>{bar.itemCount} units</span>
+                            </div>
+                          ) : bar.widthPercent >= 8 ? (
+                            <div className="flex items-center gap-1 text-[10px] font-bold opacity-90 shrink-0 ml-1 whitespace-nowrap">
+                              <span>{bar.durationDays}d</span>
+                              <span>•</span>
+                              <span>{bar.itemCount}u</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center text-[10px] font-bold opacity-90 shrink-0 ml-1 whitespace-nowrap">
+                              <span>{bar.durationDays}d</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1819,7 +1948,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                 <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="Search field assets by tag, model, kit, serial..."
+                  placeholder="Search deployments by name, job no, tag, model..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   autoComplete="off"
@@ -1960,13 +2089,21 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
               let items = gearByProject[projName] || [];
               if (searchQuery) {
                 const q = searchQuery.toLowerCase();
-                items = items.filter(
-                  (i) =>
-                    String(i.name || '').toLowerCase().includes(q) ||
-                    String(i.assetTag || '').toLowerCase().includes(q) ||
-                    String(i.serialNumber || '').toLowerCase().includes(q) ||
-                    (i.kitName && String(i.kitName).toLowerCase().includes(q))
-                );
+                const matchesProject =
+                  projName.toLowerCase().includes(q) ||
+                  (projectMeta?.jobNo && projectMeta.jobNo.toLowerCase().includes(q)) ||
+                  (projectMeta?.client && projectMeta.client.toLowerCase().includes(q));
+
+                if (!matchesProject) {
+                  items = items.filter(
+                    (i) =>
+                      String(i.name || '').toLowerCase().includes(q) ||
+                      String(i.assetTag || '').toLowerCase().includes(q) ||
+                      String(i.serialNumber || '').toLowerCase().includes(q) ||
+                      (i.kitName && String(i.kitName).toLowerCase().includes(q)) ||
+                      (i.currentCheckout?.jobNo && String(i.currentCheckout.jobNo).toLowerCase().includes(q))
+                  );
+                }
               }
 
               const firstCheckout = items[0]?.currentCheckout;
@@ -1991,6 +2128,20 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
               const shootLoc =
                 projectMeta?.location || firstCheckout?.shootLocation || '';
               const leadDP = projectMeta?.leadDP || firstCheckout?.userName || 'Lead DP';
+
+              const rawStartDate = projectMeta?.deploymentDate || firstCheckout?.checkoutDate;
+              const rawEndDate = projectMeta?.expectedReturnDate || firstCheckout?.expectedReturnDate;
+              let durationDays = 1;
+              if (rawStartDate) {
+                const start = new Date(rawStartDate).getTime();
+                const end = rawEndDate ? new Date(rawEndDate).getTime() : start;
+                if (!isNaN(start) && !isNaN(end)) {
+                  const diff = Math.round((end - start) / 86400000);
+                  durationDays = Math.max(1, diff === 0 ? 1 : diff + 1);
+                }
+              }
+              const isSameDate = deploymentDate === returnDate || !returnDate || returnDate === 'TBD';
+              const jobNo = projectMeta?.jobNo || firstCheckout?.jobNo;
 
               return (
                 <div
@@ -2023,7 +2174,8 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                     title={isExpanded ? 'Click to collapse deployment' : 'Click to expand deployment'}
                   >
                     <div>
-                      <div className="flex items-center gap-2 flex-wrap">
+                      {/* Primary Overview: Title > Job No. > Deployment Date > Client */}
+                      <div className="flex items-center gap-2.5 flex-wrap">
                         {/* Interactive Deployment Coloured Dot */}
                         <div className="relative inline-flex items-center" onClick={(e) => e.stopPropagation()}>
                           <button
@@ -2050,44 +2202,67 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                             />
                           </button>
                         </div>
+
+                        {/* 1. Deployment Title */}
                         <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
                           {projName}
                         </h2>
-                        <span className={`px-2.5 py-0.5 rounded-full ${theme.badgeBg} text-xs font-bold`}>
-                          {items.length} {items.length === 1 ? 'asset' : 'assets'} deployed
-                        </span>
-                        {projectMeta?.client && (
-                          <span className="px-2.5 py-0.5 rounded-full bg-white/80 border border-slate-200 text-slate-700 text-xs font-medium">
-                            Client: {projectMeta.client}
+
+                        {/* 2. Job No. */}
+                        {jobNo && (
+                          <span
+                            className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-300/80 text-xs font-mono font-bold tracking-tight shadow-2xs inline-flex items-center gap-1"
+                            title={`Job Number: ${jobNo}`}
+                          >
+                            <span className="text-[9px] uppercase font-sans font-bold text-amber-700/80 tracking-wider">JOB</span>
+                            <span>{jobNo}</span>
                           </span>
                         )}
-                        {isFullyVerified && (
-                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3" /> Pack Verified
+
+                        {/* 3. Deployment Date */}
+                        <span
+                          className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-white border border-slate-200/90 text-xs font-semibold text-slate-800 shadow-2xs"
+                          title={
+                            isSameDate
+                              ? `Deployment Date: ${deploymentDate}`
+                              : `Deployment Date: ${deploymentDate} | Expected Return: ${returnDate}`
+                          }
+                        >
+                          <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          <span>{deploymentDate}</span>
+                          {!isSameDate && (
+                            <>
+                              <span className="text-slate-400 font-normal">→</span>
+                              <span className="text-slate-700">{returnDate}</span>
+                            </>
+                          )}
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/80 px-1.5 py-0.2 rounded-md">
+                            {durationDays === 1 ? '1d' : `${durationDays}d`}
+                          </span>
+                        </span>
+
+                        {/* 4. Client */}
+                        {projectMeta?.client && (
+                          <span
+                            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-white/90 border border-slate-200 text-slate-700 text-xs font-medium shadow-2xs"
+                            title={`Client: ${projectMeta.client}`}
+                          >
+                            <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span className="font-semibold text-slate-800">{projectMeta.client}</span>
                           </span>
                         )}
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 mt-2.5 font-medium">
-                        {/* Date of deployment */}
-                        <span className="flex items-center gap-1.5 text-slate-800 font-semibold bg-white px-2 py-0.5 rounded-md border border-slate-200">
-                          <Calendar className="w-3.5 h-3.5 text-amber-600" />
-                          Deployment Date:{' '}
-                          <span className="text-amber-700 font-bold">{deploymentDate}</span>
-                        </span>
-
-                        <span className="flex items-center gap-1 text-slate-700">
-                          <Clock className="w-3.5 h-3.5 text-slate-400" />
-                          ETA Return: {returnDate}
-                        </span>
-
+                      {/* Secondary Overview ("followed by the rest"): Location > Lead > Assets > Verified */}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-slate-500 mt-2 font-medium">
+                        {/* Location */}
                         {shootLoc ? (
                           <a
                             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shootLoc)}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="flex items-center gap-1 text-slate-700 hover:text-amber-600 transition-colors group cursor-pointer"
+                            className="inline-flex items-center gap-1 text-slate-600 hover:text-amber-600 transition-colors group cursor-pointer"
                             title="Click to view address on Google Maps"
                           >
                             <MapPin className="w-3.5 h-3.5 text-amber-500 shrink-0" />
@@ -2095,16 +2270,40 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                             <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                           </a>
                         ) : (
-                          <span className="flex items-center gap-1 text-slate-400 italic">
-                            <MapPin className="w-3.5 h-3.5 text-slate-300" />
-                            No location set
+                          <span className="inline-flex items-center gap-1 text-slate-400 italic">
+                            <MapPin className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                            <span>No location set</span>
                           </span>
                         )}
 
-                        <span className="flex items-center gap-1 text-slate-700">
-                          <User className="w-3.5 h-3.5 text-blue-500" />
-                          Lead: <strong>{leadDP}</strong>
+                        <span className="text-slate-300 select-none">•</span>
+
+                        {/* Lead DP */}
+                        <span className="inline-flex items-center gap-1 text-slate-600">
+                          <User className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                          <span className="text-slate-400">Lead:</span>
+                          <strong className="text-slate-700 font-semibold">{leadDP}</strong>
                         </span>
+
+                        <span className="text-slate-300 select-none">•</span>
+
+                        {/* Assets Count */}
+                        <span className="inline-flex items-center gap-1 text-slate-600">
+                          <Box className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <strong className="text-slate-700 font-semibold">{items.length}</strong>
+                          <span>{items.length === 1 ? 'asset deployed' : 'assets deployed'}</span>
+                        </span>
+
+                        {/* Pack Verified */}
+                        {isFullyVerified && (
+                          <>
+                            <span className="text-slate-300 select-none">•</span>
+                            <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 text-[11px]">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                              <span>Pack Verified</span>
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -2456,21 +2655,38 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
               data-1p-ignore="true"
               className="p-6 space-y-4 max-h-[75vh] overflow-y-auto"
             >
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                  Deployment / Project Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  autoComplete="off"
-                  data-lpignore="true"
-                  data-1p-ignore="true"
-                  value={newProjName}
-                  onChange={(e) => setNewProjName(e.target.value)}
-                  placeholder="e.g. Commercial Day 3 - Mojave Exterior"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-semibold focus:outline-none focus:bg-white focus:border-amber-500 transition-colors"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Deployment / Project Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    value={newProjName}
+                    onChange={(e) => setNewProjName(e.target.value)}
+                    placeholder="e.g. Commercial Day 3 - Mojave Exterior"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-semibold focus:outline-none focus:bg-white focus:border-amber-500 transition-colors"
+                  />
+                </div>
+                <div className="sm:col-span-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Job No.
+                  </label>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    value={newProjJobNo}
+                    onChange={(e) => setNewProjJobNo(e.target.value)}
+                    placeholder="e.g. JN-2026-042"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-mono font-semibold focus:outline-none focus:bg-white focus:border-amber-500 transition-colors"
+                  />
+                </div>
               </div>
 
               {/* Date of Deployment (Crucial User Requirement) */}
@@ -2732,21 +2948,38 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
               data-1p-ignore="true"
               className="p-6 space-y-4 max-h-[75vh] overflow-y-auto"
             >
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                  Deployment / Project Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  autoComplete="off"
-                  data-lpignore="true"
-                  data-1p-ignore="true"
-                  value={editProjName}
-                  onChange={(e) => setEditProjName(e.target.value)}
-                  placeholder="e.g. Commercial Day 3 - Mojave Exterior"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-semibold focus:outline-none focus:bg-white focus:border-amber-500 transition-colors"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Deployment / Project Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    value={editProjName}
+                    onChange={(e) => setEditProjName(e.target.value)}
+                    placeholder="e.g. Commercial Day 3 - Mojave Exterior"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-semibold focus:outline-none focus:bg-white focus:border-amber-500 transition-colors"
+                  />
+                </div>
+                <div className="sm:col-span-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Job No.
+                  </label>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    value={editProjJobNo}
+                    onChange={(e) => setEditProjJobNo(e.target.value)}
+                    placeholder="e.g. JN-2026-042"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-mono font-semibold focus:outline-none focus:bg-white focus:border-amber-500 transition-colors"
+                  />
+                </div>
               </div>
 
               {/* Date of Deployment & Expected Return Date */}
@@ -2883,24 +3116,99 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
               </div>
 
               {/* Modal Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+              <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-200">
+                {/* Delete Button (Far left, positioned away from Cancel and Save Changes) */}
                 <button
                   type="button"
-                  onClick={() => setEditingDeploymentName(null)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer transition-colors"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50/80 hover:bg-rose-100 text-rose-700 hover:text-rose-800 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs hover:shadow-xs"
+                  title="Delete this deployment"
                 >
-                  Cancel
+                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Delete Deployment</span>
                 </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-xs cursor-pointer hover:shadow-sm flex items-center gap-1.5"
-                >
-                  <Check className="w-4 h-4 text-white stroke-[2.5]" />
-                  <span>Save Changes</span>
-                </button>
+
+                {/* Right: Cancel & Save Changes */}
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDeleteConfirm(false);
+                      setEditingDeploymentName(null);
+                    }}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-xs cursor-pointer hover:shadow-sm flex items-center gap-1.5"
+                  >
+                    <Check className="w-4 h-4 text-white stroke-[2.5]" />
+                    <span>Save Changes</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>
+
+          {/* Delete Confirmation Dialog Overlay */}
+          {showDeleteConfirm && (
+            <div
+              className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in-0 duration-150"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setShowDeleteConfirm(false);
+              }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150"
+              >
+                <div className="flex items-start gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-rose-100 border border-rose-200 flex items-center justify-center text-rose-600 shrink-0">
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-bold text-slate-900">
+                      Delete Deployment?
+                    </h3>
+                    <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                      Are you sure you want to delete <strong className="text-slate-900">"{editingDeploymentName}"</strong>?
+                    </p>
+                    {editingDeploymentName && (gearByProject[editingDeploymentName]?.length || 0) > 0 && (
+                      <div className="mt-3 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 leading-normal flex items-start gap-2">
+                        <PackageCheck className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                        <span>
+                          <strong>{gearByProject[editingDeploymentName].length} {gearByProject[editingDeploymentName].length === 1 ? 'item' : 'items'}</strong> currently assigned to this shoot will be checked back in to the cage as available.
+                        </span>
+                      </div>
+                    )}
+                    <p className="text-[11px] text-slate-400 mt-2">
+                      This action cannot be undone.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteDeployment}
+                    className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs flex items-center gap-1.5"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-white" />
+                    <span>Confirm Delete</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

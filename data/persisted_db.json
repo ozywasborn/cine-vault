@@ -48,7 +48,6 @@
       ],
       "createdAt": "2026-09-11T09:50:19.608Z",
       "updatedAt": "2026-09-11T10:07:03.001Z",
-      "specs": {},
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -61,7 +60,8 @@
       "currentUser": "",
       "lastServiceDate": "",
       "nextServiceDate": "",
-      "kitName": ""
+      "kitName": "",
+      "specs": {}
     },
     {
       "id": "gear-1789120160435",
@@ -110,8 +110,7 @@
         }
       ],
       "createdAt": "2026-09-11T09:49:20.435Z",
-      "updatedAt": "2026-09-11T10:06:28.835Z",
-      "specs": {},
+      "updatedAt": "2026-09-12T02:19:49.963Z",
       "currentCheckout_id": "chk-1789120847099",
       "currentCheckout_userName": "OZY",
       "currentCheckout_userEmail": "marcus.vance@studiofilms.work",
@@ -125,6 +124,7 @@
       "lastServiceDate": "",
       "nextServiceDate": "",
       "kitName": "",
+      "specs": {},
       "currentCheckout": {
         "id": "chk-1789120847099",
         "gearId": "gear-1789120160435",
@@ -189,7 +189,6 @@
       ],
       "createdAt": "2026-09-11T09:04:09.444Z",
       "updatedAt": "2026-09-11T10:00:07.471Z",
-      "specs": {},
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -202,7 +201,8 @@
       "currentUser": "{role=Admin, department=Camera Operations & Fleet, id=user-01, name=Marcus Vance, provider=Google Workspace, email=marcus.vance@studiofilms.work}",
       "lastServiceDate": "",
       "nextServiceDate": "",
-      "kitName": ""
+      "kitName": "",
+      "specs": {}
     },
     {
       "id": "gear-1789111899118",
@@ -222,7 +222,6 @@
       "notes": "",
       "createdAt": "2026-09-11T07:31:39.118Z",
       "updatedAt": "2026-09-11T07:34:46.915Z",
-      "specs": {},
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -235,7 +234,8 @@
       "currentUser": "",
       "lastServiceDate": "",
       "nextServiceDate": "",
-      "kitName": ""
+      "kitName": "",
+      "specs": {}
     },
     {
       "id": "gear-1789111820385",
@@ -255,7 +255,6 @@
       "notes": "",
       "createdAt": "2026-09-11T07:30:20.385Z",
       "updatedAt": "2026-09-11T07:34:06.149Z",
-      "specs": {},
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -268,7 +267,8 @@
       "currentUser": "",
       "lastServiceDate": "",
       "nextServiceDate": "",
-      "kitName": ""
+      "kitName": "",
+      "specs": {}
     },
     {
       "id": "gear-1789111736112",
@@ -288,7 +288,6 @@
       "notes": "",
       "createdAt": "2026-09-11T07:28:56.112Z",
       "updatedAt": "2026-09-11T07:33:25.480Z",
-      "specs": {},
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -301,7 +300,8 @@
       "currentUser": "",
       "lastServiceDate": "",
       "nextServiceDate": "",
-      "kitName": ""
+      "kitName": "",
+      "specs": {}
     },
     {
       "id": "gear-1789111626312",
@@ -321,7 +321,6 @@
       "notes": "",
       "createdAt": "2026-09-11T07:27:06.312Z",
       "updatedAt": "2026-09-11T07:27:36.005Z",
-      "specs": {},
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -334,7 +333,8 @@
       "currentUser": "",
       "lastServiceDate": "2024-07-22T16:00:00.000Z",
       "nextServiceDate": "2024-10-20T16:00:00.000Z",
-      "kitName": ""
+      "kitName": "",
+      "specs": {}
     },
     {
       "id": "gear-1789111505123",
@@ -354,7 +354,6 @@
       "notes": "",
       "createdAt": "2026-09-11T07:25:05.123Z",
       "updatedAt": "2026-09-11T07:26:00.178Z",
-      "specs": {},
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -367,7 +366,8 @@
       "currentUser": "",
       "lastServiceDate": "2024-07-22T16:00:00.000Z",
       "nextServiceDate": "2024-10-20T16:00:00.000Z",
-      "kitName": ""
+      "kitName": "",
+      "specs": {}
     },
     {
       "id": "gear-1789110864900",
@@ -387,7 +387,6 @@
       "notes": "Lens set of 21mm, 35mm, 50mm and 85mm",
       "createdAt": "2026-09-11T07:14:24.900Z",
       "updatedAt": "2026-09-11T09:31:55.642Z",
-      "specs": {},
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -400,7 +399,8 @@
       "currentUser": "{role=Admin, name=Marcus Vance, id=user-01, department=Camera Operations & Fleet, provider=Google Workspace, email=marcus.vance@studiofilms.work}",
       "lastServiceDate": "2023-09-19T16:00:00.000Z",
       "nextServiceDate": "2023-12-18T16:00:00.000Z",
-      "kitName": ""
+      "kitName": "",
+      "specs": {}
     },
     {
       "id": "gear-1789110593932",
@@ -420,7 +420,6 @@
       "notes": "",
       "createdAt": "2026-09-11T07:09:53.932Z",
       "updatedAt": "2026-09-11T07:10:25.092Z",
-      "specs": {},
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -433,7 +432,8 @@
       "currentUser": "",
       "lastServiceDate": "",
       "nextServiceDate": "",
-      "kitName": ""
+      "kitName": "",
+      "specs": {}
     },
     {
       "id": "gear-1789110345389",
@@ -453,7 +453,6 @@
       "notes": "",
       "createdAt": "2026-09-11T07:05:45.389Z",
       "updatedAt": "2026-09-11T07:23:01.407Z",
-      "specs": {},
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -466,7 +465,8 @@
       "currentUser": "",
       "lastServiceDate": "",
       "nextServiceDate": "",
-      "kitName": ""
+      "kitName": "",
+      "specs": {}
     },
     {
       "id": "gear-1789105756400",
@@ -486,7 +486,6 @@
       "notes": "",
       "createdAt": "",
       "updatedAt": "2026-09-11T07:23:06.737Z",
-      "specs": {},
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -499,7 +498,8 @@
       "currentUser": "",
       "lastServiceDate": "",
       "nextServiceDate": "",
-      "kitName": ""
+      "kitName": "",
+      "specs": {}
     },
     {
       "id": "gear-1789105664086",
@@ -519,7 +519,6 @@
       "notes": "",
       "createdAt": "",
       "updatedAt": "2026-09-11T06:43:15.062Z",
-      "specs": {},
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -532,7 +531,8 @@
       "currentUser": "{name=Marcus Vance, role=Admin, department=Camera Operations & Fleet, id=user-01, provider=Google Workspace, email=marcus.vance@studiofilms.work}",
       "lastServiceDate": "",
       "nextServiceDate": "",
-      "kitName": ""
+      "kitName": "",
+      "specs": {}
     },
     {
       "id": "gear-1789105586521",
@@ -552,7 +552,6 @@
       "notes": "",
       "createdAt": "",
       "updatedAt": "2026-09-11T06:43:01.270Z",
-      "specs": {},
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -565,7 +564,8 @@
       "currentUser": "{name=Marcus Vance, role=Admin, email=marcus.vance@studiofilms.work, department=Camera Operations & Fleet, provider=Google Workspace, id=user-01}",
       "lastServiceDate": "",
       "nextServiceDate": "",
-      "kitName": ""
+      "kitName": "",
+      "specs": {}
     },
     {
       "id": "gear-1789105558838",
@@ -585,7 +585,6 @@
       "notes": "",
       "createdAt": "",
       "updatedAt": "2026-09-11T06:43:05.274Z",
-      "specs": {},
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -598,7 +597,8 @@
       "currentUser": "{email=marcus.vance@studiofilms.work, role=Admin, name=Marcus Vance, department=Camera Operations & Fleet, id=user-01, provider=Google Workspace}",
       "lastServiceDate": "",
       "nextServiceDate": "",
-      "kitName": ""
+      "kitName": "",
+      "specs": {}
     },
     {
       "id": "gear-1789105512335",
@@ -617,8 +617,7 @@
       "maintenanceIntervalDays": 120,
       "notes": "",
       "createdAt": "2026-09-11T05:45:12.335Z",
-      "updatedAt": "2026-09-11T06:40:43.711Z",
-      "specs": {},
+      "updatedAt": "2026-09-12T02:57:26.081Z",
       "currentCheckout_id": "chk-1789108843711",
       "currentCheckout_userName": "Jason Neo",
       "currentCheckout_userEmail": "marcus.vance@studiofilms.work",
@@ -628,10 +627,18 @@
       "currentCheckout_expectedReturnDate": "2026-09-17T18:00:00Z",
       "currentCheckout_notes": "Transferred to Apple Lighting Rental on 11/09/2026",
       "totalShootsCompleted": 0,
-      "currentUser": "{id=user-01, email=marcus.vance@studiofilms.work, name=Marcus Vance, role=Admin, provider=Google Workspace, department=Camera Operations & Fleet}",
+      "currentUser": {
+        "id": "user-01",
+        "name": "Marcus Vance",
+        "email": "marcus.vance@studiofilms.work",
+        "role": "Admin",
+        "provider": "Google Workspace",
+        "department": "Camera Operations & Fleet"
+      },
       "lastServiceDate": "",
       "nextServiceDate": "",
       "kitName": "",
+      "specs": {},
       "currentCheckout": {
         "id": "chk-1789108843711",
         "gearId": "gear-1789105512335",
@@ -645,7 +652,8 @@
         "expectedReturnDate": "2026-09-17T18:00:00Z",
         "status": "Active",
         "notes": "Transferred to Apple Lighting Rental on 11/09/2026",
-        "conditionOnCheckout": "Good"
+        "conditionOnCheckout": "Good",
+        "jobNo": "GM12345"
       }
     },
     {
@@ -666,7 +674,6 @@
       "notes": "",
       "createdAt": "",
       "updatedAt": "2026-09-11T06:42:58.040Z",
-      "specs": {},
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -679,7 +686,8 @@
       "currentUser": "{department=Camera Operations & Fleet, email=marcus.vance@studiofilms.work, name=Marcus Vance, role=Admin, provider=Google Workspace, id=user-01}",
       "lastServiceDate": "",
       "nextServiceDate": "",
-      "kitName": ""
+      "kitName": "",
+      "specs": {}
     },
     {
       "id": "gear-1789104092934",
@@ -698,8 +706,7 @@
       "maintenanceIntervalDays": 90,
       "notes": "",
       "createdAt": "2026-09-11T05:21:32.934Z",
-      "updatedAt": "2026-09-11T06:06:01.331Z",
-      "specs": {},
+      "updatedAt": "2026-09-12T02:57:26.081Z",
       "currentCheckout_id": "chk-1789104818701",
       "currentCheckout_userName": "Jason Neo",
       "currentCheckout_userEmail": "marcus.vance@studiofilms.work",
@@ -709,10 +716,18 @@
       "currentCheckout_expectedReturnDate": "2026-09-17T18:00:00Z",
       "currentCheckout_notes": "Transferred to Apple Lighting Rental on 11/09/2026",
       "totalShootsCompleted": 0,
-      "currentUser": "{name=Marcus Vance, id=user-01, department=Camera Operations & Fleet, role=Admin, provider=Google Workspace, email=marcus.vance@studiofilms.work}",
+      "currentUser": {
+        "id": "user-01",
+        "name": "Marcus Vance",
+        "email": "marcus.vance@studiofilms.work",
+        "role": "Admin",
+        "provider": "Google Workspace",
+        "department": "Camera Operations & Fleet"
+      },
       "lastServiceDate": "",
       "nextServiceDate": "",
       "kitName": "",
+      "specs": {},
       "currentCheckout": {
         "id": "chk-1789104818701",
         "gearId": "gear-1789104092934",
@@ -726,7 +741,8 @@
         "expectedReturnDate": "2026-09-17T18:00:00Z",
         "status": "Active",
         "notes": "Transferred to Apple Lighting Rental on 11/09/2026",
-        "conditionOnCheckout": "Good"
+        "conditionOnCheckout": "Good",
+        "jobNo": "GM12345"
       }
     },
     {
@@ -746,8 +762,7 @@
       "maintenanceIntervalDays": 90,
       "notes": "1x Softbox + Diffusion Sheet + Grid Control + Bag\n1x Control Box\n1x Lighting Clamp\n1x 5-Pin Male-to-Female XLR Head Cable (3m)\n1x 5-Pin Male-to-Female XLR Head Cable (0.6m)\n1x AC Power Cable\n1x Power Supply Box",
       "createdAt": "2026-09-11T05:11:23.898Z",
-      "updatedAt": "2026-09-11T06:06:01.331Z",
-      "specs": {},
+      "updatedAt": "2026-09-12T02:57:26.081Z",
       "currentCheckout_id": "chk-1789104795806",
       "currentCheckout_userName": "Jason Neo",
       "currentCheckout_userEmail": "marcus.vance@studiofilms.work",
@@ -757,10 +772,18 @@
       "currentCheckout_expectedReturnDate": "2026-09-17T18:00:00Z",
       "currentCheckout_notes": "Transferred to Apple Lighting Rental on 11/09/2026",
       "totalShootsCompleted": 0,
-      "currentUser": "{role=Admin, id=user-01, department=Camera Operations & Fleet, email=marcus.vance@studiofilms.work, provider=Google Workspace, name=Marcus Vance}",
+      "currentUser": {
+        "id": "user-01",
+        "name": "Marcus Vance",
+        "email": "marcus.vance@studiofilms.work",
+        "role": "Admin",
+        "provider": "Google Workspace",
+        "department": "Camera Operations & Fleet"
+      },
       "lastServiceDate": "",
       "nextServiceDate": "",
       "kitName": "",
+      "specs": {},
       "currentCheckout": {
         "id": "chk-1789104795806",
         "gearId": "gear-1789103483898",
@@ -774,7 +797,8 @@
         "expectedReturnDate": "2026-09-17T18:00:00Z",
         "status": "Active",
         "notes": "Transferred to Apple Lighting Rental on 11/09/2026",
-        "conditionOnCheckout": "Good"
+        "conditionOnCheckout": "Good",
+        "jobNo": "GM12345"
       }
     },
     {
@@ -795,12 +819,6 @@
       "notes": "",
       "createdAt": "2026-09-11T05:08:19.511Z",
       "updatedAt": "2026-09-11T05:09:21.887Z",
-      "specs": {
-        "PowerOutput": "300W COB LED",
-        "ColorTemp": "5600K Daylight",
-        "WeatherResistance": "IP54 Dust & Water Resistant",
-        "Mount": "Bowens S-Mount"
-      },
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -813,7 +831,13 @@
       "currentUser": "{id=user-01, provider=Google Workspace, email=marcus.vance@studiofilms.work, role=Admin, department=Camera Operations & Fleet, name=Marcus Vance}",
       "lastServiceDate": "2026-04-29T16:00:00.000Z",
       "nextServiceDate": "2026-10-26T16:00:00.000Z",
-      "kitName": ""
+      "kitName": "",
+      "specs": {
+        "PowerOutput": "300W COB LED",
+        "ColorTemp": "5600K Daylight",
+        "WeatherResistance": "IP54 Dust & Water Resistant",
+        "Mount": "Bowens S-Mount"
+      }
     },
     {
       "id": "gear-1788621548003",
@@ -832,8 +856,7 @@
       "maintenanceIntervalDays": 120,
       "notes": "",
       "createdAt": "2026-09-05T15:19:08.003Z",
-      "updatedAt": "2026-09-11T09:33:16.993Z",
-      "specs": {},
+      "updatedAt": "2026-09-12T02:19:49.963Z",
       "currentCheckout_id": "chk-1789098108099",
       "currentCheckout_userName": "OZY",
       "currentCheckout_userEmail": "marcus.vance@studiofilms.work",
@@ -841,12 +864,13 @@
       "currentCheckout_shootLocation": "JW Marriott Hotel Seoul",
       "currentCheckout_checkoutDate": "2026-09-14T08:00:00Z",
       "currentCheckout_expectedReturnDate": "2026-09-18T18:00:00Z",
-      "currentCheckout_notes": "Transferred to Abu Dhabi Investment Forum on 11/09/2026",
+      "currentCheckout_notes": "Transferred to Abu Dhabi Investment Forum 2026 on 11-09-2026",
       "totalShootsCompleted": "",
       "currentUser": "{role=Admin, provider=Google Workspace, name=Marcus Vance, department=Camera Operations & Fleet, email=marcus.vance@studiofilms.work, id=user-01}",
       "lastServiceDate": "",
       "nextServiceDate": "",
       "kitName": "",
+      "specs": {},
       "currentCheckout": {
         "id": "chk-1789098108099",
         "gearId": "gear-1788621548003",
@@ -859,7 +883,7 @@
         "checkoutDate": "2026-09-14T08:00:00Z",
         "expectedReturnDate": "2026-09-18T18:00:00Z",
         "status": "Active",
-        "notes": "Transferred to Abu Dhabi Investment Forum on 11/09/2026",
+        "notes": "Transferred to Abu Dhabi Investment Forum 2026 on 11-09-2026",
         "conditionOnCheckout": "Good"
       }
     },
@@ -880,8 +904,7 @@
       "maintenanceIntervalDays": 120,
       "notes": "",
       "createdAt": "2026-09-05T15:17:26.394Z",
-      "updatedAt": "2026-09-11T09:33:14.815Z",
-      "specs": {},
+      "updatedAt": "2026-09-12T02:19:49.963Z",
       "currentCheckout_id": "chk-1789098085640",
       "currentCheckout_userName": "OZY",
       "currentCheckout_userEmail": "marcus.vance@studiofilms.work",
@@ -889,12 +912,13 @@
       "currentCheckout_shootLocation": "JW Marriott Hotel Seoul",
       "currentCheckout_checkoutDate": "2026-09-14T08:00:00Z",
       "currentCheckout_expectedReturnDate": "2026-09-18T18:00:00Z",
-      "currentCheckout_notes": "Transferred to Abu Dhabi Investment Forum on 11/09/2026",
+      "currentCheckout_notes": "Transferred to Abu Dhabi Investment Forum 2026 on 11-09-2026",
       "totalShootsCompleted": "",
       "currentUser": "{provider=Google Workspace, name=Marcus Vance, email=marcus.vance@studiofilms.work, role=Admin, id=user-01, department=Camera Operations & Fleet}",
       "lastServiceDate": "",
       "nextServiceDate": "",
       "kitName": "",
+      "specs": {},
       "currentCheckout": {
         "id": "chk-1789098085640",
         "gearId": "gear-1788621446394",
@@ -907,7 +931,7 @@
         "checkoutDate": "2026-09-14T08:00:00Z",
         "expectedReturnDate": "2026-09-18T18:00:00Z",
         "status": "Active",
-        "notes": "Transferred to Abu Dhabi Investment Forum on 11/09/2026",
+        "notes": "Transferred to Abu Dhabi Investment Forum 2026 on 11-09-2026",
         "conditionOnCheckout": "Good"
       }
     },
@@ -929,7 +953,6 @@
       "notes": "",
       "createdAt": "2026-09-05T15:09:08.237Z",
       "updatedAt": "2026-09-05T15:27:54.879Z",
-      "specs": {},
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -942,7 +965,8 @@
       "currentUser": "{provider=Google Workspace, name=Marcus Vance, department=Camera Operations & Fleet, id=user-01, role=Admin, email=marcus.vance@studiofilms.work}",
       "lastServiceDate": "",
       "nextServiceDate": "",
-      "kitName": ""
+      "kitName": "",
+      "specs": {}
     },
     {
       "id": "gear-1788620940131",
@@ -962,7 +986,6 @@
       "notes": "",
       "createdAt": "2026-09-05T15:09:00.131Z",
       "updatedAt": "2026-09-11T07:32:00.440Z",
-      "specs": {},
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -975,7 +998,8 @@
       "currentUser": "",
       "lastServiceDate": "",
       "nextServiceDate": "",
-      "kitName": ""
+      "kitName": "",
+      "specs": {}
     },
     {
       "id": "gear-1788620764196",
@@ -995,7 +1019,6 @@
       "notes": "",
       "createdAt": "2026-09-05T15:06:04.196Z",
       "updatedAt": "2026-09-11T05:55:50.442Z",
-      "specs": {},
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -1008,7 +1031,8 @@
       "currentUser": "{id=user-01, email=marcus.vance@studiofilms.work, role=Admin, department=Camera Operations & Fleet, name=Marcus Vance, provider=Google Workspace}",
       "lastServiceDate": "",
       "nextServiceDate": "",
-      "kitName": ""
+      "kitName": "",
+      "specs": {}
     },
     {
       "id": "gear-1788620747280",
@@ -1019,7 +1043,7 @@
       "category": "Cameras",
       "serialNumber": 4005151,
       "condition": "Good",
-      "status": "Available",
+      "status": "Checked Out",
       "location": "Studio",
       "purchaseDate": "2026-09-03T16:00:00.000Z",
       "purchasePrice": 0,
@@ -1027,8 +1051,7 @@
       "maintenanceIntervalDays": 120,
       "notes": "",
       "createdAt": "2026-09-05T15:05:47.280Z",
-      "updatedAt": "2026-09-05T15:28:18.635Z",
-      "specs": {},
+      "updatedAt": "2026-09-12T02:30:07.119Z",
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -1038,10 +1061,34 @@
       "currentCheckout_expectedReturnDate": "",
       "currentCheckout_notes": "",
       "totalShootsCompleted": "",
-      "currentUser": "",
+      "currentUser": {
+        "id": "user-01",
+        "name": "Marcus Vance",
+        "email": "marcus.vance@studiofilms.work",
+        "role": "Admin",
+        "provider": "Google Workspace",
+        "department": "Camera Operations & Fleet"
+      },
       "lastServiceDate": "",
       "nextServiceDate": "",
-      "kitName": ""
+      "kitName": "",
+      "specs": {},
+      "currentCheckout": {
+        "id": "chk-1789180207119",
+        "gearId": "gear-1788620747280",
+        "gearName": "Z280 4K Handheld Camcorder (Set B)",
+        "assetTag": "Z280-B",
+        "userId": "user-01",
+        "userName": "OZY / Jason",
+        "userEmail": "marcus.vance@studiofilms.work",
+        "projectName": "YCH Asia Supply Chain Summit 2026",
+        "shootLocation": "8 Bulim Ave",
+        "checkoutDate": "2026-09-22T08:00:00Z",
+        "expectedReturnDate": "2026-09-22T18:00:00Z",
+        "status": "Active",
+        "conditionOnCheckout": "Good",
+        "notes": "Transferred to YCH Asia Supply Chain Summit 2026 on 12-09-2026"
+      }
     },
     {
       "id": "gear-1788620695744",
@@ -1052,7 +1099,7 @@
       "category": "Cameras",
       "serialNumber": 4005148,
       "condition": "Good",
-      "status": "Available",
+      "status": "Checked Out",
       "location": "Studio",
       "purchaseDate": "2026-09-03T16:00:00.000Z",
       "purchasePrice": 0,
@@ -1060,8 +1107,7 @@
       "maintenanceIntervalDays": 120,
       "notes": "",
       "createdAt": "2026-09-05T15:04:55.744Z",
-      "updatedAt": "2026-09-05T15:28:15.056Z",
-      "specs": {},
+      "updatedAt": "2026-09-12T02:30:13.020Z",
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -1071,10 +1117,34 @@
       "currentCheckout_expectedReturnDate": "",
       "currentCheckout_notes": "",
       "totalShootsCompleted": "",
-      "currentUser": "",
+      "currentUser": {
+        "id": "user-01",
+        "name": "Marcus Vance",
+        "email": "marcus.vance@studiofilms.work",
+        "role": "Admin",
+        "provider": "Google Workspace",
+        "department": "Camera Operations & Fleet"
+      },
       "lastServiceDate": "",
       "nextServiceDate": "",
-      "kitName": ""
+      "kitName": "",
+      "specs": {},
+      "currentCheckout": {
+        "id": "chk-1789180213020",
+        "gearId": "gear-1788620695744",
+        "gearName": "Z280 4K Handheld Camcorder (Set A)",
+        "assetTag": "Z280-A",
+        "userId": "user-01",
+        "userName": "OZY / Jason",
+        "userEmail": "marcus.vance@studiofilms.work",
+        "projectName": "YCH Asia Supply Chain Summit 2026",
+        "shootLocation": "8 Bulim Ave",
+        "checkoutDate": "2026-09-22T08:00:00Z",
+        "expectedReturnDate": "2026-09-22T18:00:00Z",
+        "status": "Active",
+        "conditionOnCheckout": "Good",
+        "notes": "Transferred to YCH Asia Supply Chain Summit 2026 on 12-09-2026"
+      }
     },
     {
       "id": "gear-1788620501742",
@@ -1138,12 +1208,6 @@
       ],
       "createdAt": "2026-09-05T15:01:41.742Z",
       "updatedAt": "2026-09-11T09:34:08.194Z",
-      "specs": {
-        "Sensor": "4K Full-Frame 10.2MP Back-Illuminated",
-        "DynamicRange": "15+ Stops",
-        "ElectronicND": "1/4 to 1/128 Variable ND",
-        "Mount": "Sony E-Mount"
-      },
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -1156,7 +1220,13 @@
       "currentUser": "{role=Admin, name=Marcus Vance, email=marcus.vance@studiofilms.work, id=user-01, provider=Google Workspace, department=Camera Operations & Fleet}",
       "lastServiceDate": "2024-07-21T16:00:00.000Z",
       "nextServiceDate": "2024-11-18T16:00:00.000Z",
-      "kitName": "Run & Gun Documentary Pack"
+      "kitName": "Run & Gun Documentary Pack",
+      "specs": {
+        "Sensor": "4K Full-Frame 10.2MP Back-Illuminated",
+        "DynamicRange": "15+ Stops",
+        "ElectronicND": "1/4 to 1/128 Variable ND",
+        "Mount": "Sony E-Mount"
+      }
     },
     {
       "id": "gear-1788620395976",
@@ -1175,8 +1245,7 @@
       "maintenanceIntervalDays": 120,
       "notes": "",
       "createdAt": "2026-09-05T14:59:55.976Z",
-      "updatedAt": "2026-09-11T09:35:17.244Z",
-      "specs": {},
+      "updatedAt": "2026-09-12T02:19:49.963Z",
       "currentCheckout_id": "chk-1789098133064",
       "currentCheckout_userName": "OZY",
       "currentCheckout_userEmail": "marcus.vance@studiofilms.work",
@@ -1184,12 +1253,13 @@
       "currentCheckout_shootLocation": "JW Marriott Hotel Seoul",
       "currentCheckout_checkoutDate": "2026-09-14T08:00:00Z",
       "currentCheckout_expectedReturnDate": "2026-09-18T18:00:00Z",
-      "currentCheckout_notes": "Transferred to Abu Dhabi Investment Forum on 11/09/2026",
+      "currentCheckout_notes": "Transferred to Abu Dhabi Investment Forum 2026 on 11-09-2026",
       "totalShootsCompleted": "",
       "currentUser": "{department=Camera Operations & Fleet, email=marcus.vance@studiofilms.work, name=Marcus Vance, provider=Google Workspace, role=Admin, id=user-01}",
       "lastServiceDate": "2025-12-13T16:00:00.000Z",
       "nextServiceDate": "2026-03-13T16:00:00.000Z",
       "kitName": "",
+      "specs": {},
       "currentCheckout": {
         "id": "chk-1789098133064",
         "gearId": "gear-1788620395976",
@@ -1202,7 +1272,7 @@
         "checkoutDate": "2026-09-14T08:00:00Z",
         "expectedReturnDate": "2026-09-18T18:00:00Z",
         "status": "Active",
-        "notes": "Transferred to Abu Dhabi Investment Forum on 11/09/2026",
+        "notes": "Transferred to Abu Dhabi Investment Forum 2026 on 11-09-2026",
         "conditionOnCheckout": "Good"
       }
     },
@@ -1224,7 +1294,6 @@
       "notes": "",
       "createdAt": "2026-09-05T04:48:54.469Z",
       "updatedAt": "2026-09-11T05:51:02.469Z",
-      "specs": {},
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -1237,7 +1306,8 @@
       "currentUser": "{name=Marcus Vance, department=Camera Operations & Fleet, provider=Google Workspace, id=user-01, role=Admin, email=marcus.vance@studiofilms.work}",
       "lastServiceDate": "2024-07-21T16:00:00.000Z",
       "nextServiceDate": "2026-10-31T16:00:00.000Z",
-      "kitName": ""
+      "kitName": "",
+      "specs": {}
     },
     {
       "id": "gear-06",
@@ -1256,13 +1326,7 @@
       "maintenanceIntervalDays": 120,
       "notes": "",
       "createdAt": "",
-      "updatedAt": "2026-09-11T09:08:08.939Z",
-      "specs": {
-        "FocalLength": "24-70mm",
-        "Aperture": "f/2.8 Constant",
-        "FilterThread": "82mm",
-        "FocusMotors": "Four XD Linear Motors"
-      },
+      "updatedAt": "2026-09-12T02:19:49.964Z",
       "currentCheckout_id": "chk-104",
       "currentCheckout_userName": "OZY",
       "currentCheckout_userEmail": "marcus.vance@studiofilms.work",
@@ -1270,12 +1334,18 @@
       "currentCheckout_shootLocation": "JW Marriott Hotel Seoul",
       "currentCheckout_checkoutDate": "2026-09-14T08:00:00Z",
       "currentCheckout_expectedReturnDate": "2026-09-18T18:00:00Z",
-      "currentCheckout_notes": "Transferred to Abu Dhabi Investment Forum on 11/09/2026",
+      "currentCheckout_notes": "Transferred to Abu Dhabi Investment Forum 2026 on 11-09-2026",
       "totalShootsCompleted": 60,
       "currentUser": "{role=Admin, name=Marcus Vance, id=user-01, provider=Google Workspace, email=marcus.vance@studiofilms.work, department=Camera Operations & Fleet}",
       "lastServiceDate": "",
       "nextServiceDate": "",
       "kitName": "",
+      "specs": {
+        "FocalLength": "24-70mm",
+        "Aperture": "f/2.8 Constant",
+        "FilterThread": "82mm",
+        "FocusMotors": "Four XD Linear Motors"
+      },
       "currentCheckout": {
         "id": "chk-104",
         "gearId": "gear-06",
@@ -1288,7 +1358,7 @@
         "checkoutDate": "2026-09-14T08:00:00Z",
         "expectedReturnDate": "2026-09-18T18:00:00Z",
         "status": "Active",
-        "notes": "Transferred to Abu Dhabi Investment Forum on 11/09/2026",
+        "notes": "Transferred to Abu Dhabi Investment Forum 2026 on 11-09-2026",
         "conditionOnCheckout": "Good"
       }
     },
@@ -1309,13 +1379,7 @@
       "maintenanceIntervalDays": 180,
       "notes": "",
       "createdAt": "",
-      "updatedAt": "2026-09-11T09:22:28.398Z",
-      "specs": {
-        "PowerOutput": "600W COB LED",
-        "ColorTemp": "2700K - 9000K",
-        "WeatherResistance": "IP54 Dust & Water Resistant",
-        "Mount": "Bowens S-Mount"
-      },
+      "updatedAt": "2026-09-12T02:57:26.082Z",
       "currentCheckout_id": "chk-1789103086663-318",
       "currentCheckout_userName": "Jason Neo",
       "currentCheckout_userEmail": "marcus.vance@studiofilms.work",
@@ -1325,10 +1389,23 @@
       "currentCheckout_expectedReturnDate": "2026-09-17T18:00:00Z",
       "currentCheckout_notes": "Transferred to Apple Lighting Rental on 11/09/2026",
       "totalShootsCompleted": 38,
-      "currentUser": "{role=Admin, id=user-01, email=marcus.vance@studiofilms.work, provider=Google Workspace, department=Camera Operations & Fleet, name=Marcus Vance}",
-      "lastServiceDate": "2026-04-29T16:00:00.000Z",
-      "nextServiceDate": "2026-10-30T16:00:00.000Z",
+      "currentUser": {
+        "id": "user-01",
+        "name": "Marcus Vance",
+        "email": "marcus.vance@studiofilms.work",
+        "role": "Admin",
+        "provider": "Google Workspace",
+        "department": "Camera Operations & Fleet"
+      },
+      "lastServiceDate": "2026-04-30",
+      "nextServiceDate": "2026-10-31",
       "kitName": "",
+      "specs": {
+        "PowerOutput": "600W COB LED",
+        "ColorTemp": "2700K - 9000K",
+        "WeatherResistance": "IP54 Dust & Water Resistant",
+        "Mount": "Bowens S-Mount"
+      },
       "currentCheckout": {
         "id": "chk-1789103086663-318",
         "gearId": "gear-07",
@@ -1342,7 +1419,8 @@
         "expectedReturnDate": "2026-09-17T18:00:00Z",
         "status": "Active",
         "notes": "Transferred to Apple Lighting Rental on 11/09/2026",
-        "conditionOnCheckout": "Good"
+        "conditionOnCheckout": "Good",
+        "jobNo": "GM12345"
       }
     },
     {
@@ -1363,11 +1441,6 @@
       "notes": "",
       "createdAt": "",
       "updatedAt": "2026-09-05T15:22:21.916Z",
-      "specs": {
-        "PayloadCapacity": "30 lbs (13.6 kg)",
-        "SupportedCameras": "ARRI Alexa Mini, RED Raptor, Sony Venice",
-        "Motors": "High-Torque Encoded Brushless"
-      },
       "currentCheckout_id": "chk-loan-11",
       "currentCheckout_userName": "Paramount Stage 4 Grip Crew",
       "currentCheckout_userEmail": "stage4.rentals@externalproduction.com",
@@ -1381,6 +1454,11 @@
       "lastServiceDate": "2026-07-07T16:00:00.000Z",
       "nextServiceDate": "2026-10-05T16:00:00.000Z",
       "kitName": "",
+      "specs": {
+        "PayloadCapacity": "30 lbs (13.6 kg)",
+        "SupportedCameras": "ARRI Alexa Mini, RED Raptor, Sony Venice",
+        "Motors": "High-Torque Encoded Brushless"
+      },
       "currentCheckout": {
         "id": "chk-loan-11",
         "gearId": "gear-11",
@@ -1415,11 +1493,6 @@
       "notes": "",
       "createdAt": "",
       "updatedAt": "2026-09-11T03:44:57.649Z",
-      "specs": {
-        "Capacity": "90 lbs (40.8 kg) at 8 in. center of gravity",
-        "TiltRange": "+90 to -90 degrees",
-        "Counterbalance": "Continuously adjustable sinusoidal"
-      },
       "currentCheckout_id": "chk-108",
       "currentCheckout_userName": "Kai Tanaka",
       "currentCheckout_userEmail": "devon.dp@production.onmicrosoft.com",
@@ -1433,6 +1506,11 @@
       "lastServiceDate": "2026-09-02T16:00:00.000Z",
       "nextServiceDate": "2027-03-01T16:00:00.000Z",
       "kitName": "A-Cam Commercial Rig",
+      "specs": {
+        "Capacity": "90 lbs (40.8 kg) at 8 in. center of gravity",
+        "TiltRange": "+90 to -90 degrees",
+        "Counterbalance": "Continuously adjustable sinusoidal"
+      },
       "currentCheckout": {
         "id": "chk-108",
         "gearId": "gear-12",
@@ -1467,11 +1545,6 @@
       "notes": "",
       "createdAt": "",
       "updatedAt": "2026-09-05T15:24:38.137Z",
-      "specs": {
-        "Capacity": "98Wh (14.8V, 6.6Ah)",
-        "ContinuousDraw": "12A Continuous (16A Peak)",
-        "Outputs": "P-Tap, 5V USB, Backlit LCD Runtime"
-      },
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -1484,7 +1557,12 @@
       "currentUser": "{provider=Google Workspace, role=Admin, department=Camera Operations & Fleet, id=user-01, email=marcus.vance@studiofilms.work, name=Marcus Vance}",
       "lastServiceDate": "2026-06-27T16:00:00.000Z",
       "nextServiceDate": "2026-12-24T16:00:00.000Z",
-      "kitName": ""
+      "kitName": "",
+      "specs": {
+        "Capacity": "98Wh (14.8V, 6.6Ah)",
+        "ContinuousDraw": "12A Continuous (16A Peak)",
+        "Outputs": "P-Tap, 5V USB, Backlit LCD Runtime"
+      }
     },
     {
       "id": "gear-14",
@@ -1504,11 +1582,6 @@
       "notes": "",
       "createdAt": "",
       "updatedAt": "2026-09-11T03:44:57.649Z",
-      "specs": {
-        "Voltage": "14V / 28V Dual Voltage Native",
-        "Capacity": "147Wh",
-        "Housing": "Polycarbonate Shock-Resistant Shell"
-      },
       "currentCheckout_id": "chk-109",
       "currentCheckout_userName": "Kai Tanaka",
       "currentCheckout_userEmail": "devon.dp@production.onmicrosoft.com",
@@ -1522,6 +1595,11 @@
       "lastServiceDate": "2026-08-11T16:00:00.000Z",
       "nextServiceDate": "2027-02-07T16:00:00.000Z",
       "kitName": "A-Cam Commercial Rig",
+      "specs": {
+        "Voltage": "14V / 28V Dual Voltage Native",
+        "Capacity": "147Wh",
+        "Housing": "Polycarbonate Shock-Resistant Shell"
+      },
       "currentCheckout": {
         "id": "chk-109",
         "gearId": "gear-14",
@@ -1556,11 +1634,6 @@
       "notes": "",
       "createdAt": "",
       "updatedAt": "2026-09-11T03:44:57.649Z",
-      "specs": {
-        "WriteSpeed": "Sustained 1300 MB/s",
-        "Capacity": "3x 1024GB (3TB Total)",
-        "Protection": "Shock, Dust, X-Ray & Temperature Proof"
-      },
       "currentCheckout_id": "chk-110",
       "currentCheckout_userName": "Kai Tanaka",
       "currentCheckout_userEmail": "devon.dp@production.onmicrosoft.com",
@@ -1574,6 +1647,11 @@
       "lastServiceDate": "2026-05-07T16:00:00.000Z",
       "nextServiceDate": "2026-11-07T16:00:00.000Z",
       "kitName": "Run & Gun Documentary Pack",
+      "specs": {
+        "WriteSpeed": "Sustained 1300 MB/s",
+        "Capacity": "3x 1024GB (3TB Total)",
+        "Protection": "Shock, Dust, X-Ray & Temperature Proof"
+      },
       "currentCheckout": {
         "id": "chk-110",
         "gearId": "gear-15",
@@ -1608,11 +1686,6 @@
       "notes": "",
       "createdAt": "",
       "updatedAt": "2026-09-05T15:27:02.531Z",
-      "specs": {
-        "Range": "750ft Line of Sight",
-        "Latency": "<0.001 sec (Zero-Delay)",
-        "Resolution": "Up to 4Kp30 10-bit 4:2:2 HDR via HDMI / SDI"
-      },
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -1625,7 +1698,12 @@
       "currentUser": "{role=Admin, id=user-01, department=Camera Operations & Fleet, name=Marcus Vance, provider=Google Workspace, email=marcus.vance@studiofilms.work}",
       "lastServiceDate": "2026-06-28T16:00:00.000Z",
       "nextServiceDate": "2026-12-25T16:00:00.000Z",
-      "kitName": ""
+      "kitName": "",
+      "specs": {
+        "Range": "750ft Line of Sight",
+        "Latency": "<0.001 sec (Zero-Delay)",
+        "Resolution": "Up to 4Kp30 10-bit 4:2:2 HDR via HDMI / SDI"
+      }
     },
     {
       "id": "gear-02",
@@ -1689,12 +1767,6 @@
       ],
       "createdAt": "",
       "updatedAt": "2026-09-11T09:34:02.664Z",
-      "specs": {
-        "Sensor": "4K Full-Frame 10.2MP Back-Illuminated",
-        "DynamicRange": "15+ Stops",
-        "ElectronicND": "1/4 to 1/128 Variable ND",
-        "Mount": "Sony E-Mount"
-      },
       "currentCheckout_id": "chk-102",
       "currentCheckout_userName": "Kai Tanaka",
       "currentCheckout_userEmail": "devon.dp@production.onmicrosoft.com",
@@ -1708,6 +1780,12 @@
       "lastServiceDate": "2026-04-16T16:00:00.000Z",
       "nextServiceDate": "2026-08-14T16:00:00.000Z",
       "kitName": "Run & Gun Documentary Pack",
+      "specs": {
+        "Sensor": "4K Full-Frame 10.2MP Back-Illuminated",
+        "DynamicRange": "15+ Stops",
+        "ElectronicND": "1/4 to 1/128 Variable ND",
+        "Mount": "Sony E-Mount"
+      },
       "currentCheckout": {
         "id": "chk-102",
         "gearId": "gear-02",
@@ -1771,8 +1849,7 @@
         }
       ],
       "createdAt": "2026-09-11T08:11:23.034Z",
-      "updatedAt": "2026-09-11T10:00:29.336Z",
-      "specs": {},
+      "updatedAt": "2026-09-12T02:19:49.964Z",
       "currentCheckout_id": "chk-1789120829336",
       "currentCheckout_userName": "OZY",
       "currentCheckout_userEmail": "marcus.vance@studiofilms.work",
@@ -1786,6 +1863,7 @@
       "lastServiceDate": "",
       "nextServiceDate": "",
       "kitName": "",
+      "specs": {},
       "currentCheckout": {
         "id": "chk-1789120829336",
         "gearId": "gear-1789114283034",
@@ -1820,7 +1898,6 @@
       "notes": "",
       "createdAt": "2026-09-11T09:47:49.297Z",
       "updatedAt": "2026-09-11T09:48:02.617Z",
-      "specs_json": "",
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -1833,7 +1910,8 @@
       "currentUser": "",
       "lastServiceDate": "",
       "nextServiceDate": "",
-      "kitName": ""
+      "kitName": "",
+      "specs_json": ""
     },
     {
       "id": "gear-1789121761644",
@@ -1846,14 +1924,13 @@
       "condition": "Mint",
       "status": "Available",
       "location": "Studio",
-      "purchaseDate": "2024-09-30",
+      "purchaseDate": "2024-09-29T16:00:00.000Z",
       "purchasePrice": 750,
       "replacementValue": 750,
       "maintenanceIntervalDays": 90,
       "notes": "",
       "createdAt": "2026-09-11T10:16:01.644Z",
       "updatedAt": "2026-09-11T10:17:27.367Z",
-      "specs_json": "",
       "currentCheckout_id": "",
       "currentCheckout_userName": "",
       "currentCheckout_userEmail": "",
@@ -1863,14 +1940,7 @@
       "currentCheckout_expectedReturnDate": "",
       "currentCheckout_notes": "",
       "totalShootsCompleted": "",
-      "currentUser": {
-        "id": "user-01",
-        "name": "Marcus Vance",
-        "email": "marcus.vance@studiofilms.work",
-        "role": "Admin",
-        "provider": "Google Workspace",
-        "department": "Camera Operations & Fleet"
-      },
+      "currentUser": "",
       "lastServiceDate": "",
       "nextServiceDate": "",
       "kitName": "",
@@ -2206,18 +2276,34 @@
   ],
   "projects": [
     {
+      "id": "proj-1789180177335",
+      "name": "YCH Asia Supply Chain Summit 2026",
+      "jobNo": "GM26100",
+      "client": "YCH",
+      "leadDP": "OZY / Jason",
+      "location": "8 Bulim Ave",
+      "startDate": "2026-09-22",
+      "endDate": "2026-09-22",
+      "assignedGearIds": [
+        "gear-1788620747280",
+        "gear-1788620695744"
+      ],
+      "status": "On Shoot"
+    },
+    {
       "id": "proj-1789103086663",
       "name": "Apple Lighting Rental",
       "client": "Division Comms",
       "leadDP": "Jason Neo",
       "location": "Apple South Asia Innovis",
-      "startDate": "2026-09-13T16:00:00.000Z",
-      "endDate": "2026-09-16T16:00:00.000Z",
+      "startDate": "2026-09-14",
+      "endDate": "2026-09-17",
       "assignedGearIds": [
         "gear-07",
         "gear-1789105512335"
       ],
-      "status": "On Shoot"
+      "status": "On Shoot",
+      "jobNo": "GM12345"
     },
     {
       "id": "proj-01",
@@ -2225,13 +2311,14 @@
       "client": "ADIF",
       "leadDP": "OZY",
       "location": "JW Marriott Hotel Seoul",
-      "startDate": "2026-09-13T16:00:00.000Z",
-      "endDate": "2026-09-17T16:00:00.000Z",
+      "startDate": "2026-09-14",
+      "endDate": "2026-09-18",
       "assignedGearIds": [
         "gear-1789114283034",
         "gear-1789120160435"
       ],
-      "status": ""
+      "status": "",
+      "jobNo": "GM26098"
     },
     {
       "id": "proj-02",
@@ -2239,8 +2326,8 @@
       "client": "National Geographic Special",
       "leadDP": "Kai Tanaka",
       "location": "Olympic Peninsula Rainforest",
-      "startDate": "2026-09-08T16:00:00.000Z",
-      "endDate": "2026-09-18T16:00:00.000Z",
+      "startDate": "2026-09-09",
+      "endDate": "2026-09-19",
       "assignedGearIds": [
         "gear-02",
         "gear-06",
@@ -2255,8 +2342,8 @@
       "client": "Interscope Records",
       "leadDP": "Maya Lin",
       "location": "Downtown Stage 4 Soundstage",
-      "startDate": "2026-09-04T16:00:00.000Z",
-      "endDate": "2026-09-06T16:00:00.000Z",
+      "startDate": "2026-09-05",
+      "endDate": "2026-09-07",
       "assignedGearIds": [
         "gear-03"
       ],
@@ -2264,6 +2351,123 @@
     }
   ],
   "audit": [
+    {
+      "id": "audit-1789181868725-495",
+      "timestamp": "2026-09-12T02:57:48.725Z",
+      "userId": "user-01",
+      "userName": "Marcus Vance",
+      "userRole": "Admin",
+      "provider": "Google Workspace",
+      "action": "UPDATE",
+      "targetAssetTag": "LGT-P300C-A",
+      "targetName": "Aputure Nova P300c (Set A)",
+      "details": "Updated specifications and details for Aputure Nova P300c (Set A)",
+      "ipOrDevice": "Web Client"
+    },
+    {
+      "id": "audit-1789181848810-112",
+      "timestamp": "2026-09-12T02:57:28.810Z",
+      "userId": "user-01",
+      "userName": "Marcus Vance",
+      "userRole": "Admin",
+      "provider": "Google Workspace",
+      "action": "UPDATE",
+      "targetAssetTag": "LGT-P300C-B",
+      "targetName": "Aputure Nova P300c (Set B)",
+      "details": "Updated specifications and details for Aputure Nova P300c (Set B)",
+      "ipOrDevice": "Web Client"
+    },
+    {
+      "id": "audit-1789181848809-351",
+      "timestamp": "2026-09-12T02:57:28.809Z",
+      "userId": "user-01",
+      "userName": "Marcus Vance",
+      "userRole": "Admin",
+      "provider": "Google Workspace",
+      "action": "UPDATE",
+      "targetAssetTag": "LGT-LNTRN90",
+      "targetName": "Aputure Lantern 90",
+      "details": "Updated specifications and details for Aputure Lantern 90",
+      "ipOrDevice": "Web Client"
+    },
+    {
+      "id": "audit-1789181836674-35",
+      "timestamp": "2026-09-12T02:57:16.674Z",
+      "userId": "user-01",
+      "userName": "Marcus Vance",
+      "userRole": "Admin",
+      "provider": "Google Workspace",
+      "action": "UPDATE",
+      "targetAssetTag": "LGT-600XPRO",
+      "targetName": "Aputure LS 600X Pro Bi-Colour LED",
+      "details": "Updated specifications and details for Aputure LS 600X Pro Bi-Colour LED",
+      "ipOrDevice": "Web Client"
+    },
+    {
+      "id": "audit-1789181836673-378",
+      "timestamp": "2026-09-12T02:57:16.673Z",
+      "userId": "user-01",
+      "userName": "Marcus Vance",
+      "userRole": "Admin",
+      "provider": "Google Workspace",
+      "action": "UPDATE",
+      "targetAssetTag": "LGT-P300C-A",
+      "targetName": "Aputure Nova P300c (Set A)",
+      "details": "Updated specifications and details for Aputure Nova P300c (Set A)",
+      "ipOrDevice": "Web Client"
+    },
+    {
+      "id": "audit-1789181836670-613",
+      "timestamp": "2026-09-12T02:57:16.670Z",
+      "userId": "user-01",
+      "userName": "Marcus Vance",
+      "userRole": "Admin",
+      "provider": "Google Workspace",
+      "action": "UPDATE",
+      "targetAssetTag": "LGT-P300C-B",
+      "targetName": "Aputure Nova P300c (Set B)",
+      "details": "Updated specifications and details for Aputure Nova P300c (Set B)",
+      "ipOrDevice": "Web Client"
+    },
+    {
+      "id": "audit-1789181836667-920",
+      "timestamp": "2026-09-12T02:57:16.667Z",
+      "userId": "user-01",
+      "userName": "Marcus Vance",
+      "userRole": "Admin",
+      "provider": "Google Workspace",
+      "action": "UPDATE",
+      "targetAssetTag": "LGT-LNTRN90",
+      "targetName": "Aputure Lantern 90",
+      "details": "Updated specifications and details for Aputure Lantern 90",
+      "ipOrDevice": "Web Client"
+    },
+    {
+      "id": "audit-1789180237189-181",
+      "timestamp": "2026-09-12T02:30:37.189Z",
+      "userId": "user-01",
+      "userName": "Marcus Vance",
+      "userRole": "Admin",
+      "provider": "Google Workspace",
+      "action": "UPDATE",
+      "targetAssetTag": "Z280-A",
+      "targetName": "Z280 4K Handheld Camcorder (Set A)",
+      "details": "Updated specifications and details for Z280 4K Handheld Camcorder (Set A)",
+      "ipOrDevice": "Web Client"
+    },
+    {
+      "id": "audit-1789180207427-366",
+      "timestamp": "2026-09-12T02:30:07.427Z",
+      "userId": "user-01",
+      "userName": "Marcus Vance",
+      "userRole": "Admin",
+      "provider": "Google Workspace",
+      "action": "UPDATE",
+      "targetAssetTag": "Z280-B",
+      "targetName": "Z280 4K Handheld Camcorder (Set B)",
+      "details": "Updated specifications and details for Z280 4K Handheld Camcorder (Set B)",
+      "ipOrDevice": "Web Client"
+    },
     {
       "id": "audit-1789121223313-542",
       "timestamp": "2026-09-11T10:07:03.001Z",
@@ -4693,123 +4897,6 @@
       "targetAssetTag": "CAM-ALEXA-01",
       "targetName": "ARRI Alexa Mini LF Cinema Camera Body",
       "details": "Updated specifications and details for ARRI Alexa Mini LF Cinema Camera Body (Cameras) in Studio",
-      "ipOrDevice": "Web Client"
-    },
-    {
-      "id": "audit-1788547205839-404",
-      "timestamp": "2026-09-04T18:40:05.812Z",
-      "userId": "user-01",
-      "userName": "Marcus Vance",
-      "userRole": "Admin",
-      "provider": "Google Workspace",
-      "action": "UPDATE",
-      "targetAssetTag": "CAM-RAPTOR-01",
-      "targetName": "RED V-Raptor 8K VV + 6K S35",
-      "details": "Updated specifications and details for RED V-Raptor 8K VV + 6K S35 (Cameras) in Studio",
-      "ipOrDevice": "Web Client"
-    },
-    {
-      "id": "audit-1788547203318-948",
-      "timestamp": "2026-09-04T18:40:03.294Z",
-      "userId": "user-01",
-      "userName": "Marcus Vance",
-      "userRole": "Admin",
-      "provider": "Google Workspace",
-      "action": "UPDATE",
-      "targetAssetTag": "CAM-RAPTOR-01",
-      "targetName": "RED V-Raptor 8K VV + 6K S35",
-      "details": "Updated specifications and details for RED V-Raptor 8K VV + 6K S35 (Cameras) in Studio",
-      "ipOrDevice": "Web Client"
-    },
-    {
-      "id": "audit-1788547201216-140",
-      "timestamp": "2026-09-04T18:40:01.192Z",
-      "userId": "user-01",
-      "userName": "Marcus Vance",
-      "userRole": "Admin",
-      "provider": "Google Workspace",
-      "action": "UPDATE",
-      "targetAssetTag": "CAM-RAPTOR-01",
-      "targetName": "RED V-Raptor 8K VV + 6K S35",
-      "details": "Updated specifications and details for RED V-Raptor 8K VV + 6K S35 (Cameras) in Studio",
-      "ipOrDevice": "Web Client"
-    },
-    {
-      "id": "audit-1788547151062-448",
-      "timestamp": "2026-09-04T18:39:10.757Z",
-      "userId": "user-01",
-      "userName": "Marcus Vance",
-      "userRole": "Admin",
-      "provider": "Google Workspace",
-      "action": "UPDATE",
-      "targetAssetTag": "CAM-ALEXA-01",
-      "targetName": "ARRI Alexa Mini LF Cinema Camera Body",
-      "details": "Updated specifications and details for ARRI Alexa Mini LF Cinema Camera Body (Cameras) in Studio",
-      "ipOrDevice": "Web Client"
-    },
-    {
-      "id": "audit-1788547111159-889",
-      "timestamp": "2026-09-04T18:38:31.135Z",
-      "userId": "user-01",
-      "userName": "Marcus Vance",
-      "userRole": "Admin",
-      "provider": "Google Workspace",
-      "action": "UPDATE",
-      "targetAssetTag": "CAM-ALEXA-01",
-      "targetName": "ARRI Alexa Mini LF Cinema Camera Body",
-      "details": "Updated specifications and details for ARRI Alexa Mini LF Cinema Camera Body (Cameras) in Studio",
-      "ipOrDevice": "Web Client"
-    },
-    {
-      "id": "audit-1788547063271-537",
-      "timestamp": "2026-09-04T18:37:42.959Z",
-      "userId": "user-01",
-      "userName": "Marcus Vance",
-      "userRole": "Admin",
-      "provider": "Google Workspace",
-      "action": "UPDATE",
-      "targetAssetTag": "LNS-GM-2470",
-      "targetName": "Sony FE 24-70mm f/2.8 GM II Lens",
-      "details": "Updated specifications and details for Sony FE 24-70mm f/2.8 GM II Lens (Lenses) in Studio",
-      "ipOrDevice": "Web Client"
-    },
-    {
-      "id": "audit-1788546536526-172",
-      "timestamp": "2026-09-04T18:28:56.208Z",
-      "userId": "user-01",
-      "userName": "Marcus Vance",
-      "userRole": "Admin",
-      "provider": "Google Workspace",
-      "action": "UPDATE",
-      "targetAssetTag": "CAM-ALEXA-01",
-      "targetName": "ARRI Alexa Mini LF Cinema Camera Body",
-      "details": "Updated specifications and details for ARRI Alexa Mini LF Cinema Camera Body (Cameras) in Studio",
-      "ipOrDevice": "Web Client"
-    },
-    {
-      "id": "audit-1788545910757-38",
-      "timestamp": "2026-09-04T18:18:30.450Z",
-      "userId": "user-01",
-      "userName": "Marcus Vance",
-      "userRole": "Admin",
-      "provider": "Google Workspace",
-      "action": "UPDATE",
-      "targetAssetTag": "CAM-FX6-A",
-      "targetName": "Sony FX6 Full-Frame Cinema Camera",
-      "details": "Updated specifications and details for Sony FX6 Full-Frame Cinema Camera (Cameras) in Studio",
-      "ipOrDevice": "Web Client"
-    },
-    {
-      "id": "audit-1788545366643-454",
-      "timestamp": "2026-09-04T18:09:26.740Z",
-      "userId": "user-01",
-      "userName": "Marcus Vance",
-      "userRole": "Admin",
-      "provider": "Google Workspace",
-      "action": "CREATE",
-      "targetAssetTag": "CAM-FX3-01-COPY",
-      "targetName": "Sony FX3 Cinema Line Camera (Cage Rigged) (Copy)",
-      "details": "Duplicated item created from [CAM-FX3-01] Sony FX3 Cinema Line Camera (Cage Rigged)",
       "ipOrDevice": "Web Client"
     }
   ]

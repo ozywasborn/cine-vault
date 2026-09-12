@@ -236,6 +236,7 @@ export const api = {
     id: string,
     payload: {
       projectName: string;
+      jobNo?: string;
       shootLocation: string;
       expectedReturnDate: string;
       notes?: string;
@@ -268,6 +269,7 @@ export const api = {
           userName: payload.assigneeName || payload.currentUser.name,
           userEmail: payload.assigneeEmail || payload.currentUser.email,
           projectName: payload.projectName,
+          jobNo: payload.jobNo,
           shootLocation: payload.shootLocation,
           checkoutDate: new Date().toISOString(),
           expectedReturnDate: payload.expectedReturnDate,

@@ -795,6 +795,7 @@ export default function App() {
   const handleConfirmCheckout = async (payload: {
     gearIds: string[];
     projectName: string;
+    jobNo?: string;
     shootLocation: string;
     expectedReturnDate: string;
     assigneeName: string;
@@ -812,6 +813,7 @@ export default function App() {
             status: 'Checked Out',
             currentCheckout: {
               projectName: payload.projectName,
+              jobNo: payload.jobNo,
               shootLocation: payload.shootLocation,
               checkoutDate: now,
               expectedReturnDate: payload.expectedReturnDate,
@@ -838,6 +840,7 @@ export default function App() {
           id,
           {
             projectName: payload.projectName,
+            jobNo: payload.jobNo,
             shootLocation: payload.shootLocation,
             expectedReturnDate: payload.expectedReturnDate,
             userName: payload.assigneeName,

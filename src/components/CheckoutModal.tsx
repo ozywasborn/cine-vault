@@ -18,6 +18,7 @@ interface CheckoutModalProps {
   onConfirmCheckout: (payload: {
     gearIds: string[];
     projectName: string;
+    jobNo?: string;
     shootLocation: string;
     expectedReturnDate: string;
     assigneeName: string;
@@ -34,6 +35,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   onConfirmCheckout,
 }) => {
   const [projectName, setProjectName] = useState('Apex Commercial - Day 2');
+  const [jobNo, setJobNo] = useState('');
   const [shootLocation, setShootLocation] = useState<string>(AVAILABLE_LOCATIONS[0]);
   const [expectedReturnDate, setExpectedReturnDate] = useState(
     new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0]
@@ -49,6 +51,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     onConfirmCheckout({
       gearIds: items.map((i) => i.id),
       projectName,
+      jobNo: jobNo.trim() || undefined,
       shootLocation,
       expectedReturnDate: new Date(expectedReturnDate).toISOString(),
       assigneeName,
@@ -106,19 +109,34 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           </div>
 
           <div className="space-y-3">
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Production Shoot / Project Name</label>
-              <input
-                type="text"
-                autoComplete="off"
-                data-lpignore="true"
-                data-1p-ignore="true"
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                placeholder="e.g. Apex Commercial, Ep. 4 Studio A"
-                className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 font-medium"
-                required
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="sm:col-span-2">
+                <label className="block text-slate-700 font-semibold mb-1">Production Shoot / Project Name *</label>
+                <input
+                  type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  placeholder="e.g. Apex Commercial, Ep. 4 Studio A"
+                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 font-medium"
+                  required
+                />
+              </div>
+              <div className="sm:col-span-1">
+                <label className="block text-slate-700 font-semibold mb-1">Job No.</label>
+                <input
+                  type="text"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
+                  value={jobNo}
+                  onChange={(e) => setJobNo(e.target.value)}
+                  placeholder="e.g. JN-2026-042"
+                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 font-medium font-mono"
+                />
+              </div>
             </div>
 
             <div>

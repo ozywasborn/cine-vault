@@ -288,7 +288,7 @@ async function startServer() {
     if (index === -1) return res.status(404).json({ error: 'Gear item not found' });
 
     const item = gearStore[index];
-    const { projectName, shootLocation, expectedReturnDate, notes, assigneeName, assigneeEmail, currentUser } = req.body;
+    const { projectName, jobNo, shootLocation, expectedReturnDate, notes, assigneeName, assigneeEmail, currentUser } = req.body;
 
     const checkoutRecord = {
       id: `chk-${Date.now()}`,
@@ -299,6 +299,7 @@ async function startServer() {
       userName: assigneeName || currentUser?.name || 'Field Crew',
       userEmail: assigneeEmail || currentUser?.email || 'crew@production.work',
       projectName: projectName || 'Active Production Shoot',
+      jobNo: jobNo || undefined,
       shootLocation: shootLocation || 'Location TBD',
       checkoutDate: new Date().toISOString(),
       expectedReturnDate: expectedReturnDate || new Date(Date.now() + 86400000 * 3).toISOString(),

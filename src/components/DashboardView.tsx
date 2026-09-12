@@ -119,6 +119,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const list: Array<{
       id: string;
       name: string;
+      jobNo?: string;
       client: string;
       leadDP: string;
       location: string;
@@ -148,6 +149,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       list.push({
         id: proj.id,
         name: proj.name,
+        jobNo: proj.jobNo || assigned[0]?.currentCheckout?.jobNo,
         client: proj.client || 'Client Production',
         leadDP: proj.leadDP || 'Lead DP',
         location: proj.location || 'Field Location',
@@ -174,6 +176,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           list.push({
             id: `dyn-proj-${g.currentCheckout.id}`,
             name: pName,
+            jobNo: g.currentCheckout.jobNo,
             client: 'Field Production',
             leadDP: g.currentCheckout.userName || 'Lead Cinematographer',
             location: g.currentCheckout.shootLocation || 'Field Location',
@@ -488,6 +491,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <h3 className="text-sm sm:text-base font-bold text-slate-900">
                           {proj.name}
                         </h3>
+
+                        {proj.jobNo && (
+                          <span className="px-2 py-0.5 rounded-full bg-amber-100/90 text-amber-900 border border-amber-300 text-[11px] font-mono font-bold tracking-wide shadow-2xs">
+                            Job: {proj.jobNo}
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-2">

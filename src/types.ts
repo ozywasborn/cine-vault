@@ -84,6 +84,7 @@ export interface CheckoutRecord {
   userName: string;
   userEmail: string;
   projectName: string;
+  jobNo?: string;
   shootLocation: string;
   checkoutDate: string;
   expectedReturnDate: string;
@@ -134,6 +135,7 @@ export interface GearItem {
 export interface ShootProject {
   id: string;
   name: string;
+  jobNo?: string;
   client: string;
   leadDP: string;
   location: string;
