@@ -2153,9 +2153,26 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
 
               {/* Project Lanes */}
               <div className="space-y-3 relative">
+                {/* Full-Height Vertical Week Separator Lines (starts on Monday, runs behind bubbles) */}
+                {ganttData.days.map((d, i) => {
+                  if (!d.isMonday || i === 0) return null;
+                  const pct = (i / ganttData.days.length) * 100;
+                  return (
+                    <div
+                      key={`week-line-${d.dateStr}`}
+                      className="absolute top-0 bottom-0 pointer-events-none z-10 flex flex-col items-center"
+                      style={{
+                        left: `calc(18rem + (100% - 18rem) * ${pct / 100})`,
+                      }}
+                    >
+                      <div className="w-px h-full bg-slate-300" />
+                    </div>
+                  );
+                })}
+
                 {/* Vertical "Today" Marker Line spanning all lanes */}
                 <div
-                  className="absolute top-0 bottom-0 pointer-events-none z-10 flex flex-col items-center"
+                  className="absolute top-0 bottom-0 pointer-events-none z-30 flex flex-col items-center"
                   style={{
                     left: `calc(18rem + (100% - 18rem) * ${ganttData.todayPercent / 100})`,
                   }}
@@ -2168,7 +2185,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                   return (
                     <div
                       key={bar.id || bar.name}
-                      className="flex items-center group/row rounded-xl hover:bg-slate-50/70 p-1.5 transition-colors"
+                      className="flex items-center group/row rounded-xl hover:bg-slate-50/70 py-1.5 transition-colors"
                     >
                       {/* Left Info Column - Standardized Width and Structured Alignment */}
                       <div className="w-72 shrink-0 pr-4 min-w-0">
@@ -2239,32 +2256,21 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
 
                       {/* Right Timeline Lane */}
                       <div className="flex-1 relative h-10 bg-slate-100/60 rounded-xl overflow-hidden border border-slate-200/80 p-1">
-                        {/* Day Grid Lines in Background (subtly behind bubbles) */}
+                        {/* Day Grid Lines in Background (weekend and today shading only) */}
                         <div
                           className="absolute inset-0 grid pointer-events-none"
                           style={{
                             gridTemplateColumns: `repeat(${ganttData.days.length}, minmax(0, 1fr))`,
                           }}
                         >
-                          {ganttData.days.map((d, i) => {
-                            const isNextMonday = ganttData.days[i + 1]?.isMonday;
-                            return (
-                              <div
-                                key={i}
-                                className={`h-full ${
-                                  d.isMonday && i > 0
-                                    ? 'border-l border-slate-300'
-                                    : ''
-                                } ${
-                                  isNextMonday
-                                    ? ''
-                                    : 'border-r border-slate-200/40'
-                                } ${
-                                  d.isToday ? 'bg-amber-50/50' : d.isWeekend ? 'bg-slate-200/20' : ''
-                                }`}
-                              />
-                            );
-                          })}
+                          {ganttData.days.map((d, i) => (
+                            <div
+                              key={i}
+                              className={`h-full ${
+                                d.isToday ? 'bg-amber-50/50' : d.isWeekend ? 'bg-slate-200/20' : ''
+                              }`}
+                            />
+                          ))}
                         </div>
 
                         {/* Interactive Gantt Bar */}
