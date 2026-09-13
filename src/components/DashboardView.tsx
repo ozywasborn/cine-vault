@@ -654,8 +654,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* SIDE 1-COL SECTION: Fleet Utilization & Maintenance (Swapped into side column) */}
         <div className="space-y-6">
           {/* Active Loans Summary */}
-          <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs">
-            <div className="flex items-center justify-between mb-4">
+          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
+            <div className="flex items-center justify-between mb-3">
               <div>
                 <div className="flex items-center gap-2">
                   <Handshake className="w-4 h-4 text-purple-500" />
@@ -673,12 +673,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             {loanedItems.length === 0 ? (
-              <div className="text-center py-6">
-                <Handshake className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+              <div className="text-center py-5">
+                <Handshake className="w-7 h-7 text-slate-300 mx-auto mb-1.5" />
                 <p className="text-xs text-slate-400 font-medium">No items currently on loan</p>
               </div>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 {loanedItems.map((item) => {
                   const loan = item.currentLoan;
                   const isOverdue = loan?.expectedReturnDate
@@ -687,44 +687,54 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   return (
                     <div
                       key={item.id}
-                      className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-purple-200 transition-colors cursor-pointer"
+                      className="p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/80 hover:border-purple-300 hover:bg-purple-50/30 transition-all cursor-pointer group"
                       onClick={() => onSelectGearItem?.(item)}
                       title="Click to view item details"
                     >
-                      {/* Row 1: Item name + asset tag */}
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-xs font-bold text-slate-900 truncate">{item.name}</span>
-                          <span className="text-[10px] font-mono font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md shrink-0">{item.assetTag}</span>
-                        </div>
-                        {isOverdue && (
-                          <span className="text-[10px] font-bold text-red-700 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-md shrink-0 animate-pulse">
-                            OVERDUE
+                      {/* Top Horizontal Row: Asset Tag + Name on Left, Return Date / Overdue Badge on Right */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <span className="text-[10px] font-mono font-bold text-purple-800 bg-purple-100/80 border border-purple-200 px-1.5 py-0.5 rounded-md shrink-0">
+                            {item.assetTag}
                           </span>
-                        )}
+                          <span className="text-xs font-bold text-slate-900 group-hover:text-purple-900 truncate">
+                            {item.name}
+                          </span>
+                        </div>
+                        <div className="shrink-0 flex items-center gap-1.5">
+                          {isOverdue ? (
+                            <span className="text-[10px] font-bold text-red-700 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-md animate-pulse">
+                              OVERDUE
+                            </span>
+                          ) : loan?.expectedReturnDate ? (
+                            <span className="text-[11px] font-medium text-slate-500 flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-slate-400" />
+                              <span>Due {formatDateDDMMYYYY(loan.expectedReturnDate)}</span>
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
-                      {/* Row 2: Borrower info */}
+
+                      {/* Bottom Horizontal Row: Borrower (Left) and Purpose / Duration (Right) */}
                       {loan && (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                        <div className="flex items-center justify-between gap-2 mt-1.5 pt-1.5 border-t border-slate-100 text-[11px]">
+                          <div className="flex items-center gap-1.5 text-slate-600 truncate min-w-0 flex-1">
                             <User className="w-3 h-3 text-purple-400 shrink-0" />
-                            <span className="font-semibold text-slate-800">{loan.borrowerName}</span>
+                            <span className="font-semibold text-slate-800 truncate">
+                              {loan.borrowerName}
+                            </span>
                             {loan.borrowerCompany && (
-                              <span className="text-slate-400">· {loan.borrowerCompany}</span>
+                              <span className="text-slate-400 truncate">· {loan.borrowerCompany}</span>
                             )}
                           </div>
-                          <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                            <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span>{formatDateDDMMYYYY(loan.loanDate)}</span>
-                            <span className="text-slate-300">→</span>
-                            <span className={isOverdue ? 'text-red-600 font-semibold' : ''}>
-                              {formatDateDDMMYYYY(loan.expectedReturnDate)}
-                            </span>
-                          </div>
-                          {loan.purpose && (
-                            <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                          {loan.purpose ? (
+                            <span className="text-[10px] text-slate-400 truncate shrink-0 max-w-[150px] text-right" title={loan.purpose}>
                               {loan.purpose}
-                            </div>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 shrink-0">
+                              Loaned {formatDateDDMMYYYY(loan.loanDate)}
+                            </span>
                           )}
                         </div>
                       )}
