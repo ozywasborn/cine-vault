@@ -233,6 +233,104 @@ const getDeploymentTheme = (
   return DEPLOYMENT_THEMES[themeIndex];
 };
 
+interface StagingCategoryStyle {
+  cardBg: string;
+  cardBorder: string;
+  tagBg: string;
+  dot: string;
+  pillActive: string;
+  pillBadge: string;
+}
+
+const STAGING_CATEGORY_STYLES: Record<string, StagingCategoryStyle> = {
+  Cameras: {
+    cardBg: 'bg-amber-50/60 hover:bg-amber-50/90',
+    cardBorder: 'border-amber-200 hover:border-amber-400',
+    tagBg: 'text-amber-900 bg-amber-100/90 border-amber-300',
+    dot: 'bg-amber-500',
+    pillActive: 'bg-amber-500 text-white shadow-2xs font-bold',
+    pillBadge: 'bg-amber-600 text-white',
+  },
+  Lenses: {
+    cardBg: 'bg-blue-50/60 hover:bg-blue-50/90',
+    cardBorder: 'border-blue-200 hover:border-blue-400',
+    tagBg: 'text-blue-900 bg-blue-100/90 border-blue-300',
+    dot: 'bg-blue-500',
+    pillActive: 'bg-blue-600 text-white shadow-2xs font-bold',
+    pillBadge: 'bg-blue-700 text-white',
+  },
+  Lighting: {
+    cardBg: 'bg-orange-50/60 hover:bg-orange-50/90',
+    cardBorder: 'border-orange-200 hover:border-orange-400',
+    tagBg: 'text-orange-900 bg-orange-100/90 border-orange-300',
+    dot: 'bg-orange-500',
+    pillActive: 'bg-orange-500 text-white shadow-2xs font-bold',
+    pillBadge: 'bg-orange-600 text-white',
+  },
+  Audio: {
+    cardBg: 'bg-emerald-50/60 hover:bg-emerald-50/90',
+    cardBorder: 'border-emerald-200 hover:border-emerald-400',
+    tagBg: 'text-emerald-900 bg-emerald-100/90 border-emerald-300',
+    dot: 'bg-emerald-500',
+    pillActive: 'bg-emerald-600 text-white shadow-2xs font-bold',
+    pillBadge: 'bg-emerald-700 text-white',
+  },
+  'Grip & Support': {
+    cardBg: 'bg-indigo-50/60 hover:bg-indigo-50/90',
+    cardBorder: 'border-indigo-200 hover:border-indigo-400',
+    tagBg: 'text-indigo-900 bg-indigo-100/90 border-indigo-300',
+    dot: 'bg-indigo-500',
+    pillActive: 'bg-indigo-600 text-white shadow-2xs font-bold',
+    pillBadge: 'bg-indigo-700 text-white',
+  },
+  'Drones & Gimbals': {
+    cardBg: 'bg-cyan-50/60 hover:bg-cyan-50/90',
+    cardBorder: 'border-cyan-200 hover:border-cyan-400',
+    tagBg: 'text-cyan-900 bg-cyan-100/90 border-cyan-300',
+    dot: 'bg-cyan-500',
+    pillActive: 'bg-cyan-600 text-white shadow-2xs font-bold',
+    pillBadge: 'bg-cyan-700 text-white',
+  },
+  'Power & Batteries': {
+    cardBg: 'bg-rose-50/60 hover:bg-rose-50/90',
+    cardBorder: 'border-rose-200 hover:border-rose-400',
+    tagBg: 'text-rose-900 bg-rose-100/90 border-rose-300',
+    dot: 'bg-rose-500',
+    pillActive: 'bg-rose-500 text-white shadow-2xs font-bold',
+    pillBadge: 'bg-rose-600 text-white',
+  },
+  'Media & Storage': {
+    cardBg: 'bg-purple-50/60 hover:bg-purple-50/90',
+    cardBorder: 'border-purple-200 hover:border-purple-400',
+    tagBg: 'text-purple-900 bg-purple-100/90 border-purple-300',
+    dot: 'bg-purple-500',
+    pillActive: 'bg-purple-600 text-white shadow-2xs font-bold',
+    pillBadge: 'bg-purple-700 text-white',
+  },
+  Accessories: {
+    cardBg: 'bg-teal-50/60 hover:bg-teal-50/90',
+    cardBorder: 'border-teal-200 hover:border-teal-400',
+    tagBg: 'text-teal-900 bg-teal-100/90 border-teal-300',
+    dot: 'bg-teal-500',
+    pillActive: 'bg-teal-600 text-white shadow-2xs font-bold',
+    pillBadge: 'bg-teal-700 text-white',
+  },
+};
+
+const DEFAULT_STAGING_STYLE: StagingCategoryStyle = {
+  cardBg: 'bg-slate-50/70 hover:bg-slate-100/80',
+  cardBorder: 'border-slate-200 hover:border-slate-300',
+  tagBg: 'text-slate-800 bg-slate-100 border-slate-300',
+  dot: 'bg-slate-400',
+  pillActive: 'bg-slate-800 text-white shadow-2xs font-bold',
+  pillBadge: 'bg-slate-700 text-white',
+};
+
+const getStagingCategoryStyle = (category?: string): StagingCategoryStyle => {
+  if (!category) return DEFAULT_STAGING_STYLE;
+  return STAGING_CATEGORY_STYLES[category] || DEFAULT_STAGING_STYLE;
+};
+
 interface FieldShootSummaryProps {
   gear: GearItem[];
   projects?: ShootProject[];
@@ -810,6 +908,35 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
     const categories = Object.keys(groups).sort();
     return { availableCategories: categories, availableGearByCategory: groups };
   }, [availableGear, stagingSearchQuery]);
+
+  // Filter and sort available gear for the continuous grid in staging drawer
+  const displayedAvailableGear = useMemo(() => {
+    const q = stagingSearchQuery.trim().toLowerCase();
+    return availableGear
+      .filter((item) => {
+        // Category filter
+        if (selectedStagingCategory !== 'all' && item.category !== selectedStagingCategory) {
+          return false;
+        }
+        // Search query filter
+        if (!q) return true;
+        return (
+          (item.name && item.name.toLowerCase().includes(q)) ||
+          (item.assetTag && item.assetTag.toLowerCase().includes(q)) ||
+          (item.serialNumber && item.serialNumber.toLowerCase().includes(q)) ||
+          (item.location && item.location.toLowerCase().includes(q)) ||
+          (item.category && item.category.toLowerCase().includes(q))
+        );
+      })
+      .sort((a, b) => {
+        // In "ALL" view, sort primarily by category so items of the same category cluster together naturally
+        if (selectedStagingCategory === 'all') {
+          const catComp = (a.category || '').localeCompare(b.category || '');
+          if (catComp !== 0) return catComp;
+        }
+        return a.name.localeCompare(b.name);
+      });
+  }, [availableGear, selectedStagingCategory, stagingSearchQuery]);
 
   // Group loaned gear by loan ID or borrower name
   const loanGroups = useMemo(() => {
@@ -2559,6 +2686,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                     </button>
                     {availableCategories.map((cat) => {
                       const count = availableGearByCategory[cat]?.length || 0;
+                      const catStyle = getStagingCategoryStyle(cat);
                       return (
                         <button
                           key={cat}
@@ -2566,15 +2694,16 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                           onClick={() => setSelectedStagingCategory(cat)}
                           className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
                             selectedStagingCategory === cat
-                              ? 'bg-amber-500 text-white shadow-2xs font-bold'
+                              ? catStyle.pillActive
                               : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900'
                           }`}
                         >
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${catStyle.dot}`} />
                           <span>{cat}</span>
                           <span
                             className={`text-[10px] font-mono font-bold px-1 rounded ${
                               selectedStagingCategory === cat
-                                ? 'bg-amber-600 text-white'
+                                ? catStyle.pillBadge
                                 : 'bg-slate-200/80 text-slate-600'
                             }`}
                           >
@@ -2586,21 +2715,23 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                   </div>
                 )}
 
-                {/* Scrollable Grouped Equipment Cards Container */}
-                <div className="max-h-72 overflow-y-auto pr-1 space-y-4">
+                {/* Scrollable Equipment Cards Container (Continuous Grid) */}
+                <div className="max-h-72 overflow-y-auto pr-1">
                   {availableGear.length === 0 ? (
                     <p className="text-xs text-slate-400 italic py-6 text-center">
                       All equipment is currently deployed on shoot.
                     </p>
-                  ) : availableCategories.length === 0 ? (
+                  ) : displayedAvailableGear.length === 0 ? (
                     <p className="text-xs text-slate-400 italic py-6 text-center">
-                      No available equipment matches "{stagingSearchQuery}".
+                      {stagingSearchQuery
+                        ? `No available equipment matches "${stagingSearchQuery}".`
+                        : 'No available equipment found in this category.'}
                     </p>
-                  ) : selectedStagingCategory !== 'all' ? (
-                    /* Single Selected Category View */
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
-                        {(availableGearByCategory[selectedStagingCategory] || []).map((item) => (
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+                      {displayedAvailableGear.map((item) => {
+                        const style = getStagingCategoryStyle(item.category);
+                        return (
                           <div
                             key={item.id}
                             draggable={true}
@@ -2613,15 +2744,15 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                               setDraggedItemId(null);
                               setDragSourceProject(null);
                             }}
-                            className={`p-2 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-white hover:border-amber-400 hover:shadow-xs transition-all cursor-grab active:cursor-grabbing shadow-2xs group min-w-0 ${
-                              draggedItemId === item.id ? 'opacity-40 ring-2 ring-amber-500 bg-amber-50' : ''
+                            className={`p-2 rounded-xl border ${style.cardBorder} ${style.cardBg} hover:shadow-xs transition-all cursor-grab active:cursor-grabbing shadow-2xs group min-w-0 ${
+                              draggedItemId === item.id ? 'opacity-40 ring-2 ring-amber-500' : ''
                             }`}
-                            title={`Drag to dispatch: ${item.name} (${item.assetTag})${item.location ? ` • Location: ${item.location}` : ''}${item.condition ? ` • ${item.condition}` : ''}`}
+                            title={`Drag to dispatch: ${item.name} (${item.assetTag}) • Category: ${item.category || 'N/A'}${item.location ? ` • Location: ${item.location}` : ''}${item.condition ? ` • ${item.condition}` : ''}`}
                           >
                             <div className="flex items-center justify-between gap-1 leading-none mb-1">
                               <div className="flex items-center gap-1 min-w-0">
-                                <GripVertical className="w-3 h-3 text-slate-400 group-hover:text-amber-600 shrink-0" />
-                                <span className="font-mono text-[10px] font-bold text-amber-800 bg-amber-100/70 border border-amber-200/80 px-1.5 py-0.5 rounded shrink-0">
+                                <GripVertical className="w-3 h-3 text-slate-400 group-hover:text-slate-700 shrink-0" />
+                                <span className={`font-mono text-[10px] font-bold border px-1.5 py-0.5 rounded shrink-0 ${style.tagBg}`}>
                                   {item.assetTag}
                                 </span>
                               </div>
@@ -2631,71 +2762,13 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                                 </span>
                               )}
                             </div>
-                            <div className="text-xs font-bold text-slate-800 truncate group-hover:text-amber-900 pl-0.5 leading-tight" title={item.name}>
+                            <div className="text-xs font-bold text-slate-800 truncate group-hover:text-slate-950 pl-0.5 leading-tight" title={item.name}>
                               {item.name}
                             </div>
                           </div>
-                        ))}
-                      </div>
+                        );
+                      })}
                     </div>
-                  ) : (
-                    /* All Categories View with Clear Section Subheadings */
-                    availableCategories.map((cat) => {
-                      const items = availableGearByCategory[cat] || [];
-                      if (items.length === 0) return null;
-                      return (
-                        <div key={cat} id={`staging-cat-${cat}`} className="space-y-2">
-                          <div className="flex items-center gap-2 sticky top-0 bg-white/95 backdrop-blur-xs py-1 z-10">
-                            <span className="font-bold text-xs text-slate-800 tracking-tight">
-                              {cat}
-                            </span>
-                            <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">
-                              {items.length}
-                            </span>
-                            <div className="flex-1 h-px bg-slate-200/80" />
-                          </div>
-
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
-                            {items.map((item) => (
-                              <div
-                                key={item.id}
-                                draggable={true}
-                                onDragStart={(e) => {
-                                  e.dataTransfer.setData('text/plain', item.id);
-                                  setDraggedItemId(item.id);
-                                  setDragSourceProject('Cage');
-                                }}
-                                onDragEnd={() => {
-                                  setDraggedItemId(null);
-                                  setDragSourceProject(null);
-                                }}
-                                className={`p-2 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-white hover:border-amber-400 hover:shadow-xs transition-all cursor-grab active:cursor-grabbing shadow-2xs group min-w-0 ${
-                                  draggedItemId === item.id ? 'opacity-40 ring-2 ring-amber-500 bg-amber-50' : ''
-                                }`}
-                                title={`Drag to dispatch: ${item.name} (${item.assetTag})${item.location ? ` • Location: ${item.location}` : ''}${item.condition ? ` • ${item.condition}` : ''}`}
-                              >
-                                <div className="flex items-center justify-between gap-1 leading-none mb-1">
-                                  <div className="flex items-center gap-1 min-w-0">
-                                    <GripVertical className="w-3 h-3 text-slate-400 group-hover:text-amber-600 shrink-0" />
-                                    <span className="font-mono text-[10px] font-bold text-amber-800 bg-amber-100/70 border border-amber-200/80 px-1.5 py-0.5 rounded shrink-0">
-                                      {item.assetTag}
-                                    </span>
-                                  </div>
-                                  {item.location && (
-                                    <span className="text-[9.5px] text-slate-400 font-medium truncate max-w-[70px] shrink-0" title={item.location}>
-                                      {item.location}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-xs font-bold text-slate-800 truncate group-hover:text-amber-900 pl-0.5 leading-tight" title={item.name}>
-                                  {item.name}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })
                   )}
                 </div>
               </div>
