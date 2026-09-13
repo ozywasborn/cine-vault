@@ -20,7 +20,7 @@ import {
   Handshake,
 } from 'lucide-react';
 import { GearItem, MaintenanceRecord, ShootProject, GearCategory } from '../types';
-import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { formatDateDDMMYYYY, normalizeDateToYMD } from '../utils/dateUtils';
 
 interface DashboardViewProps {
   gear: GearItem[];
@@ -681,9 +681,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="space-y-2">
                 {loanedItems.map((item) => {
                   const loan = item.currentLoan;
-                  const isOverdue = loan?.expectedReturnDate
-                    ? new Date(loan.expectedReturnDate) < new Date()
+                  const startYMD = normalizeDateToYMD(loan?.loanDate);
+                  const endYMD = normalizeDateToYMD(loan?.expectedReturnDate);
+                  const isOverdue = endYMD
+                    ? new Date(endYMD + 'T23:59:59') < new Date()
                     : false;
+                  const durationDays = (startYMD && endYMD)
+                    ? Math.max(
+                        1,
+                        Math.round(
+                          (new Date(endYMD + 'T00:00:00').getTime() -
+                            new Date(startYMD + 'T00:00:00').getTime()) /
+                            86400000
+                        ) + 1
+                      )
+                    : null;
+
                   return (
                     <div
                       key={item.id}
@@ -691,7 +704,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       onClick={() => onSelectGearItem?.(item)}
                       title="Click to view item details"
                     >
-                      {/* Top Horizontal Row: Asset Tag + Name on Left, Return Date / Overdue Badge on Right */}
+                      {/* Top Horizontal Row: Asset Tag + Name on Left, Full Loan Duration / Overdue Badge on Right */}
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0 flex-1">
                           <span className="text-[10px] font-mono font-bold text-purple-800 bg-purple-100/80 border border-purple-200 px-1.5 py-0.5 rounded-md shrink-0">
@@ -702,20 +715,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           </span>
                         </div>
                         <div className="shrink-0 flex items-center gap-1.5">
-                          {isOverdue ? (
-                            <span className="text-[10px] font-bold text-red-700 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-md animate-pulse">
+                          {loan && (
+                            <span className="text-[11px] font-medium text-slate-500 flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-purple-400 shrink-0" />
+                              <span className="font-mono text-[10.5px]">
+                                {loan.loanDate ? formatDateDDMMYYYY(loan.loanDate) : '—'}
+                              </span>
+                              <span className="text-slate-300">→</span>
+                              <span
+                                className={`font-mono text-[10.5px] ${
+                                  isOverdue ? 'text-red-600 font-bold' : 'text-slate-700 font-medium'
+                                }`}
+                              >
+                                {loan.expectedReturnDate
+                                  ? formatDateDDMMYYYY(loan.expectedReturnDate)
+                                  : '—'}
+                              </span>
+                            </span>
+                          )}
+                          {durationDays !== null && (
+                            <span className="px-1.5 py-0.5 rounded bg-purple-100/90 text-purple-800 font-bold text-[10px] shrink-0">
+                              {durationDays}d
+                            </span>
+                          )}
+                          {isOverdue && (
+                            <span className="text-[10px] font-bold text-red-700 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-md animate-pulse shrink-0">
                               OVERDUE
                             </span>
-                          ) : loan?.expectedReturnDate ? (
-                            <span className="text-[11px] font-medium text-slate-500 flex items-center gap-1">
-                              <Calendar className="w-3 h-3 text-slate-400" />
-                              <span>Due {formatDateDDMMYYYY(loan.expectedReturnDate)}</span>
-                            </span>
-                          ) : null}
+                          )}
                         </div>
                       </div>
 
-                      {/* Bottom Horizontal Row: Borrower (Left) and Purpose / Duration (Right) */}
+                      {/* Bottom Horizontal Row: Borrower (Left) and Purpose / Notes (Right) */}
                       {loan && (
                         <div className="flex items-center justify-between gap-2 mt-1.5 pt-1.5 border-t border-slate-100 text-[11px]">
                           <div className="flex items-center gap-1.5 text-slate-600 truncate min-w-0 flex-1">
@@ -728,14 +759,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             )}
                           </div>
                           {loan.purpose ? (
-                            <span className="text-[10px] text-slate-400 truncate shrink-0 max-w-[150px] text-right" title={loan.purpose}>
+                            <span className="text-[10px] text-slate-400 truncate shrink-0 max-w-[170px] text-right" title={loan.purpose}>
                               {loan.purpose}
                             </span>
-                          ) : (
-                            <span className="text-[10px] text-slate-400 shrink-0">
-                              Loaned {formatDateDDMMYYYY(loan.loanDate)}
+                          ) : loan.notes ? (
+                            <span className="text-[10px] text-slate-400 truncate shrink-0 max-w-[170px] text-right" title={loan.notes}>
+                              {loan.notes}
                             </span>
-                          )}
+                          ) : null}
                         </div>
                       )}
                     </div>
