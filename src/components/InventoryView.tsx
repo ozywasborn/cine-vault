@@ -349,6 +349,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       const next = { ...prev, [catName]: themeId };
       try {
         localStorage.setItem('cinevault_category_colors', JSON.stringify(next));
+        window.dispatchEvent(new Event('cinevault-category-colors-changed'));
       } catch {}
       return next;
     });
@@ -362,6 +363,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
       delete next[catName];
       try {
         localStorage.setItem('cinevault_category_colors', JSON.stringify(next));
+        window.dispatchEvent(new Event('cinevault-category-colors-changed'));
       } catch {}
       return next;
     });

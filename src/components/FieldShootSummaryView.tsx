@@ -37,6 +37,7 @@ import {
 import { GearItem, ShootProject, UserAccount, ConditionRating, LoanRecord } from '../types';
 import { AddressAutocompleteInput } from './AddressAutocompleteInput';
 import { normalizeDateToYMD, formatDateDDMMYYYY, formatCurrencySGD } from '../utils/dateUtils';
+import { getCategoryTheme } from './InventoryView';
 
 interface DeploymentColorTheme {
   id: string;
@@ -242,8 +243,8 @@ interface StagingCategoryStyle {
   pillBadge: string;
 }
 
-const STAGING_CATEGORY_STYLES: Record<string, StagingCategoryStyle> = {
-  Cameras: {
+const THEME_ID_TO_STAGING_STYLE: Record<string, StagingCategoryStyle> = {
+  amber: {
     cardBg: 'bg-amber-50/60 hover:bg-amber-50/90',
     cardBorder: 'border-amber-200 hover:border-amber-400',
     tagBg: 'text-amber-900 bg-amber-100/90 border-amber-300',
@@ -251,7 +252,7 @@ const STAGING_CATEGORY_STYLES: Record<string, StagingCategoryStyle> = {
     pillActive: 'bg-amber-500 text-white shadow-2xs font-bold',
     pillBadge: 'bg-amber-600 text-white',
   },
-  Lenses: {
+  blue: {
     cardBg: 'bg-blue-50/60 hover:bg-blue-50/90',
     cardBorder: 'border-blue-200 hover:border-blue-400',
     tagBg: 'text-blue-900 bg-blue-100/90 border-blue-300',
@@ -259,15 +260,7 @@ const STAGING_CATEGORY_STYLES: Record<string, StagingCategoryStyle> = {
     pillActive: 'bg-blue-600 text-white shadow-2xs font-bold',
     pillBadge: 'bg-blue-700 text-white',
   },
-  Lighting: {
-    cardBg: 'bg-orange-50/60 hover:bg-orange-50/90',
-    cardBorder: 'border-orange-200 hover:border-orange-400',
-    tagBg: 'text-orange-900 bg-orange-100/90 border-orange-300',
-    dot: 'bg-orange-500',
-    pillActive: 'bg-orange-500 text-white shadow-2xs font-bold',
-    pillBadge: 'bg-orange-600 text-white',
-  },
-  Audio: {
+  emerald: {
     cardBg: 'bg-emerald-50/60 hover:bg-emerald-50/90',
     cardBorder: 'border-emerald-200 hover:border-emerald-400',
     tagBg: 'text-emerald-900 bg-emerald-100/90 border-emerald-300',
@@ -275,31 +268,7 @@ const STAGING_CATEGORY_STYLES: Record<string, StagingCategoryStyle> = {
     pillActive: 'bg-emerald-600 text-white shadow-2xs font-bold',
     pillBadge: 'bg-emerald-700 text-white',
   },
-  'Grip & Support': {
-    cardBg: 'bg-indigo-50/60 hover:bg-indigo-50/90',
-    cardBorder: 'border-indigo-200 hover:border-indigo-400',
-    tagBg: 'text-indigo-900 bg-indigo-100/90 border-indigo-300',
-    dot: 'bg-indigo-500',
-    pillActive: 'bg-indigo-600 text-white shadow-2xs font-bold',
-    pillBadge: 'bg-indigo-700 text-white',
-  },
-  'Drones & Gimbals': {
-    cardBg: 'bg-cyan-50/60 hover:bg-cyan-50/90',
-    cardBorder: 'border-cyan-200 hover:border-cyan-400',
-    tagBg: 'text-cyan-900 bg-cyan-100/90 border-cyan-300',
-    dot: 'bg-cyan-500',
-    pillActive: 'bg-cyan-600 text-white shadow-2xs font-bold',
-    pillBadge: 'bg-cyan-700 text-white',
-  },
-  'Power & Batteries': {
-    cardBg: 'bg-rose-50/60 hover:bg-rose-50/90',
-    cardBorder: 'border-rose-200 hover:border-rose-400',
-    tagBg: 'text-rose-900 bg-rose-100/90 border-rose-300',
-    dot: 'bg-rose-500',
-    pillActive: 'bg-rose-500 text-white shadow-2xs font-bold',
-    pillBadge: 'bg-rose-600 text-white',
-  },
-  'Media & Storage': {
+  purple: {
     cardBg: 'bg-purple-50/60 hover:bg-purple-50/90',
     cardBorder: 'border-purple-200 hover:border-purple-400',
     tagBg: 'text-purple-900 bg-purple-100/90 border-purple-300',
@@ -307,13 +276,69 @@ const STAGING_CATEGORY_STYLES: Record<string, StagingCategoryStyle> = {
     pillActive: 'bg-purple-600 text-white shadow-2xs font-bold',
     pillBadge: 'bg-purple-700 text-white',
   },
-  Accessories: {
+  rose: {
+    cardBg: 'bg-rose-50/60 hover:bg-rose-50/90',
+    cardBorder: 'border-rose-200 hover:border-rose-400',
+    tagBg: 'text-rose-900 bg-rose-100/90 border-rose-300',
+    dot: 'bg-rose-500',
+    pillActive: 'bg-rose-500 text-white shadow-2xs font-bold',
+    pillBadge: 'bg-rose-600 text-white',
+  },
+  indigo: {
+    cardBg: 'bg-indigo-50/60 hover:bg-indigo-50/90',
+    cardBorder: 'border-indigo-200 hover:border-indigo-400',
+    tagBg: 'text-indigo-900 bg-indigo-100/90 border-indigo-300',
+    dot: 'bg-indigo-500',
+    pillActive: 'bg-indigo-600 text-white shadow-2xs font-bold',
+    pillBadge: 'bg-indigo-700 text-white',
+  },
+  teal: {
     cardBg: 'bg-teal-50/60 hover:bg-teal-50/90',
     cardBorder: 'border-teal-200 hover:border-teal-400',
     tagBg: 'text-teal-900 bg-teal-100/90 border-teal-300',
     dot: 'bg-teal-500',
     pillActive: 'bg-teal-600 text-white shadow-2xs font-bold',
     pillBadge: 'bg-teal-700 text-white',
+  },
+  orange: {
+    cardBg: 'bg-orange-50/60 hover:bg-orange-50/90',
+    cardBorder: 'border-orange-200 hover:border-orange-400',
+    tagBg: 'text-orange-900 bg-orange-100/90 border-orange-300',
+    dot: 'bg-orange-500',
+    pillActive: 'bg-orange-500 text-white shadow-2xs font-bold',
+    pillBadge: 'bg-orange-600 text-white',
+  },
+  red: {
+    cardBg: 'bg-red-50/60 hover:bg-red-50/90',
+    cardBorder: 'border-red-200 hover:border-red-400',
+    tagBg: 'text-red-900 bg-red-100/90 border-red-300',
+    dot: 'bg-red-500',
+    pillActive: 'bg-red-600 text-white shadow-2xs font-bold',
+    pillBadge: 'bg-red-700 text-white',
+  },
+  cyan: {
+    cardBg: 'bg-cyan-50/60 hover:bg-cyan-50/90',
+    cardBorder: 'border-cyan-200 hover:border-cyan-400',
+    tagBg: 'text-cyan-900 bg-cyan-100/90 border-cyan-300',
+    dot: 'bg-cyan-500',
+    pillActive: 'bg-cyan-600 text-white shadow-2xs font-bold',
+    pillBadge: 'bg-cyan-700 text-white',
+  },
+  lime: {
+    cardBg: 'bg-lime-50/60 hover:bg-lime-50/90',
+    cardBorder: 'border-lime-200 hover:border-lime-400',
+    tagBg: 'text-lime-900 bg-lime-100/90 border-lime-300',
+    dot: 'bg-lime-500',
+    pillActive: 'bg-lime-600 text-white shadow-2xs font-bold',
+    pillBadge: 'bg-lime-700 text-white',
+  },
+  fuchsia: {
+    cardBg: 'bg-fuchsia-50/60 hover:bg-fuchsia-50/90',
+    cardBorder: 'border-fuchsia-200 hover:border-fuchsia-400',
+    tagBg: 'text-fuchsia-900 bg-fuchsia-100/90 border-fuchsia-300',
+    dot: 'bg-fuchsia-500',
+    pillActive: 'bg-fuchsia-600 text-white shadow-2xs font-bold',
+    pillBadge: 'bg-fuchsia-700 text-white',
   },
 };
 
@@ -326,9 +351,14 @@ const DEFAULT_STAGING_STYLE: StagingCategoryStyle = {
   pillBadge: 'bg-slate-700 text-white',
 };
 
-const getStagingCategoryStyle = (category?: string): StagingCategoryStyle => {
+const getStagingCategoryStyleWithTheme = (
+  category?: string,
+  customColorMap?: Record<string, string>
+): StagingCategoryStyle => {
   if (!category) return DEFAULT_STAGING_STYLE;
-  return STAGING_CATEGORY_STYLES[category] || DEFAULT_STAGING_STYLE;
+  const customColorId = customColorMap ? customColorMap[category] : undefined;
+  const theme = getCategoryTheme(category, customColorId);
+  return THEME_ID_TO_STAGING_STYLE[theme.id] || DEFAULT_STAGING_STYLE;
 };
 
 interface FieldShootSummaryProps {
@@ -884,6 +914,42 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
   // Group available gear by category & filter state for staging drawer
   const [selectedStagingCategory, setSelectedStagingCategory] = useState<string>('all');
   const [stagingSearchQuery, setStagingSearchQuery] = useState<string>('');
+
+  // Category colour codes synced with Inventory page
+  const [categoryColors, setCategoryColors] = useState<Record<string, string>>(() => {
+    try {
+      const stored = localStorage.getItem('cinevault_category_colors');
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Re-sync whenever staging drawer opens or when custom color event / storage fires
+  useEffect(() => {
+    const syncColors = () => {
+      try {
+        const stored = localStorage.getItem('cinevault_category_colors');
+        setCategoryColors(stored ? JSON.parse(stored) : {});
+      } catch {}
+    };
+
+    if (showStagingDrawer) {
+      syncColors();
+    }
+
+    const handleCustomEvent = () => syncColors();
+    window.addEventListener('storage', syncColors);
+    window.addEventListener('cinevault-category-colors-changed', handleCustomEvent);
+    return () => {
+      window.removeEventListener('storage', syncColors);
+      window.removeEventListener('cinevault-category-colors-changed', handleCustomEvent);
+    };
+  }, [showStagingDrawer]);
+
+  const getStagingCategoryStyle = (category?: string): StagingCategoryStyle => {
+    return getStagingCategoryStyleWithTheme(category, categoryColors);
+  };
 
   const { availableCategories, availableGearByCategory } = useMemo(() => {
     const q = stagingSearchQuery.trim().toLowerCase();
