@@ -1903,38 +1903,14 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
       {/* Condensed Active Shoots & Loans Header Banner */}
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs">
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-          {/* Left: Title & Live Summary */}
-          <div className="min-w-0">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center shrink-0 shadow-2xs">
-                <Film className="w-4 h-4" />
-              </div>
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-                Deployments & Equipment Loans
-              </h1>
+          {/* Left: Title */}
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center shrink-0 shadow-2xs">
+              <Film className="w-4 h-4" />
             </div>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1 pl-10.5">
-              Currently tracking{' '}
-              <strong className="text-amber-600 font-semibold">
-                {checkedOutGear.length} assets
-              </strong>{' '}
-              deployed across{' '}
-              <strong className="text-slate-700 font-semibold">
-                {projectNames.length} {projectNames.length === 1 ? 'shoot' : 'shoots'}
-              </strong>
-              {loanedGear.length > 0 && (
-                <>
-                  {' '}•{' '}
-                  <strong className="text-purple-600 font-semibold">
-                    {loanedGear.length} assets
-                  </strong>{' '}
-                  on loan across{' '}
-                  <strong className="text-slate-700 font-semibold">
-                    {loanGroups.length} {loanGroups.length === 1 ? 'external loan' : 'external loans'}
-                  </strong>
-                </>
-              )}.
-            </p>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+              Deployments & Equipment Loans
+            </h1>
           </div>
 
           {/* Right: Segment Switcher, Metrics & View Mode Switcher */}
@@ -2086,23 +2062,18 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
       {(viewMode === 'combined' || viewMode === 'gantt') && ganttData && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
           {/* Gantt Header */}
-          <div className="p-5 bg-slate-50/90 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="p-4 sm:p-5 bg-slate-50/90 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center shadow-2xs">
                 <CalendarRange className="w-4 h-4" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-bold text-slate-900">
-                    Operations Schedule & Overlap Timeline
-                  </h2>
-                  <span className="text-[11px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">
-                    {ganttData.bars.length} {ganttData.bars.length === 1 ? 'Operation' : 'Operations'}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Visual timeline showing shoot dates, equipment loan durations, and weekly schedule progression.
-                </p>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900">
+                  Operations Schedule & Overlap Timeline
+                </h2>
+                <span className="text-[11px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                  {ganttData.bars.length} {ganttData.bars.length === 1 ? 'Operation' : 'Operations'}
+                </span>
               </div>
             </div>
           </div>
@@ -2340,44 +2311,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                 })}
               </div>
 
-              {/* Gantt Legend & Guide */}
-              <div className="mt-5 pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-500">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="font-bold text-slate-700">Themes:</span>
-                  {ganttData.bars.map((bar) => (
-                    <div key={bar.id || bar.name} className="flex items-center gap-1.5">
-                      {bar.type === 'loan' ? (
-                        <Handshake className="w-3 h-3 text-purple-600" />
-                      ) : (
-                        <span className={`w-2.5 h-2.5 rounded-full ${bar.theme.dot}`} />
-                      )}
-                      <span className="text-slate-700 font-medium truncate max-w-[130px]">
-                        {bar.name}
-                      </span>
-                    </div>
-                  ))}
-                  {loanGroups.length > 0 && (
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-purple-50 border border-purple-200 text-purple-800 font-semibold">
-                      <span className="w-2 h-2 rounded-full bg-purple-500" />
-                      <span>External Loans</span>
-                    </div>
-                  )}
-                </div>
 
-                <div className="flex items-center gap-4 font-medium">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-3 border-t border-slate-400 inline-block" />
-                    <span>Week boundary (Mon)</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                    <span>Current Day ("Today")</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-slate-400">Click bar to view/edit details</span>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -2540,9 +2474,6 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                     <h3 className="text-sm font-bold text-slate-900">
                       Available Equipment ({availableGear.length})
                     </h3>
-                    <span className="text-xs text-slate-500 hidden sm:inline">
-                      Drag any unit directly into a deployment card below to dispatch
-                    </span>
                   </div>
                   <button
                     type="button"
@@ -2612,18 +2543,13 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                     <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shadow-2xs">
                       <Film className="w-4 h-4" />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
-                          Production Deployments
-                        </h2>
-                        <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-bold font-mono">
-                          {visibleProjectNames.length} {visibleProjectNames.length === 1 ? 'Shoot' : 'Shoots'}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Active film and commercial shoots with crew allocations and checklists.
-                      </p>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                        Production Deployments
+                      </h2>
+                      <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-bold font-mono">
+                        {visibleProjectNames.length} {visibleProjectNames.length === 1 ? 'Shoot' : 'Shoots'}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -2959,12 +2885,9 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
               {isExpanded && (
                 <div className="divide-y divide-slate-100">
                   {items.length === 0 ? (
-                    <div className="p-8 text-center bg-slate-50/50">
-                      <p className="text-xs text-slate-500">
+                    <div className="p-6 text-center bg-slate-50/50">
+                      <p className="text-xs text-slate-400 font-medium">
                         No equipment currently assigned to this deployment.
-                      </p>
-                      <p className="text-[11px] text-amber-700 font-semibold mt-1">
-                        Use the row below to type-search and allocate gear, or drag from Available Equipment!
                       </p>
                     </div>
                   ) : (
@@ -3195,37 +3118,20 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
               }`}
             >
               {/* Section Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shadow-2xs">
                     <Handshake className="w-4 h-4" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
-                        External Equipment Loans
-                      </h2>
-                      <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 text-xs font-bold font-mono">
-                        {visibleLoanGroups.length}{' '}
-                        {visibleLoanGroups.length === 1 ? 'Loan' : 'Loans'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Equipment loaned out to partner studios, external productions, or crew members.
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                      External Equipment Loans
+                    </h2>
+                    <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 text-xs font-bold font-mono">
+                      {visibleLoanGroups.length}{' '}
+                      {visibleLoanGroups.length === 1 ? 'Loan' : 'Loans'}
+                    </span>
                   </div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddLoanOpen(true)}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer hover:shadow-sm"
-                    title="Loan out available equipment"
-                  >
-                    <Plus className="w-3.5 h-3.5 text-white" />
-                    <span>New Loan</span>
-                  </button>
                 </div>
               </div>
 
