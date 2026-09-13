@@ -2119,7 +2119,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
 
                 {/* Days Grid Header */}
                 <div
-                  className="flex-1 grid gap-0.5"
+                  className="flex-1 grid"
                   style={{
                     gridTemplateColumns: `repeat(${ganttData.days.length}, minmax(0, 1fr))`,
                   }}
@@ -2127,13 +2127,13 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                   {ganttData.days.map((day, idx) => (
                     <div
                       key={day.dateStr}
-                      className={`text-center py-1 rounded transition-colors relative ${
+                      className={`text-center py-1 transition-colors relative ${
                         day.isMonday && idx > 0
-                          ? 'border-l-2 border-slate-300 pl-0.5'
+                          ? 'border-l border-slate-300'
                           : ''
                       } ${
                         day.isToday
-                          ? 'bg-amber-500 text-white font-bold shadow-xs'
+                          ? 'bg-amber-500 text-white font-bold shadow-xs rounded'
                           : day.isWeekend
                           ? 'bg-slate-100/70 text-slate-400'
                           : 'text-slate-600'
@@ -2153,23 +2153,6 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
 
               {/* Project Lanes */}
               <div className="space-y-3 relative">
-                {/* Vertical Week Separator Lines spanning across all lanes (starts on Monday) */}
-                {ganttData.days.map((d, i) => {
-                  if (!d.isMonday || i === 0) return null;
-                  const pct = (i / ganttData.days.length) * 100;
-                  return (
-                    <div
-                      key={`week-line-${d.dateStr}`}
-                      className="absolute top-0 bottom-0 pointer-events-none z-10 flex flex-col items-center"
-                      style={{
-                        left: `calc(18rem + (100% - 18rem) * ${pct / 100})`,
-                      }}
-                    >
-                      <div className="w-px h-full border-l border-dashed border-slate-300/80" />
-                    </div>
-                  );
-                })}
-
                 {/* Vertical "Today" Marker Line spanning all lanes */}
                 <div
                   className="absolute top-0 bottom-0 pointer-events-none z-10 flex flex-col items-center"
@@ -2256,25 +2239,32 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
 
                       {/* Right Timeline Lane */}
                       <div className="flex-1 relative h-10 bg-slate-100/60 rounded-xl overflow-hidden border border-slate-200/80 p-1">
-                        {/* Day Grid Lines in Background */}
+                        {/* Day Grid Lines in Background (subtly behind bubbles) */}
                         <div
                           className="absolute inset-0 grid pointer-events-none"
                           style={{
                             gridTemplateColumns: `repeat(${ganttData.days.length}, minmax(0, 1fr))`,
                           }}
                         >
-                          {ganttData.days.map((d, i) => (
-                            <div
-                              key={i}
-                              className={`border-r border-slate-200/40 h-full ${
-                                d.isMonday && i > 0
-                                  ? 'border-l-2 border-l-slate-300'
-                                  : ''
-                              } ${
-                                d.isToday ? 'bg-amber-50/50' : d.isWeekend ? 'bg-slate-200/20' : ''
-                              }`}
-                            />
-                          ))}
+                          {ganttData.days.map((d, i) => {
+                            const isNextMonday = ganttData.days[i + 1]?.isMonday;
+                            return (
+                              <div
+                                key={i}
+                                className={`h-full ${
+                                  d.isMonday && i > 0
+                                    ? 'border-l border-slate-300'
+                                    : ''
+                                } ${
+                                  isNextMonday
+                                    ? ''
+                                    : 'border-r border-slate-200/40'
+                                } ${
+                                  d.isToday ? 'bg-amber-50/50' : d.isWeekend ? 'bg-slate-200/20' : ''
+                                }`}
+                              />
+                            );
+                          })}
                         </div>
 
                         {/* Interactive Gantt Bar */}
@@ -2338,25 +2328,6 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                             </div>
                           )}
                         </div>
-
-                        {/* Week Separation Overlay Lines (Monday boundaries, visible crossing through bars) */}
-                        <div
-                          className="absolute inset-0 grid pointer-events-none z-25"
-                          style={{
-                            gridTemplateColumns: `repeat(${ganttData.days.length}, minmax(0, 1fr))`,
-                          }}
-                        >
-                          {ganttData.days.map((d, i) => (
-                            <div
-                              key={i}
-                              className={`h-full ${
-                                d.isMonday && i > 0
-                                  ? 'border-l-2 border-dashed border-white/60 shadow-[-1px_0_0_0_rgba(15,23,42,0.2)]'
-                                  : ''
-                              }`}
-                            />
-                          ))}
-                        </div>
                       </div>
                     </div>
                   );
@@ -2389,7 +2360,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
 
                 <div className="flex items-center gap-4 font-medium">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-3 border-t-2 border-dashed border-slate-400 inline-block" />
+                    <span className="w-3 border-t border-slate-400 inline-block" />
                     <span>Week boundary (Mon)</span>
                   </div>
                   <div className="flex items-center gap-1.5">
