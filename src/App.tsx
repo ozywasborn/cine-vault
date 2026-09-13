@@ -10,6 +10,7 @@ import {
   UserAuthModal,
   CheckoutModal,
   CheckinModal,
+  LoanDetailsModal,
   AddGearModal,
   ItemDetailModal,
   EditGearModal,
@@ -25,6 +26,7 @@ import {
   InventoryNotification,
   UserAccount,
   ConditionRating,
+  LoanRecord,
   DEFAULT_GEAR_CATEGORIES,
 } from './types';
 import {
@@ -153,6 +155,8 @@ export default function App() {
   const [editGearInitialTab, setEditGearInitialTab] = useState<EditModalTab>('general');
   const [checkoutQueue, setCheckoutQueue] = useState<GearItem[]>([]);
   const [checkinTarget, setCheckinTarget] = useState<GearItem | null>(null);
+  const [isLoanOpen, setIsLoanOpen] = useState(false);
+  const [loanQueue, setLoanQueue] = useState<GearItem[]>([]);
 
   // Dynamic custom categories persisted locally
   const [customCategories, setCustomCategories] = useState<string[]>(() => {
@@ -1101,6 +1105,53 @@ export default function App() {
     setIsCheckinOpen(true);
   };
 
+  const openLoanForItems = (items: GearItem[]) => {
+    setLoanQueue(items);
+    setIsLoanOpen(true);
+  };
+
+  const handleConfirmLoan = (payload: { gearIds: string[]; loanRecord: LoanRecord }) => {
+    const now = new Date().toISOString();
+    setGear((prev) =>
+      prev.map((item) => {
+        if (payload.gearIds.includes(item.id)) {
+          const updated: GearItem = {
+            ...item,
+            status: 'Out On Loan',
+            currentLoan: payload.loanRecord,
+            currentCheckout: {
+              id: `chk-loan-${Date.now()}`,
+              gearId: item.id,
+              gearName: item.name,
+              assetTag: item.assetTag,
+              userId: currentUser.id,
+              userName: payload.loanRecord.borrowerName,
+              userEmail: payload.loanRecord.borrowerContact || '',
+              projectName: `Loan: ${payload.loanRecord.borrowerCompany || payload.loanRecord.borrowerName}`,
+              shootLocation: payload.loanRecord.borrowerCompany || 'External',
+              checkoutDate: payload.loanRecord.loanDate,
+              expectedReturnDate: payload.loanRecord.expectedReturnDate,
+              status: 'Active',
+              notes: payload.loanRecord.purpose || 'Out on loan',
+              conditionOnCheckout: item.condition,
+            },
+            updatedAt: now,
+          };
+          syncToSheetsIfNeeded('updateGear', updated);
+          return updated;
+        }
+        return item;
+      })
+    );
+
+    // Background sync
+    for (const id of payload.gearIds) {
+      apiClient.updateGear(id, { status: 'Out On Loan' } as Partial<GearItem>, currentUser).catch(() => {});
+    }
+
+    showToast(`${payload.gearIds.length} item(s) loaned to "${payload.loanRecord.borrowerName}".`);
+  };
+
   const handleExportCsv = () => {
     const headers = [
       'Asset Tag',
@@ -1253,6 +1304,7 @@ export default function App() {
             }}
             onOpenCheckoutModal={openCheckoutForItems}
             onOpenCheckinModal={openCheckinForItem}
+            onOpenLoanModal={openLoanForItems}
             onOpenQrModal={(item) => {
               setSelectedGearItem(item);
             }}
@@ -1375,6 +1427,13 @@ export default function App() {
         items={checkoutQueue}
         currentUser={currentUser}
         onConfirmCheckout={handleConfirmCheckout}
+      />
+
+      <LoanDetailsModal
+        isOpen={isLoanOpen}
+        onClose={() => setIsLoanOpen(false)}
+        items={loanQueue}
+        onConfirmLoan={handleConfirmLoan}
       />
 
       <CheckinModal

@@ -7,6 +7,7 @@ export * from './QrTagManager';
 export * from './UserAuthModal';
 export * from './CheckoutModal';
 export * from './CheckinModal';
+export * from './LoanDetailsModal';
 export * from './AddGearModal';
 export * from './ItemDetailModal';
 export * from './EditGearModal';

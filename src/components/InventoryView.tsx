@@ -225,6 +225,7 @@ interface InventoryViewProps {
   onOpenAddModal?: () => void;
   onOpenCheckoutModal?: (items: GearItem[]) => void;
   onOpenCheckinModal?: (item: GearItem) => void;
+  onOpenLoanModal?: (items: GearItem[]) => void;
   onOpenQrModal?: (item: GearItem) => void;
   onOpenBatchQrModal?: (items: GearItem[]) => void;
   onOpenMaintenanceModal?: (item: GearItem) => void;
@@ -258,6 +259,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   onOpenAddModal,
   onOpenCheckoutModal,
   onOpenCheckinModal,
+  onOpenLoanModal,
   onOpenQrModal,
   onOpenBatchQrModal,
   onOpenMaintenanceModal,
@@ -540,36 +542,44 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             conditionOnCheckout: item.condition,
           },
         };
-      } else if (value === 'Out On Loan' && !updated.currentCheckout) {
-        updated = {
-          ...updated,
-          currentCheckout: {
-            id: `chk-loan-${Date.now()}`,
-            gearId: item.id,
-            gearName: item.name,
-            assetTag: item.assetTag,
-            userId: currentUser?.id || 'usr-1',
-            userName: 'External Production Partner',
-            userEmail: 'partner@production.work',
-            projectName: 'External Loan Production',
-            shootLocation: 'External Studio / Stage',
-            checkoutDate: new Date().toISOString().split('T')[0],
-            expectedReturnDate: new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0],
-            status: 'Active',
-            notes: 'Out on loan to external production',
-            conditionOnCheckout: item.condition,
-          },
-          currentLoan: {
-            id: `loan-${Date.now()}`,
-            borrowerName: 'External Partner',
-            borrowerCompany: '',
-            borrowerContact: '',
-            loanDate: new Date().toISOString().split('T')[0],
-            expectedReturnDate: new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0],
-            purpose: '',
-            notes: 'Loan created via inventory status change — update details in Edit modal',
-          },
-        };
+      } else if (value === 'Out On Loan') {
+        // Open loan details modal for proper data entry
+        if (onOpenLoanModal) {
+          onOpenLoanModal([item]);
+          return; // Don't update gear directly — the modal handler will do it
+        }
+        // Fallback: apply placeholder values if modal not wired up
+        if (!updated.currentCheckout) {
+          updated = {
+            ...updated,
+            currentCheckout: {
+              id: `chk-loan-${Date.now()}`,
+              gearId: item.id,
+              gearName: item.name,
+              assetTag: item.assetTag,
+              userId: currentUser?.id || 'usr-1',
+              userName: 'External Production Partner',
+              userEmail: 'partner@production.work',
+              projectName: 'External Loan Production',
+              shootLocation: 'External Studio / Stage',
+              checkoutDate: new Date().toISOString().split('T')[0],
+              expectedReturnDate: new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0],
+              status: 'Active',
+              notes: 'Out on loan to external production',
+              conditionOnCheckout: item.condition,
+            },
+            currentLoan: {
+              id: `loan-${Date.now()}`,
+              borrowerName: 'External Partner',
+              borrowerCompany: '',
+              borrowerContact: '',
+              loanDate: new Date().toISOString().split('T')[0],
+              expectedReturnDate: new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0],
+              purpose: '',
+              notes: 'Loan created via inventory status change — update details in Edit modal',
+            },
+          };
+        }
       }
     }
 
