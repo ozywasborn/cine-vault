@@ -222,31 +222,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const totalValueOnLocation = activeShoots.reduce((sum, p) => sum + p.totalValue, 0);
 
-  // Macro all deployed gear across all projects/checkouts
-  const allDeployedGear = useMemo(() => {
-    return gear.filter((g) => g.status === 'Checked Out');
-  }, [gear]);
-
-  const totalMacroDeployedValue = useMemo(() => {
-    return allDeployedGear.reduce((sum, g) => sum + (g.replacementValue || 0), 0);
-  }, [allDeployedGear]);
-
-  // Macro category counts across all deployed equipment
-  const macroCategoryCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    allDeployedGear.forEach((item) => {
-      const cat = item.category || 'Other';
-      counts[cat] = (counts[cat] || 0) + 1;
-    });
-    return counts;
-  }, [allDeployedGear]);
-
-  const macroDeployedCategories = useMemo(() => {
-    return Object.keys(macroCategoryCounts).sort(
-      (a, b) => macroCategoryCounts[b] - macroCategoryCounts[a]
-    );
-  }, [macroCategoryCounts]);
-
   // Return countdown helper
   const getReturnCountdown = (endDateStr?: string) => {
     if (!endDateStr) return null;
@@ -477,87 +452,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
 
-            {/* Macro Deployment & Fleet Telemetry Bar (Macro overview of all equipment deployed across all projects) */}
-            <div className="bg-slate-50/90 rounded-2xl border border-slate-200/90 p-4 my-4 shadow-2xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/80">
-                <div className="flex flex-wrap items-center gap-4 sm:gap-6 divide-x divide-slate-200">
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
-                      Active Deployments
-                    </span>
-                    <span className="text-xl font-black text-slate-900 font-mono flex items-baseline gap-1.5">
-                      {activeShoots.length}
-                      <span className="text-xs font-semibold text-slate-500 font-sans">
-                        productions
-                      </span>
-                    </span>
-                  </div>
-                  <div className="pl-4 sm:pl-6">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
-                      Total Equipment in Field
-                    </span>
-                    <span className="text-xl font-black text-slate-900 font-mono flex items-baseline gap-1.5">
-                      {allDeployedGear.length}
-                      <span className="text-xs font-semibold text-amber-600 font-sans">
-                        units deployed
-                      </span>
-                    </span>
-                  </div>
-                  <div className="pl-4 sm:pl-6 hidden md:block">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
-                      Deployed Fleet Valuation
-                    </span>
-                    <span className="text-xl font-black text-slate-900 font-mono">
-                      {formatCurrencySGD(totalMacroDeployedValue)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="text-right hidden sm:block">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
-                    Movement Status
-                  </span>
-                  <span className="text-xs font-bold text-emerald-600 flex items-center justify-end gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Live Field Operations
-                  </span>
-                </div>
-              </div>
-
-              {/* Macro Category Footprint across ALL active deployment projects */}
-              <div className="pt-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium shrink-0">
-                  <Layers className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                  <span className="font-bold text-slate-800">Macro Deployed Equipment:</span>
-                  <span className="text-slate-400 text-[11px]">
-                    ({allDeployedGear.length} units across {activeShoots.length} deployments)
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {macroDeployedCategories.map((cat) => {
-                    const count = macroCategoryCounts[cat];
-                    const theme = getCategoryTheme(cat, categoryColors[cat]);
-                    return (
-                      <span
-                        key={cat}
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg border text-xs font-medium ${theme.badgeBg}`}
-                      >
-                        <span className={`w-2 h-2 rounded-full shrink-0 ${theme.dot}`} />
-                        <span>{cat}:</span>
-                        <strong className="font-mono font-bold">{count}</strong>
-                      </span>
-                    );
-                  })}
-                  {macroDeployedCategories.length === 0 && (
-                    <span className="text-xs text-slate-400 italic">
-                      No equipment currently deployed in the field.
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
             {/* Deployments List (Sorted primarily by Deployments, with all equipments falling under each) */}
             <div className="space-y-5 mt-4">
               {activeShoots.map((proj) => {
@@ -568,10 +462,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   acc[item.category] = (acc[item.category] || 0) + 1;
                   return acc;
                 }, {} as Record<string, number>);
-
-                const kitNames = Array.from(
-                  new Set(proj.assignedGear.filter((g) => g.kitName).map((g) => g.kitName as string))
-                );
 
                 return (
                   <div
@@ -648,24 +538,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </div>
                     </div>
 
-                    {/* Kit Bundles (if any) */}
-                    {kitNames.length > 0 && (
-                      <div className="flex items-center gap-1.5 pt-2 text-xs">
-                        <Layers className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                        <span className="text-slate-400 font-medium">Bundles:</span>
-                        <div className="flex flex-wrap gap-1">
-                          {kitNames.map((k) => (
-                            <span
-                              key={k}
-                              className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[10.5px] font-semibold"
-                            >
-                              {k}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
                     {/* Equipment Manifest (THE PRIMARY FOCUS UNDER THE DEPLOYMENT) */}
                     <div className="mt-3">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-2.5">
@@ -723,16 +595,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                     <p className="text-xs font-bold text-slate-800 group-hover:text-amber-600 transition-colors truncate">
                                       {item.name}
                                     </p>
-                                    <p className="text-[10px] text-slate-400 truncate flex items-center gap-1">
-                                      <span>{item.category}</span>
-                                      {item.kitName && (
-                                        <>
-                                          <span>•</span>
-                                          <span className="text-amber-600 font-medium truncate">
-                                            {item.kitName}
-                                          </span>
-                                        </>
-                                      )}
+                                    <p className="text-[10px] text-slate-400 truncate">
+                                      {item.category}
                                     </p>
                                   </div>
                                 </div>
