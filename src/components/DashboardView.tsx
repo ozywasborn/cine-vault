@@ -721,7 +721,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               <span className="font-mono text-[10.5px]">
                                 {loan.loanDate ? formatDateDDMMYYYY(loan.loanDate) : '—'}
                               </span>
-                              <span className="text-slate-300">→</span>
+                              <span className="text-slate-500 font-medium text-[10.5px]">to</span>
                               <span
                                 className={`font-mono text-[10.5px] ${
                                   isOverdue ? 'text-red-600 font-bold' : 'text-slate-700 font-medium'
