@@ -532,43 +532,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         </div>
                       </div>
 
-                      {/* Streamlined Status & Return Timing - Integrated without heavy bubble badges */}
-                      <div className="flex items-center gap-2 text-xs shrink-0 self-start sm:self-auto pt-0.5">
-                        <span
-                          className={`inline-flex items-center gap-1.5 font-semibold ${
-                            proj.status === 'On Shoot' ? 'text-emerald-700' : 'text-blue-700'
-                          }`}
-                        >
+                      {/* Streamlined Status, Return Timing & Field Console Link */}
+                      <div className="flex flex-col sm:items-end gap-1.5 text-xs shrink-0 self-start sm:self-auto pt-0.5">
+                        <div className="flex items-center gap-2">
                           <span
-                            className={`w-2 h-2 rounded-full ${
-                              proj.status === 'On Shoot' ? 'bg-emerald-500 animate-pulse' : 'bg-blue-500'
+                            className={`inline-flex items-center gap-1.5 font-semibold ${
+                              proj.status === 'On Shoot' ? 'text-emerald-700' : 'text-blue-700'
                             }`}
-                          />
-                          {proj.status}
-                        </span>
-
-                        {countdown && (
-                          <>
-                            <span className="text-slate-300">•</span>
-                            <span className={`font-medium ${countdown.textColor}`}>
-                              {countdown.label}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Equipment Manifest Header - Clean, without redundant category bubble chips */}
-                    <div className="mt-3.5">
-                      <div className="flex items-center justify-between gap-2 mb-2.5">
-                        <div className="flex items-center gap-1.5">
-                          <Package className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                            Equipment Manifest
+                          >
+                            <span
+                              className={`w-2 h-2 rounded-full ${
+                                proj.status === 'On Shoot' ? 'bg-emerald-500 animate-pulse' : 'bg-blue-500'
+                              }`}
+                            />
+                            {proj.status}
                           </span>
-                          <span className="text-xs font-semibold text-slate-400 font-mono">
-                            ({proj.assignedGear.length})
-                          </span>
+
+                          {countdown && (
+                            <>
+                              <span className="text-slate-300">•</span>
+                              <span className={`font-medium ${countdown.textColor}`}>
+                                {countdown.label}
+                              </span>
+                            </>
+                          )}
                         </div>
 
                         <button
@@ -579,6 +566,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           <ArrowUpRight className="w-3.5 h-3.5" />
                         </button>
                       </div>
+                    </div>
+
+                    {/* All Equipment Items Grid (Entire equipment list visible directly without manifest text header) */}
+                    <div className="mt-3.5">
 
                       {/* All Equipment Items Grid (Entire manifest visible in one glance) */}
                       {proj.assignedGear.length > 0 ? (
