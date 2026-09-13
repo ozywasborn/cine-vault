@@ -39,7 +39,7 @@ import { AddressAutocompleteInput } from './AddressAutocompleteInput';
 import { normalizeDateToYMD, formatDateDDMMYYYY, formatCurrencySGD } from '../utils/dateUtils';
 import { getCategoryTheme } from './InventoryView';
 
-interface DeploymentColorTheme {
+export interface DeploymentColorTheme {
   id: string;
   name: string;
   containerBorder: string;
@@ -52,7 +52,7 @@ interface DeploymentColorTheme {
   tagBg: string;
 }
 
-const DEPLOYMENT_THEMES: DeploymentColorTheme[] = [
+export const DEPLOYMENT_THEMES: DeploymentColorTheme[] = [
   {
     id: 'amber',
     name: 'Amber Cinema',
@@ -212,7 +212,7 @@ const LOAN_THEME: DeploymentColorTheme = {
   tagBg: 'bg-purple-600 text-white',
 };
 
-const getDeploymentTheme = (
+export const getDeploymentTheme = (
   name: string,
   index = 0,
   customColorId?: string
@@ -1419,6 +1419,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
       const next = { ...prev, [projName]: colorId };
       try {
         localStorage.setItem('cinevault_deployment_colors', JSON.stringify(next));
+        window.dispatchEvent(new Event('cinevault-deployment-colors-changed'));
       } catch {}
       return next;
     });
@@ -1459,6 +1460,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
       delete next[projName];
       try {
         localStorage.setItem('cinevault_deployment_colors', JSON.stringify(next));
+        window.dispatchEvent(new Event('cinevault-deployment-colors-changed'));
       } catch {}
       return next;
     });

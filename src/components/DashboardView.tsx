@@ -22,6 +22,7 @@ import {
 import { GearItem, MaintenanceRecord, ShootProject, GearCategory } from '../types';
 import { formatDateDDMMYYYY, normalizeDateToYMD } from '../utils/dateUtils';
 import { getCategoryTheme } from './InventoryView';
+import { getDeploymentTheme } from './FieldShootSummaryView';
 
 interface DashboardViewProps {
   gear: GearItem[];
@@ -64,6 +65,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return () => {
       window.removeEventListener('storage', syncColors);
       window.removeEventListener('cinevault-category-colors-changed', syncColors);
+    };
+  }, []);
+
+  // Deployment custom colour codes stored in localStorage (synced with FieldShootSummaryView)
+  const [deploymentColors, setDeploymentColors] = useState<Record<string, string>>(() => {
+    try {
+      const stored = localStorage.getItem('cinevault_deployment_colors');
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    const syncDeploymentColors = () => {
+      try {
+        const stored = localStorage.getItem('cinevault_deployment_colors');
+        setDeploymentColors(stored ? JSON.parse(stored) : {});
+      } catch {}
+    };
+    window.addEventListener('storage', syncDeploymentColors);
+    window.addEventListener('cinevault-deployment-colors-changed', syncDeploymentColors);
+    return () => {
+      window.removeEventListener('storage', syncDeploymentColors);
+      window.removeEventListener('cinevault-deployment-colors-changed', syncDeploymentColors);
     };
   }, []);
 
@@ -148,6 +174,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       status: 'On Shoot' | 'Prep' | 'Wrapped' | 'Cancelled';
       assignedGear: GearItem[];
       totalValue: number;
+      color?: string;
     }> = [];
 
     const projectNamesSeen = new Set<string>();
@@ -178,6 +205,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         status: proj.status,
         assignedGear: assigned,
         totalValue: totalVal,
+        color: proj.color,
       });
     });
 
@@ -452,19 +480,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             {/* Deployments List (Sorted primarily by Deployments, with all equipments falling under each) */}
             <div className="space-y-5 mt-4">
-              {activeShoots.map((proj) => {
+              {activeShoots.map((proj, idx) => {
                 const countdown = getReturnCountdown(proj.endDate);
+                const customColor = deploymentColors[proj.name] || proj.color;
+                const depTheme = getDeploymentTheme(proj.name, idx, customColor);
 
                 return (
                   <div
                     key={proj.id}
                     id={`shoot-card-${proj.id}`}
-                    className="p-5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 transition-all shadow-xs"
+                    className={`p-5 rounded-2xl border ${depTheme.containerBorder} bg-white hover:shadow-xs transition-all`}
                   >
                     {/* Header: Title on Left, Clean Status & Countdown on Right (No bubble clutter, No $ bubble) */}
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 pb-3 border-b border-slate-100">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
+                          {/* Matching deployment coloured dot from Field Deployment console */}
+                          <span
+                            className={`w-2.5 h-2.5 rounded-full ${depTheme.dot} shadow-2xs ring-2 ring-white shrink-0`}
+                            title={`Deployment colour: ${depTheme.name}`}
+                          />
                           <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
                             {proj.name}
                           </h3>
@@ -475,23 +510,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           )}
                         </div>
 
-                        {/* Subtle Metadata Row */}
+                        {/* Subtle Metadata Row - Fixed horizontal date baseline alignment */}
                         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-slate-500 mt-1">
                           <span className="font-medium text-slate-700">{proj.leadDP}</span>
                           {proj.location && (
                             <>
-                              <span className="text-slate-300">•</span>
+                              <span className="text-slate-300 select-none">•</span>
                               <span className="truncate max-w-[260px]">{proj.location}</span>
                             </>
                           )}
                           {proj.client && (
                             <>
-                              <span className="text-slate-300">•</span>
+                              <span className="text-slate-300 select-none">•</span>
                               <span className="text-slate-400">{proj.client}</span>
                             </>
                           )}
-                          <span className="text-slate-300">•</span>
-                          <span className="font-mono text-[11px] text-slate-400">
+                          <span className="text-slate-300 select-none">•</span>
+                          <span className="text-slate-400 text-xs tabular-nums">
                             {formatDateDDMMYYYY(proj.startDate)} → {formatDateDDMMYYYY(proj.endDate)}
                           </span>
                         </div>
