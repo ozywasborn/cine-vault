@@ -20,7 +20,7 @@ import {
   Handshake,
 } from 'lucide-react';
 import { GearItem, MaintenanceRecord, ShootProject, GearCategory } from '../types';
-import { formatDateDDMMYYYY, normalizeDateToYMD, formatCurrencySGD } from '../utils/dateUtils';
+import { formatDateDDMMYYYY, normalizeDateToYMD } from '../utils/dateUtils';
 import { getCategoryTheme } from './InventoryView';
 
 interface DashboardViewProps {
@@ -220,8 +220,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       });
   }, [projects, gear]);
 
-  const totalValueOnLocation = activeShoots.reduce((sum, p) => sum + p.totalValue, 0);
-
   // Return countdown helper
   const getReturnCountdown = (endDateStr?: string) => {
     if (!endDateStr) return null;
@@ -234,24 +232,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     if (diffDays < 0) {
       return {
         label: `${Math.abs(diffDays)}d Overdue`,
-        badgeClass: 'bg-rose-50 text-rose-700 border-rose-200',
+        textColor: 'text-rose-600 font-semibold',
       };
     }
     if (diffDays === 0) {
       return {
         label: 'Returns Today',
-        badgeClass: 'bg-amber-50 text-amber-700 border-amber-200',
+        textColor: 'text-amber-600 font-semibold',
       };
     }
     if (diffDays === 1) {
       return {
         label: 'Returns Tomorrow',
-        badgeClass: 'bg-blue-50 text-blue-700 border-blue-200',
+        textColor: 'text-blue-600 font-medium',
       };
     }
     return {
       label: `Returns in ${diffDays} days`,
-      badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      textColor: 'text-slate-500',
     };
   };
 
@@ -457,119 +455,93 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {activeShoots.map((proj) => {
                 const countdown = getReturnCountdown(proj.endDate);
 
-                // Group assigned gear by category for quick tally
-                const catGrouped = proj.assignedGear.reduce((acc, item) => {
-                  acc[item.category] = (acc[item.category] || 0) + 1;
-                  return acc;
-                }, {} as Record<string, number>);
-
                 return (
                   <div
                     key={proj.id}
                     id={`shoot-card-${proj.id}`}
                     className="p-5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 transition-all shadow-xs"
                   >
-                    {/* PRIMARY FOCUS: Deployment Title & Status Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100">
-                      <div className="flex flex-wrap items-center gap-2">
+                    {/* Header: Title on Left, Clean Status & Countdown on Right (No bubble clutter, No $ bubble) */}
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 pb-3 border-b border-slate-100">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                            {proj.name}
+                          </h3>
+                          {proj.jobNo && (
+                            <span className="text-xs font-mono text-slate-400 font-medium">
+                              #{proj.jobNo}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Subtle Metadata Row */}
+                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-slate-500 mt-1">
+                          <span className="font-medium text-slate-700">{proj.leadDP}</span>
+                          {proj.location && (
+                            <>
+                              <span className="text-slate-300">•</span>
+                              <span className="truncate max-w-[260px]">{proj.location}</span>
+                            </>
+                          )}
+                          {proj.client && (
+                            <>
+                              <span className="text-slate-300">•</span>
+                              <span className="text-slate-400">{proj.client}</span>
+                            </>
+                          )}
+                          <span className="text-slate-300">•</span>
+                          <span className="font-mono text-[11px] text-slate-400">
+                            {formatDateDDMMYYYY(proj.startDate)} → {formatDateDDMMYYYY(proj.endDate)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Streamlined Status & Return Timing - Integrated without heavy bubble badges */}
+                      <div className="flex items-center gap-2 text-xs shrink-0 self-start sm:self-auto pt-0.5">
                         <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border ${
-                            proj.status === 'On Shoot'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-blue-50 text-blue-700 border-blue-200'
+                          className={`inline-flex items-center gap-1.5 font-semibold ${
+                            proj.status === 'On Shoot' ? 'text-emerald-700' : 'text-blue-700'
                           }`}
                         >
                           <span
-                            className={`w-1.5 h-1.5 rounded-full ${
+                            className={`w-2 h-2 rounded-full ${
                               proj.status === 'On Shoot' ? 'bg-emerald-500 animate-pulse' : 'bg-blue-500'
                             }`}
                           />
                           {proj.status}
                         </span>
 
-                        {/* Bold Hero Deployment Title */}
-                        <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
-                          {proj.name}
-                        </h3>
-
-                        {proj.jobNo && (
-                          <span className="px-2 py-0.5 rounded-md bg-amber-100/90 text-amber-900 border border-amber-300 text-[11px] font-mono font-bold tracking-wide shadow-2xs">
-                            Job: {proj.jobNo}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
                         {countdown && (
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${countdown.badgeClass}`}
-                          >
-                            {countdown.label}
-                          </span>
+                          <>
+                            <span className="text-slate-300">•</span>
+                            <span className={`font-medium ${countdown.textColor}`}>
+                              {countdown.label}
+                            </span>
+                          </>
                         )}
-                        <span className="text-xs font-bold text-slate-700 font-mono bg-slate-100 px-2.5 py-0.5 rounded-md">
-                          {formatCurrencySGD(proj.totalValue)}
-                        </span>
                       </div>
                     </div>
 
-                    {/* De-emphasized Secondary Metadata Bar (Location, DP, Client, Dates) */}
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 py-2 border-b border-slate-100">
-                      <div className="flex items-center gap-1 text-slate-700">
-                        <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span className="text-slate-400">Lead DP:</span>
-                        <span className="font-semibold text-slate-800">{proj.leadDP}</span>
-                      </div>
-                      <span className="text-slate-300">•</span>
-                      <div className="flex items-center gap-1 text-slate-600">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span className="truncate max-w-[240px]">{proj.location}</span>
-                      </div>
-                      <span className="text-slate-300">•</span>
-                      <div className="text-slate-500">
-                        <span className="text-slate-400">Client:</span> {proj.client}
-                      </div>
-                      <span className="text-slate-300">•</span>
-                      <div className="flex items-center gap-1 font-mono text-[11px] text-slate-500">
-                        <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
-                        <span>
-                          {formatDateDDMMYYYY(proj.startDate)} → {formatDateDDMMYYYY(proj.endDate)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Equipment Manifest (THE PRIMARY FOCUS UNDER THE DEPLOYMENT) */}
-                    <div className="mt-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-2.5">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                            <Package className="w-3.5 h-3.5 text-amber-500" />
-                            Equipment Manifest ({proj.assignedGear.length} units):
+                    {/* Equipment Manifest Header - Clean, without redundant category bubble chips */}
+                    <div className="mt-3.5">
+                      <div className="flex items-center justify-between gap-2 mb-2.5">
+                        <div className="flex items-center gap-1.5">
+                          <Package className="w-3.5 h-3.5 text-slate-400" />
+                          <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                            Equipment Manifest
                           </span>
-                          {/* Category badges for this deployment */}
-                          <div className="flex items-center gap-1 flex-wrap">
-                            {Object.entries(catGrouped).map(([cat, count]) => {
-                              const theme = getCategoryTheme(cat, categoryColors[cat]);
-                              return (
-                                <span
-                                  key={cat}
-                                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium border ${theme.badgeBg}`}
-                                >
-                                  <span className={`w-1.5 h-1.5 rounded-full ${theme.dot}`} />
-                                  <span>{cat}:</span>
-                                  <strong className="font-mono">{count}</strong>
-                                </span>
-                              );
-                            })}
-                          </div>
+                          <span className="text-xs font-semibold text-slate-400 font-mono">
+                            ({proj.assignedGear.length})
+                          </span>
                         </div>
 
                         <button
                           onClick={onNavigateToField}
-                          className="text-[11px] font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1 cursor-pointer self-start sm:self-auto"
+                          className="text-xs font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1 cursor-pointer transition-colors"
                         >
-                          <span>Inspect in Field Console</span>
-                          <ArrowUpRight className="w-3 h-3" />
+                          <span>Field Console</span>
+                          <ArrowUpRight className="w-3.5 h-3.5" />
                         </button>
                       </div>
 
@@ -583,11 +555,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                 key={item.id}
                                 onClick={() => onSelectGearItem(item)}
                                 title={`Inspect ${item.name} (${item.assetTag})`}
-                                className={`group flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50/90 hover:bg-white border ${theme.containerBorder} hover:shadow-xs transition-all cursor-pointer`}
+                                className="group flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50/70 hover:bg-white border border-slate-200/80 hover:border-slate-300 hover:shadow-xs transition-all cursor-pointer"
                               >
-                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                   <span
-                                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold tracking-tight shrink-0 border ${theme.badgeBg}`}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold tracking-tight shrink-0 border ${theme.badgeBg}`}
                                   >
                                     {item.assetTag}
                                   </span>
