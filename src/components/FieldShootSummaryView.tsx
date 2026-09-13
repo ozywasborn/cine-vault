@@ -30,8 +30,11 @@ import {
   Palette,
   Trash2,
   Building2,
+  Handshake,
+  Phone,
+  FileText,
 } from 'lucide-react';
-import { GearItem, ShootProject, UserAccount, ConditionRating } from '../types';
+import { GearItem, ShootProject, UserAccount, ConditionRating, LoanRecord } from '../types';
 import { AddressAutocompleteInput } from './AddressAutocompleteInput';
 import { normalizeDateToYMD, formatDateDDMMYYYY, formatCurrencySGD } from '../utils/dateUtils';
 
@@ -195,7 +198,20 @@ const DEPLOYMENT_THEMES: DeploymentColorTheme[] = [
   },
 ];
 
-export const getDeploymentTheme = (
+const LOAN_THEME: DeploymentColorTheme = {
+  id: 'loan-purple',
+  name: 'External Loan',
+  containerBorder: 'border-purple-200 hover:border-purple-300',
+  headerBg: 'bg-purple-50/70 border-b border-purple-200/80',
+  badgeBg: 'bg-purple-100 text-purple-900 border border-purple-300',
+  dot: 'bg-purple-500',
+  accentText: 'text-purple-700',
+  ganttBar: 'bg-purple-600 hover:bg-purple-700 text-white border border-purple-700 shadow-sm',
+  ganttTrack: 'bg-purple-50/50',
+  tagBg: 'bg-purple-600 text-white',
+};
+
+const getDeploymentTheme = (
   name: string,
   index = 0,
   customColorId?: string
@@ -566,6 +582,9 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
     'Wilderness Echoes Documentary': true,
   });
 
+  const [activeSegment, setActiveSegment] = useState<'all' | 'deployments' | 'loans'>('all');
+  const [expandedLoans, setExpandedLoans] = useState<Record<string, boolean>>({});
+
   // Modal State for Adding a New Deployment
   const [isAddDeploymentOpen, setIsAddDeploymentOpen] = useState(false);
   const [newProjName, setNewProjName] = useState('');
@@ -583,6 +602,21 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
   const [newProjNotes, setNewProjNotes] = useState('');
   const [selectedInitialGearIds, setSelectedInitialGearIds] = useState<string[]>([]);
 
+  // Modal State for Adding a New Loan
+  const [isAddLoanOpen, setIsAddLoanOpen] = useState(false);
+  const [newLoanBorrowerName, setNewLoanBorrowerName] = useState('');
+  const [newLoanBorrowerCompany, setNewLoanBorrowerCompany] = useState('');
+  const [newLoanBorrowerContact, setNewLoanBorrowerContact] = useState('');
+  const [newLoanStartDate, setNewLoanStartDate] = useState(
+    new Date().toISOString().split('T')[0]
+  );
+  const [newLoanReturnDate, setNewLoanReturnDate] = useState(
+    new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0]
+  );
+  const [newLoanPurpose, setNewLoanPurpose] = useState('');
+  const [newLoanNotes, setNewLoanNotes] = useState('');
+  const [selectedLoanGearIds, setSelectedLoanGearIds] = useState<string[]>([]);
+
   // Modal State for Editing an Existing Deployment
   const [editingDeploymentName, setEditingDeploymentName] = useState<string | null>(null);
   const [editProjName, setEditProjName] = useState('');
@@ -596,25 +630,60 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
   const [editProjNotes, setEditProjNotes] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Modal State for Editing an Existing Loan
+  const [editingLoan, setEditingLoan] = useState<{ id: string; loan: LoanRecord; items: GearItem[] } | null>(null);
+  const [editLoanBorrowerName, setEditLoanBorrowerName] = useState('');
+  const [editLoanBorrowerCompany, setEditLoanBorrowerCompany] = useState('');
+  const [editLoanBorrowerContact, setEditLoanBorrowerContact] = useState('');
+  const [editLoanStartDate, setEditLoanStartDate] = useState('');
+  const [editLoanReturnDate, setEditLoanReturnDate] = useState('');
+  const [editLoanPurpose, setEditLoanPurpose] = useState('');
+  const [editLoanNotes, setEditLoanNotes] = useState('');
+  const [showDeleteLoanConfirm, setShowDeleteLoanConfirm] = useState(false);
+
   // Close modals on Escape key
   useEffect(() => {
-    if (!editingDeploymentName && !isAddDeploymentOpen && !showDeleteConfirm) return;
+    if (
+      !editingDeploymentName &&
+      !isAddDeploymentOpen &&
+      !showDeleteConfirm &&
+      !isAddLoanOpen &&
+      !editingLoan &&
+      !showDeleteLoanConfirm
+    )
+      return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (showDeleteConfirm) {
           setShowDeleteConfirm(false);
           return;
         }
+        if (showDeleteLoanConfirm) {
+          setShowDeleteLoanConfirm(false);
+          return;
+        }
         if (editingDeploymentName) {
           setEditingDeploymentName(null);
           setShowDeleteConfirm(false);
         }
+        if (editingLoan) {
+          setEditingLoan(null);
+          setShowDeleteLoanConfirm(false);
+        }
         if (isAddDeploymentOpen) setIsAddDeploymentOpen(false);
+        if (isAddLoanOpen) setIsAddLoanOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editingDeploymentName, isAddDeploymentOpen, showDeleteConfirm]);
+  }, [
+    editingDeploymentName,
+    isAddDeploymentOpen,
+    showDeleteConfirm,
+    isAddLoanOpen,
+    editingLoan,
+    showDeleteLoanConfirm,
+  ]);
 
   // Drag & Drop State
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
@@ -709,9 +778,34 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
     };
   }, [equipmentContextMenu]);
 
-  // Filter checked out gear
+  // Filter checked out gear and loaned gear
   const checkedOutGear = useMemo(() => gear.filter((g) => g.status === 'Checked Out'), [gear]);
+  const loanedGear = useMemo(() => gear.filter((g) => g.status === 'Out On Loan'), [gear]);
   const availableGear = useMemo(() => gear.filter((g) => g.status === 'Available'), [gear]);
+
+  // Group loaned gear by loan ID or borrower name
+  const loanGroups = useMemo(() => {
+    const map: Record<string, { id: string; loan: LoanRecord; items: GearItem[] }> = {};
+    loanedGear.forEach((item) => {
+      const loan = item.currentLoan || {
+        id: item.currentCheckout?.id || `loan-fallback-${item.id}`,
+        borrowerName: item.currentCheckout?.userName || 'External Partner',
+        borrowerCompany: item.currentCheckout?.projectName,
+        borrowerContact: item.currentCheckout?.userEmail,
+        loanDate: normalizeDateToYMD(item.currentCheckout?.checkoutDate) || new Date().toISOString().split('T')[0],
+        expectedReturnDate:
+          normalizeDateToYMD(item.currentCheckout?.expectedReturnDate) ||
+          new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0],
+        purpose: item.currentCheckout?.notes,
+      };
+      const key = loan.id || loan.borrowerName;
+      if (!map[key]) {
+        map[key] = { id: key, loan, items: [] };
+      }
+      map[key].items.push(item);
+    });
+    return Object.values(map);
+  }, [loanedGear]);
 
   // Compile all known deployment projects (from projects prop + any active checkouts)
   const allDeploymentProjects = useMemo(() => {
@@ -808,6 +902,49 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
     });
   }, [projectNames, selectedProjectId, searchQuery, allDeploymentProjects, gearByProject]);
 
+  // Visible loan groups based on search query
+  const visibleLoanGroups = useMemo(() => {
+    if (!searchQuery.trim()) return loanGroups;
+    const q = searchQuery.trim().toLowerCase();
+    return loanGroups.filter((grp) => {
+      if (grp.loan.borrowerName.toLowerCase().includes(q)) return true;
+      if (grp.loan.borrowerCompany?.toLowerCase().includes(q)) return true;
+      if (grp.loan.purpose?.toLowerCase().includes(q)) return true;
+      if (grp.loan.notes?.toLowerCase().includes(q)) return true;
+      return grp.items.some(
+        (i) =>
+          String(i.name || '').toLowerCase().includes(q) ||
+          String(i.assetTag || '').toLowerCase().includes(q) ||
+          String(i.serialNumber || '').toLowerCase().includes(q)
+      );
+    });
+  }, [loanGroups, searchQuery]);
+
+  const isAllLoansCollapsed = useMemo(() => {
+    if (visibleLoanGroups.length === 0) return false;
+    return visibleLoanGroups.every((grp) => expandedLoans[grp.id] === false);
+  }, [visibleLoanGroups, expandedLoans]);
+
+  const handleExpandAllLoans = () => {
+    setExpandedLoans((prev) => {
+      const next = { ...prev };
+      visibleLoanGroups.forEach((grp) => {
+        next[grp.id] = true;
+      });
+      return next;
+    });
+  };
+
+  const handleCollapseAllLoans = () => {
+    setExpandedLoans((prev) => {
+      const next = { ...prev };
+      visibleLoanGroups.forEach((grp) => {
+        next[grp.id] = false;
+      });
+      return next;
+    });
+  };
+
   // Check if all visible projects are collapsed
   const isAllProjectsCollapsed = useMemo(() => {
     if (visibleProjectNames.length === 0) return false;
@@ -842,12 +979,10 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
       (p) => selectedProjectId === 'all' || p.name === selectedProjectId
     );
 
-    if (activeProjects.length === 0) return null;
-
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const parsed = activeProjects.map((p, idx) => {
+    const parsedDeployments = (activeSegment === 'loans' ? [] : activeProjects).map((p, idx) => {
       const assignedItems = gearByProject[p.name] || [];
       const firstCheckout = assignedItems[0]?.currentCheckout;
       const startStr =
@@ -871,11 +1006,19 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
       const theme = getDeploymentTheme(p.name, idx, customColor);
 
       return {
+        type: 'deployment' as const,
+        id: p.name,
         name: p.name,
         jobNo: p.jobNo || firstCheckout?.jobNo,
         client: p.client,
         leadDP: p.leadDP || firstCheckout?.userName || 'Lead DP',
         location: p.location || firstCheckout?.shootLocation || 'On Location',
+        borrowerName: undefined as string | undefined,
+        borrowerCompany: undefined as string | undefined,
+        purpose: undefined as string | undefined,
+        notes: undefined as string | undefined,
+        contact: undefined as string | undefined,
+        loanGroup: undefined as { id: string; loan: LoanRecord; items: GearItem[] } | undefined,
         startStr,
         endStr,
         startDate: safeStartDate,
@@ -884,6 +1027,51 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
         theme,
       };
     });
+
+    const parsedLoans = (activeSegment === 'deployments' ? [] : loanGroups).map((grp) => {
+      const startStr =
+        normalizeDateToYMD(grp.loan.loanDate) ||
+        new Date().toISOString().split('T')[0];
+      const endStr =
+        normalizeDateToYMD(grp.loan.expectedReturnDate) ||
+        new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0];
+
+      const startDate = new Date(startStr + 'T00:00:00');
+      const endDate = new Date(endStr + 'T00:00:00');
+      const safeStartDate = isNaN(startDate.getTime()) ? today : startDate;
+      const safeEndDate =
+        isNaN(endDate.getTime()) || endDate < safeStartDate
+          ? new Date(safeStartDate.getTime() + 86400000 * 3)
+          : endDate;
+
+      return {
+        type: 'loan' as const,
+        id: grp.id,
+        name: grp.loan.borrowerCompany
+          ? `${grp.loan.borrowerName} (${grp.loan.borrowerCompany})`
+          : grp.loan.borrowerName,
+        jobNo: undefined as string | undefined,
+        client: grp.loan.borrowerCompany,
+        leadDP: grp.loan.borrowerName,
+        location: 'External Loan',
+        borrowerName: grp.loan.borrowerName,
+        borrowerCompany: grp.loan.borrowerCompany,
+        purpose: grp.loan.purpose,
+        notes: grp.loan.notes,
+        contact: grp.loan.borrowerContact,
+        loanGroup: grp,
+        startStr,
+        endStr,
+        startDate: safeStartDate,
+        endDate: safeEndDate,
+        itemCount: grp.items.length,
+        theme: LOAN_THEME,
+      };
+    });
+
+    const parsed = [...parsedDeployments, ...parsedLoans];
+
+    if (parsed.length === 0) return null;
 
     const allStarts = parsed.map((p) => p.startDate.getTime());
     const allEnds = parsed.map((p) => p.endDate.getTime());
@@ -935,7 +1123,13 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
     const dayMs = 86400000;
 
     // Detect Overlaps
-    const overlaps: { projA: string; projB: string; range: string }[] = [];
+    const overlaps: {
+      projA: string;
+      projB: string;
+      typeA: 'deployment' | 'loan';
+      typeB: 'deployment' | 'loan';
+      range: string;
+    }[] = [];
     for (let i = 0; i < parsed.length; i++) {
       for (let j = i + 1; j < parsed.length; j++) {
         const a = parsed[i];
@@ -946,6 +1140,8 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
           overlaps.push({
             projA: a.name,
             projB: b.name,
+            typeA: a.type,
+            typeB: b.type,
             range: `${formatDateDDMMYYYY(overlapStart)} – ${formatDateDDMMYYYY(overlapEnd)}`,
           });
         }
@@ -984,7 +1180,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
       todayPercent,
       totalDays,
     };
-  }, [allDeploymentProjects, gearByProject, selectedProjectId, deploymentColors]);
+  }, [allDeploymentProjects, gearByProject, selectedProjectId, deploymentColors, loanGroups, activeSegment]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -1336,6 +1532,159 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
     );
   };
 
+  // Handle Form Submit: Add New Loan
+  const handleCreateLoan = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newLoanBorrowerName.trim()) {
+      showToast('Please provide the borrower name.');
+      return;
+    }
+    if (selectedLoanGearIds.length === 0) {
+      showToast('Please select at least one piece of equipment to loan out.');
+      return;
+    }
+
+    const loanId = `loan-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const cleanStartDate = newLoanStartDate || new Date().toISOString().split('T')[0];
+    const cleanReturnDate =
+      newLoanReturnDate || new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0];
+
+    const loanRecord: LoanRecord = {
+      id: loanId,
+      borrowerName: newLoanBorrowerName.trim(),
+      borrowerCompany: newLoanBorrowerCompany.trim() || undefined,
+      borrowerContact: newLoanBorrowerContact.trim() || undefined,
+      loanDate: new Date(cleanStartDate).toISOString(),
+      expectedReturnDate: new Date(cleanReturnDate).toISOString(),
+      purpose: newLoanPurpose.trim() || undefined,
+      notes: newLoanNotes.trim() || undefined,
+    };
+
+    const now = new Date().toISOString();
+    selectedLoanGearIds.forEach((id) => {
+      const item = gear.find((g) => g.id === id);
+      if (item && onUpdateGear) {
+        const updated: GearItem = {
+          ...item,
+          status: 'Out On Loan',
+          currentLoan: loanRecord,
+          currentCheckout: {
+            id: `chk-loan-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            gearId: item.id,
+            gearName: item.name,
+            assetTag: item.assetTag,
+            userId: currentUser?.id || 'usr-loan',
+            userName: loanRecord.borrowerName,
+            userEmail: loanRecord.borrowerContact || '',
+            projectName: `Loan: ${loanRecord.borrowerCompany || loanRecord.borrowerName}`,
+            shootLocation: loanRecord.borrowerCompany || 'External Loan',
+            checkoutDate: loanRecord.loanDate,
+            expectedReturnDate: loanRecord.expectedReturnDate,
+            status: 'Active',
+            notes: loanRecord.purpose || 'Out on external loan',
+            conditionOnCheckout: item.condition,
+          },
+          updatedAt: now,
+        };
+        onUpdateGear(updated);
+      }
+    });
+
+    setExpandedLoans((prev) => ({
+      ...prev,
+      [loanId]: true,
+    }));
+
+    showToast(
+      `Loan registered for "${loanRecord.borrowerName}" with ${selectedLoanGearIds.length} assets.`
+    );
+
+    // Reset form
+    setNewLoanBorrowerName('');
+    setNewLoanBorrowerCompany('');
+    setNewLoanBorrowerContact('');
+    setNewLoanPurpose('');
+    setNewLoanNotes('');
+    setSelectedLoanGearIds([]);
+    setIsAddLoanOpen(false);
+  };
+
+  // Open Edit Loan Modal
+  const handleOpenEditLoan = (grp: { id: string; loan: LoanRecord; items: GearItem[] }) => {
+    setShowDeleteLoanConfirm(false);
+    setEditingLoan(grp);
+    setEditLoanBorrowerName(grp.loan.borrowerName || '');
+    setEditLoanBorrowerCompany(grp.loan.borrowerCompany || '');
+    setEditLoanBorrowerContact(grp.loan.borrowerContact || '');
+    setEditLoanStartDate(
+      normalizeDateToYMD(grp.loan.loanDate) || new Date().toISOString().split('T')[0]
+    );
+    setEditLoanReturnDate(
+      normalizeDateToYMD(grp.loan.expectedReturnDate) ||
+        new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0]
+    );
+    setEditLoanPurpose(grp.loan.purpose || '');
+    setEditLoanNotes(grp.loan.notes || '');
+  };
+
+  // Handle Form Submit: Save Edited Loan
+  const handleSaveEditLoan = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLoan) return;
+
+    const updatedLoan: LoanRecord = {
+      ...editingLoan.loan,
+      borrowerName: editLoanBorrowerName.trim() || editingLoan.loan.borrowerName,
+      borrowerCompany: editLoanBorrowerCompany.trim() || undefined,
+      borrowerContact: editLoanBorrowerContact.trim() || undefined,
+      loanDate: new Date(editLoanStartDate).toISOString(),
+      expectedReturnDate: new Date(editLoanReturnDate).toISOString(),
+      purpose: editLoanPurpose.trim() || undefined,
+      notes: editLoanNotes.trim() || undefined,
+    };
+
+    const now = new Date().toISOString();
+    editingLoan.items.forEach((item) => {
+      if (onUpdateGear) {
+        const updated: GearItem = {
+          ...item,
+          currentLoan: updatedLoan,
+          currentCheckout: item.currentCheckout
+            ? {
+                ...item.currentCheckout,
+                userName: updatedLoan.borrowerName,
+                userEmail: updatedLoan.borrowerContact || '',
+                projectName: `Loan: ${updatedLoan.borrowerCompany || updatedLoan.borrowerName}`,
+                checkoutDate: updatedLoan.loanDate,
+                expectedReturnDate: updatedLoan.expectedReturnDate,
+                notes: updatedLoan.purpose || item.currentCheckout.notes,
+              }
+            : undefined,
+          updatedAt: now,
+        };
+        onUpdateGear(updated);
+      }
+    });
+
+    showToast(`Saved changes to loan for "${updatedLoan.borrowerName}".`);
+    setEditingLoan(null);
+  };
+
+  // Return All Gear on a Loan
+  const handleReturnAllLoanGear = async (grp: { id: string; loan: LoanRecord; items: GearItem[] }) => {
+    const ids = grp.items.map((it) => it.id);
+    if (onBatchCheckin && ids.length > 0) {
+      await onBatchCheckin(ids);
+    } else if (onCheckinGear) {
+      for (const it of grp.items) {
+        onCheckinGear(it.id, it.condition, 'Returned from external loan');
+      }
+    }
+    showToast(`Checked in all ${grp.items.length} items from "${grp.loan.borrowerName}".`);
+    setEditingLoan(null);
+    setShowDeleteLoanConfirm(false);
+  };
+
   // Open right-click context menu on equipment in deployment window
   const handleEquipmentContextMenu = (e: React.MouseEvent, item: GearItem, projName: string) => {
     e.preventDefault();
@@ -1548,7 +1897,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
         </div>
       )}
 
-      {/* Condensed Active Shoots Header Banner */}
+      {/* Condensed Active Shoots & Loans Header Banner */}
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs">
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
           {/* Left: Title & Live Summary */}
@@ -1558,7 +1907,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                 <Film className="w-4 h-4" />
               </div>
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-                Active Shoot Deployments
+                Deployments & Equipment Loans
               </h1>
             </div>
             <p className="text-xs sm:text-sm text-slate-500 mt-1 pl-10.5">
@@ -1568,48 +1917,118 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
               </strong>{' '}
               deployed across{' '}
               <strong className="text-slate-700 font-semibold">
-                {projectNames.length} {projectNames.length === 1 ? 'production unit' : 'production units'}
-              </strong>.
+                {projectNames.length} {projectNames.length === 1 ? 'shoot' : 'shoots'}
+              </strong>
+              {loanedGear.length > 0 && (
+                <>
+                  {' '}•{' '}
+                  <strong className="text-purple-600 font-semibold">
+                    {loanedGear.length} assets
+                  </strong>{' '}
+                  on loan across{' '}
+                  <strong className="text-slate-700 font-semibold">
+                    {loanGroups.length} {loanGroups.length === 1 ? 'external loan' : 'external loans'}
+                  </strong>
+                </>
+              )}.
             </p>
           </div>
 
-          {/* Right: Metrics, Project Dropdown & View Mode Switcher */}
+          {/* Right: Segment Switcher, Metrics & View Mode Switcher */}
           <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+            {/* Segment Switcher (All / Deployments / Loans) */}
+            <div className="flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setActiveSegment('all')}
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeSegment === 'all'
+                    ? 'bg-white text-slate-900 shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+                title="View both Deployments and Loans"
+              >
+                <Layers className="w-3.5 h-3.5 text-slate-600" />
+                <span className="hidden sm:inline">All</span>
+                <span className="px-1.5 py-0.2 rounded-full bg-slate-200/80 text-slate-700 text-[10px] font-mono">
+                  {visibleProjectNames.length + visibleLoanGroups.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveSegment('deployments')}
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeSegment === 'deployments'
+                    ? 'bg-white text-slate-900 shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+                title="Focus on production shoot deployments"
+              >
+                <Film className="w-3.5 h-3.5 text-amber-600" />
+                <span>Shoots</span>
+                <span className="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 text-[10px] font-mono">
+                  {visibleProjectNames.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveSegment('loans')}
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeSegment === 'loans'
+                    ? 'bg-white text-slate-900 shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+                title="Focus on external equipment loans"
+              >
+                <Handshake className="w-3.5 h-3.5 text-purple-600" />
+                <span>Loans</span>
+                <span className="px-1.5 py-0.2 rounded-full bg-purple-100 text-purple-800 text-[10px] font-mono">
+                  {visibleLoanGroups.length}
+                </span>
+              </button>
+            </div>
+
+            <div className="h-6 w-px bg-slate-200 hidden md:block" />
+
             {/* Quick Metrics Badges */}
             <div className="flex items-center gap-2">
               <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-2">
                 <span className="text-[10px] uppercase font-bold text-slate-400">Deployed</span>
                 <span className="text-xs font-bold text-slate-900 font-mono">
-                  {checkedOutGear.length} Units
+                  {checkedOutGear.length}
                 </span>
               </div>
-              <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-2">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Verified</span>
-                <span className="text-xs font-bold text-amber-600 font-mono">
-                  {Object.values(packChecklist).filter(Boolean).length}/{checkedOutGear.length}
+              <div className="px-3 py-1.5 rounded-xl bg-purple-50 border border-purple-200/80 flex items-center gap-2">
+                <span className="text-[10px] uppercase font-bold text-purple-600">On Loan</span>
+                <span className="text-xs font-bold text-purple-900 font-mono">
+                  {loanedGear.length}
                 </span>
               </div>
             </div>
 
             <div className="h-6 w-px bg-slate-200 hidden md:block" />
 
-            {/* Project Filter Select */}
-            <select
-              value={selectedProjectId}
-              onChange={(e) => setSelectedProjectId(e.target.value)}
-              className="bg-slate-50 hover:bg-slate-100/70 border border-slate-200 rounded-xl text-xs text-slate-800 px-3 py-1.5 focus:outline-none focus:bg-white focus:border-amber-500 cursor-pointer font-medium transition-colors shadow-2xs"
-              title="Filter by production project"
-            >
-              <option value="all">All Active Shoots ({projectNames.length})</option>
-              {projectNames.map((name) => {
-                const meta = allDeploymentProjects.find((p) => p.name === name);
-                return (
-                  <option key={name} value={name}>
-                    {name} {meta?.jobNo ? `[${meta.jobNo}]` : ''} ({gearByProject[name]?.length || 0} items)
-                  </option>
-                );
-              })}
-            </select>
+            {/* Project Filter Select (visible when not on loans tab) */}
+            {activeSegment !== 'loans' && (
+              <select
+                value={selectedProjectId}
+                onChange={(e) => setSelectedProjectId(e.target.value)}
+                className="bg-slate-50 hover:bg-slate-100/70 border border-slate-200 rounded-xl text-xs text-slate-800 px-3 py-1.5 focus:outline-none focus:bg-white focus:border-amber-500 cursor-pointer font-medium transition-colors shadow-2xs"
+                title="Filter by production project"
+              >
+                <option value="all">All Active Shoots ({projectNames.length})</option>
+                {projectNames.map((name) => {
+                  const meta = allDeploymentProjects.find((p) => p.name === name);
+                  return (
+                    <option key={name} value={name}>
+                      {name} {meta?.jobNo ? `[${meta.jobNo}]` : ''} ({gearByProject[name]?.length || 0} items)
+                    </option>
+                  );
+                })}
+              </select>
+            )}
 
             {/* View Mode Switcher (Combined / Gantt / Cards) */}
             <div className="flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200 shadow-2xs">
@@ -1621,7 +2040,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                     ? 'bg-white text-slate-900 shadow-2xs'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
-                title="View Gantt schedule and deployment cards together"
+                title="View Gantt schedule and cards together"
               >
                 <CalendarDays className="w-3.5 h-3.5 text-amber-600" />
                 <span className="hidden sm:inline">Combined</span>
@@ -1647,7 +2066,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                     ? 'bg-white text-slate-900 shadow-2xs'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
-                title="View deployment cards and gear checklists"
+                title="View operational cards and gear lists"
               >
                 <LayoutList className="w-3.5 h-3.5 text-slate-600" />
                 <span>Cards</span>
@@ -1672,14 +2091,14 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-base font-bold text-slate-900">
-                    Deployment Schedule & Overlap Timeline
+                    Operations Schedule & Overlap Timeline
                   </h2>
                   <span className="text-[11px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">
-                    {ganttData.bars.length} {ganttData.bars.length === 1 ? 'Shoot' : 'Shoots'}
+                    {ganttData.bars.length} {ganttData.bars.length === 1 ? 'Operation' : 'Operations'}
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Visual timeline showing shoot dates, equipment deployment durations, and concurrent overlaps.
+                  Visual timeline showing shoot dates, equipment loan durations, and concurrent schedule overlaps.
                 </p>
               </div>
             </div>
@@ -1709,10 +2128,30 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                 Concurrent
               </span>
               <span>
-                Simultaneous field operations:{' '}
+                Simultaneous operations:{' '}
                 {ganttData.overlaps.map((o, idx) => (
-                  <strong key={idx} className="font-semibold text-amber-950">
-                    "{o.projA}" & "{o.projB}" ({o.range})
+                  <strong key={idx} className="font-semibold text-amber-950 inline-flex items-center gap-1 flex-wrap mr-2">
+                    "{o.projA}"{' '}
+                    <span
+                      className={`text-[9px] font-mono px-1 py-0.2 rounded font-bold ${
+                        o.typeA === 'loan'
+                          ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                          : 'bg-amber-100 text-amber-800 border border-amber-200'
+                      }`}
+                    >
+                      {o.typeA === 'loan' ? 'LOAN' : 'SHOOT'}
+                    </span>{' '}
+                    & "{o.projB}"{' '}
+                    <span
+                      className={`text-[9px] font-mono px-1 py-0.2 rounded font-bold ${
+                        o.typeB === 'loan'
+                          ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                          : 'bg-amber-100 text-amber-800 border border-amber-200'
+                      }`}
+                    >
+                      {o.typeB === 'loan' ? 'LOAN' : 'SHOOT'}
+                    </span>{' '}
+                    ({o.range})
                     {idx < ganttData.overlaps.length - 1 ? ' • ' : ''}
                   </strong>
                 ))}
@@ -1727,7 +2166,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
               <div className="flex border-b border-slate-200 pb-2 mb-3">
                 {/* Left Label Column */}
                 <div className="w-56 shrink-0 font-bold text-xs uppercase tracking-wider text-slate-400 pl-2">
-                  Shoot Deployment
+                  Shoots & Loans
                 </div>
 
                 {/* Days Grid Header */}
@@ -1773,36 +2212,55 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                 </div>
 
                 {ganttData.bars.map((bar) => {
+                  const isLoan = bar.type === 'loan';
                   return (
                     <div
-                      key={bar.name}
+                      key={bar.id || bar.name}
                       className="flex items-center group/row rounded-xl hover:bg-slate-50/70 p-1.5 transition-colors"
                     >
                       {/* Left Info Column */}
                       <div className="w-56 shrink-0 pr-3 min-w-0">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <span
-                            className={`w-2 h-2 rounded-full shrink-0 ${bar.theme.dot}`}
-                          />
+                          {isLoan ? (
+                            <Handshake className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                          ) : (
+                            <span
+                              className={`w-2 h-2 rounded-full shrink-0 ${bar.theme.dot}`}
+                            />
+                          )}
                           <button
                             type="button"
-                            onClick={() => handleOpenEditDeployment(bar.name)}
-                            className="font-bold text-xs text-slate-900 hover:text-amber-600 truncate text-left cursor-pointer transition-colors"
+                            onClick={() =>
+                              isLoan && bar.loanGroup
+                                ? handleOpenEditLoan(bar.loanGroup)
+                                : handleOpenEditDeployment(bar.name)
+                            }
+                            className={`font-bold text-xs truncate text-left cursor-pointer transition-colors ${
+                              isLoan
+                                ? 'text-purple-900 hover:text-purple-700'
+                                : 'text-slate-900 hover:text-amber-600'
+                            }`}
                             title={`Click to edit ${bar.name}`}
                           >
                             {bar.name}
                           </button>
-                          {bar.jobNo && (
-                            <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-mono font-bold shrink-0">
-                              {bar.jobNo}
+                          {isLoan ? (
+                            <span className="px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 border border-purple-300 text-[10px] font-mono font-bold shrink-0">
+                              LOAN
                             </span>
+                          ) : (
+                            bar.jobNo && (
+                              <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-mono font-bold shrink-0">
+                                {bar.jobNo}
+                              </span>
+                            )
                           )}
                         </div>
                         <div className="text-[10px] text-slate-500 truncate mt-0.5 pl-3.5">
                           <span className="font-semibold text-slate-700">
                             {bar.itemCount} assets
                           </span>{' '}
-                          • {bar.durationDays}d • {bar.leadDP}
+                          • {bar.durationDays}d • {isLoan ? bar.borrowerCompany || 'External' : bar.leadDP}
                         </div>
                       </div>
 
@@ -1827,28 +2285,47 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
 
                         {/* Interactive Gantt Bar */}
                         <div
-                          onClick={() => handleOpenEditDeployment(bar.name)}
+                          onClick={() =>
+                            isLoan && bar.loanGroup
+                              ? handleOpenEditLoan(bar.loanGroup)
+                              : handleOpenEditDeployment(bar.name)
+                          }
                           style={{
                             left: `${bar.leftPercent}%`,
                             width: `${bar.widthPercent}%`,
                             minWidth: '56px',
                           }}
-                          className={`absolute top-1 bottom-1 rounded-lg ${bar.theme.ganttBar} flex items-center justify-between px-2 shadow-xs cursor-pointer hover:ring-2 hover:ring-amber-400 transition-all z-20 overflow-hidden select-none`}
-                          title={`${bar.name}${bar.jobNo ? ` [Job: ${bar.jobNo}]` : ''}\nDates: ${bar.startStr} to ${bar.endStr} (${bar.durationDays} days)\nLocation: ${bar.location}\nLead DP: ${bar.leadDP}\nAssets: ${bar.itemCount} deployed\nClick to edit deployment`}
+                          className={`absolute top-1 bottom-1 rounded-lg ${bar.theme.ganttBar} flex items-center justify-between px-2 shadow-xs cursor-pointer ${
+                            isLoan ? 'hover:ring-2 hover:ring-purple-400' : 'hover:ring-2 hover:ring-amber-400'
+                          } transition-all z-20 overflow-hidden select-none`}
+                          title={
+                            isLoan
+                              ? `${bar.name} [EXTERNAL LOAN]\nDates: ${bar.startStr} to ${bar.endStr} (${bar.durationDays} days)\nBorrower: ${bar.borrowerName}${bar.borrowerCompany ? ` (${bar.borrowerCompany})` : ''}\nPurpose: ${bar.purpose || 'N/A'}\nAssets: ${bar.itemCount} on loan\nClick to edit loan details`
+                              : `${bar.name}${bar.jobNo ? ` [Job: ${bar.jobNo}]` : ''}\nDates: ${bar.startStr} to ${bar.endStr} (${bar.durationDays} days)\nLocation: ${bar.location}\nLead DP: ${bar.leadDP}\nAssets: ${bar.itemCount} deployed\nClick to edit deployment`
+                          }
                         >
-                          {/* Priority 1: Deployment Title & Job No (Never crushed by stats) */}
+                          {/* Priority 1: Title & Tag */}
                           <div className="flex items-center gap-1 min-w-0 flex-1 mr-1">
+                            {isLoan && <Handshake className="w-3 h-3 shrink-0 opacity-90" />}
                             <span className="text-[11px] font-bold truncate tracking-tight">
                               {bar.name}
                             </span>
-                            {bar.jobNo && bar.widthPercent >= 12 && (
-                              <span className="px-1.5 py-0.2 rounded bg-black/20 text-white/95 text-[9px] font-mono font-bold shrink-0">
-                                {bar.jobNo}
-                              </span>
+                            {isLoan ? (
+                              bar.widthPercent >= 12 && (
+                                <span className="px-1.5 py-0.2 rounded bg-black/20 text-white/95 text-[9px] font-mono font-bold shrink-0">
+                                  LOAN
+                                </span>
+                              )
+                            ) : (
+                              bar.jobNo && bar.widthPercent >= 12 && (
+                                <span className="px-1.5 py-0.2 rounded bg-black/20 text-white/95 text-[9px] font-mono font-bold shrink-0">
+                                  {bar.jobNo}
+                                </span>
+                              )
                             )}
                           </div>
 
-                          {/* Priority 2: Days & Units Badge (Stays visible when space allows, never crushes the title) */}
+                          {/* Priority 2: Days & Units Badge */}
                           {bar.widthPercent >= 14 ? (
                             <div className="flex items-center gap-1.5 text-[10px] font-bold opacity-90 shrink-0 ml-1.5 whitespace-nowrap">
                               <span>{bar.durationDays}d</span>
@@ -1878,13 +2355,23 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="font-bold text-slate-700">Themes:</span>
                   {ganttData.bars.map((bar) => (
-                    <div key={bar.name} className="flex items-center gap-1.5">
-                      <span className={`w-2.5 h-2.5 rounded-full ${bar.theme.dot}`} />
+                    <div key={bar.id || bar.name} className="flex items-center gap-1.5">
+                      {bar.type === 'loan' ? (
+                        <Handshake className="w-3 h-3 text-purple-600" />
+                      ) : (
+                        <span className={`w-2.5 h-2.5 rounded-full ${bar.theme.dot}`} />
+                      )}
                       <span className="text-slate-700 font-medium truncate max-w-[130px]">
                         {bar.name}
                       </span>
                     </div>
                   ))}
+                  {loanGroups.length > 0 && (
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-purple-50 border border-purple-200 text-purple-800 font-semibold">
+                      <span className="w-2 h-2 rounded-full bg-purple-500" />
+                      <span>External Loans</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-4 font-medium">
@@ -1893,7 +2380,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                     <span>Current Day ("Today")</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-slate-400">Click bar to edit details</span>
+                    <span className="text-slate-400">Click bar to view/edit details</span>
                   </div>
                 </div>
               </div>
@@ -1911,35 +2398,70 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
               {/* Left: Section Title, Count & Expand all / Collapse all switch */}
               <div className="flex items-center gap-3 flex-wrap shrink-0">
                 <div className="flex items-center gap-2">
-                  <LayoutList className="w-4 h-4 text-slate-700" />
+                  {activeSegment === 'loans' ? (
+                    <Handshake className="w-4 h-4 text-purple-600" />
+                  ) : (
+                    <LayoutList className="w-4 h-4 text-slate-700" />
+                  )}
                   <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
-                    Deployments
+                    {activeSegment === 'loans'
+                      ? 'External Loans'
+                      : activeSegment === 'deployments'
+                      ? 'Deployments'
+                      : 'Operations'}
                   </h2>
                   <span className="px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-700 text-xs font-bold font-mono">
-                    {visibleProjectNames.length}
+                    {activeSegment === 'loans'
+                      ? visibleLoanGroups.length
+                      : activeSegment === 'deployments'
+                      ? visibleProjectNames.length
+                      : visibleProjectNames.length + visibleLoanGroups.length}
                   </span>
                 </div>
 
                 {/* Expand all / Collapse all button switch */}
-                {visibleProjectNames.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={isAllProjectsCollapsed ? handleExpandAllProjects : handleCollapseAllProjects}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 hover:text-amber-800 transition-colors cursor-pointer px-2.5 py-1 rounded-xl bg-amber-50/90 hover:bg-amber-100/80 border border-amber-200 shadow-2xs"
-                    title={isAllProjectsCollapsed ? 'Expand all visible deployments' : 'Collapse all visible deployments'}
-                  >
-                    {isAllProjectsCollapsed ? (
-                      <>
-                        <ChevronDown className="w-3.5 h-3.5 text-amber-700" />
-                        <span>Expand All</span>
-                      </>
-                    ) : (
-                      <>
-                        <ChevronUp className="w-3.5 h-3.5 text-amber-700" />
-                        <span>Collapse All</span>
-                      </>
-                    )}
-                  </button>
+                {activeSegment === 'loans' ? (
+                  visibleLoanGroups.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={isAllLoansCollapsed ? handleExpandAllLoans : handleCollapseAllLoans}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-purple-700 hover:text-purple-800 transition-colors cursor-pointer px-2.5 py-1 rounded-xl bg-purple-50/90 hover:bg-purple-100/80 border border-purple-200 shadow-2xs"
+                      title={isAllLoansCollapsed ? 'Expand all visible loans' : 'Collapse all visible loans'}
+                    >
+                      {isAllLoansCollapsed ? (
+                        <>
+                          <ChevronDown className="w-3.5 h-3.5 text-purple-700" />
+                          <span>Expand All</span>
+                        </>
+                      ) : (
+                        <>
+                          <ChevronUp className="w-3.5 h-3.5 text-purple-700" />
+                          <span>Collapse All</span>
+                        </>
+                      )}
+                    </button>
+                  )
+                ) : (
+                  visibleProjectNames.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={isAllProjectsCollapsed ? handleExpandAllProjects : handleCollapseAllProjects}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 hover:text-amber-800 transition-colors cursor-pointer px-2.5 py-1 rounded-xl bg-amber-50/90 hover:bg-amber-100/80 border border-amber-200 shadow-2xs"
+                      title={isAllProjectsCollapsed ? 'Expand all visible deployments' : 'Collapse all visible deployments'}
+                    >
+                      {isAllProjectsCollapsed ? (
+                        <>
+                          <ChevronDown className="w-3.5 h-3.5 text-amber-700" />
+                          <span>Expand All</span>
+                        </>
+                      ) : (
+                        <>
+                          <ChevronUp className="w-3.5 h-3.5 text-amber-700" />
+                          <span>Collapse All</span>
+                        </>
+                      )}
+                    </button>
+                  )
                 )}
               </div>
 
@@ -1948,7 +2470,11 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                 <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="Search deployments by name, job no, tag, model..."
+                  placeholder={
+                    activeSegment === 'loans'
+                      ? 'Search loans by borrower, company, tag, model...'
+                      : 'Search deployments by name, job no, tag, model...'
+                  }
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   autoComplete="off"
@@ -1969,17 +2495,31 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                 )}
               </div>
 
-              {/* Right: Add New Deployment & Available Equipment toggle */}
+              {/* Right: Add New Deployment / Loan & Available Equipment toggle */}
               <div className="flex items-center gap-2.5 flex-wrap shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setIsAddDeploymentOpen(true)}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-xs cursor-pointer hover:shadow-sm"
-                  title="Add a new production shoot deployment with date and details"
-                >
-                  <Plus className="w-3.5 h-3.5 text-white stroke-[2.5]" />
-                  <span>Add New Deployment</span>
-                </button>
+                {(activeSegment === 'all' || activeSegment === 'loans') && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddLoanOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer hover:shadow-sm"
+                    title="Register a new external equipment loan"
+                  >
+                    <Handshake className="w-3.5 h-3.5 text-white" />
+                    <span>New Loan</span>
+                  </button>
+                )}
+
+                {(activeSegment === 'all' || activeSegment === 'deployments') && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddDeploymentOpen(true)}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-xs cursor-pointer hover:shadow-sm"
+                    title="Add a new production shoot deployment with date and details"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-white stroke-[2.5]" />
+                    <span>Add New Deployment</span>
+                  </button>
+                )}
 
                 <button
                   type="button"
@@ -2069,20 +2609,46 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
             )}
           </div>
 
-          {/* No gear checked out state */}
-          {visibleProjectNames.length === 0 && (
-            <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 shadow-xs">
-              <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
-              <h3 className="text-lg font-bold text-slate-900">All Equipment Is In the Cage</h3>
-              <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
-                There are no active deployments matching the filter. Click "+ Add New Deployment" above or use the Inventory
-                catalog to dispatch equipment.
-              </p>
-            </div>
-          )}
+          {/* Production Deployments Segment */}
+          {(activeSegment === 'all' || activeSegment === 'deployments') && (
+            <div className="space-y-6">
+              {activeSegment === 'all' && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shadow-2xs">
+                      <Film className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                          Production Deployments
+                        </h2>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-bold font-mono">
+                          {visibleProjectNames.length} {visibleProjectNames.length === 1 ? 'Shoot' : 'Shoots'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Active film and commercial shoots with crew allocations and checklists.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-          {visibleProjectNames
-            .map((projName, projectIndex) => {
+              {/* No gear checked out state */}
+              {visibleProjectNames.length === 0 && (
+                <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 shadow-xs">
+                  <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
+                  <h3 className="text-lg font-bold text-slate-900">All Equipment Is In the Cage</h3>
+                  <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
+                    There are no active deployments matching the filter. Click "+ Add New Deployment" above or use the Inventory
+                    catalog to dispatch equipment.
+                  </p>
+                </div>
+              )}
+
+              {visibleProjectNames
+                .map((projName, projectIndex) => {
               const projectMeta = allDeploymentProjects.find((p) => p.name === projName);
               const customColor = deploymentColors[projName] || projectMeta?.projectObj?.color;
               const theme = getDeploymentTheme(projName, projectIndex, customColor);
@@ -2622,6 +3188,254 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
             </div>
           );
         })}
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* EXTERNAL EQUIPMENT LOANS SEGMENT */}
+          {/* ========================================================================= */}
+          {(activeSegment === 'all' || activeSegment === 'loans') && (
+            <div
+              className={`space-y-6 ${
+                activeSegment === 'all' ? 'pt-8 border-t border-slate-200' : ''
+              }`}
+            >
+              {/* Section Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shadow-2xs">
+                    <Handshake className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                        External Equipment Loans
+                      </h2>
+                      <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 text-xs font-bold font-mono">
+                        {visibleLoanGroups.length}{' '}
+                        {visibleLoanGroups.length === 1 ? 'Loan' : 'Loans'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Equipment loaned out to partner studios, external productions, or crew members.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddLoanOpen(true)}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer hover:shadow-sm"
+                    title="Loan out available equipment"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-white" />
+                    <span>New Loan</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Empty State for Loans */}
+              {visibleLoanGroups.length === 0 && (
+                <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 shadow-xs">
+                  <div className="w-12 h-12 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center mx-auto mb-3">
+                    <Handshake className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900">No Active Equipment Loans</h3>
+                  <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
+                    There are no active equipment loans matching your filter. Click "+ New Loan" to loan gear to an external partner or borrower.
+                  </p>
+                </div>
+              )}
+
+              {/* Loan Cards List */}
+              {visibleLoanGroups.map((grp) => {
+                const isExpanded = expandedLoans[grp.id] !== false; // Default open
+                const loan = grp.loan;
+                const isOverdue = loan.expectedReturnDate
+                  ? new Date(loan.expectedReturnDate) < new Date()
+                  : false;
+
+                const durationDays = Math.max(
+                  1,
+                  Math.round(
+                    (new Date(loan.expectedReturnDate).getTime() -
+                      new Date(loan.loanDate).getTime()) /
+                      86400000
+                  ) + 1
+                );
+
+                return (
+                  <div
+                    key={grp.id}
+                    className="bg-white rounded-2xl sm:rounded-3xl border border-purple-200 hover:border-purple-300 shadow-xs hover:shadow-md transition-all overflow-hidden"
+                  >
+                    {/* Loan Card Header (3-zone layout) */}
+                    <div className="p-4 sm:p-5 bg-purple-50/70 border-b border-purple-200/80 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                      {/* Left Zone: Borrower Name & Dates */}
+                      <div className="min-w-0 max-w-xl xl:max-w-md shrink-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="w-7 h-7 rounded-lg bg-purple-600 text-white flex items-center justify-center shadow-2xs shrink-0">
+                            <Handshake className="w-4 h-4" />
+                          </div>
+                          <h3 className="text-base font-bold text-slate-900 tracking-tight truncate">
+                            {loan.borrowerName}
+                          </h3>
+                          {loan.borrowerCompany && (
+                            <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-900 text-xs font-semibold border border-purple-200 flex items-center gap-1 shrink-0">
+                              <Building2 className="w-3 h-3 text-purple-600" />
+                              <span>{loan.borrowerCompany}</span>
+                            </span>
+                          )}
+                          <span className="px-1.5 py-0.2 rounded bg-purple-200 text-purple-900 text-[10px] font-mono font-bold shrink-0">
+                            LOAN
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-500 flex-wrap">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                            <span>{formatDateDDMMYYYY(loan.loanDate)}</span>
+                            <span className="text-slate-300">→</span>
+                            <span
+                              className={
+                                isOverdue ? 'text-red-600 font-bold' : 'text-slate-700 font-medium'
+                              }
+                            >
+                              {formatDateDDMMYYYY(loan.expectedReturnDate)}
+                            </span>
+                          </div>
+                          <span className="px-1.5 py-0.2 rounded bg-purple-100 text-purple-800 font-bold text-[10px]">
+                            {durationDays}d
+                          </span>
+                          {isOverdue && (
+                            <span className="px-2 py-0.5 rounded-md bg-red-100 text-red-700 border border-red-200 font-bold text-[10px] animate-pulse">
+                              OVERDUE
+                            </span>
+                          )}
+                          {loan.borrowerContact && (
+                            <span className="text-slate-400 text-[11px] truncate flex items-center gap-1">
+                              <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                              <span>{loan.borrowerContact}</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Middle Zone: Purpose & Assets count */}
+                      <div className="flex-1 min-w-0 flex items-center gap-4 text-xs text-slate-600">
+                        {loan.purpose && (
+                          <div className="min-w-0">
+                            <div className="text-[10px] uppercase font-bold text-slate-400">Purpose</div>
+                            <div className="truncate font-medium text-slate-800">{loan.purpose}</div>
+                          </div>
+                        )}
+                        {loan.notes && (
+                          <div className="min-w-0 hidden md:block">
+                            <div className="text-[10px] uppercase font-bold text-slate-400">Notes</div>
+                            <div className="truncate text-slate-500 text-[11px]">{loan.notes}</div>
+                          </div>
+                        )}
+                        <div className="shrink-0">
+                          <div className="text-[10px] uppercase font-bold text-slate-400">On Loan</div>
+                          <div className="flex items-center gap-1 font-bold text-purple-700">
+                            <Box className="w-3.5 h-3.5" />
+                            <span>
+                              {grp.items.length} {grp.items.length === 1 ? 'item' : 'items'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Zone: Action Buttons (Standardized 32px height) */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditLoan(grp)}
+                          className="w-8 h-8 flex items-center justify-center rounded-xl bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs transition-colors cursor-pointer"
+                          title="Edit loan details or dates"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleReturnAllLoanGear(grp)}
+                          className="h-8 flex items-center justify-center gap-1 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                          title="Check in all gear on this loan back to cage"
+                        >
+                          <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-700" />
+                          <span>Check In All</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedLoans((prev) => ({
+                              ...prev,
+                              [grp.id]: !isExpanded,
+                            }))
+                          }
+                          className="w-8 h-8 flex items-center justify-center rounded-xl bg-white hover:bg-slate-100 text-slate-500 border border-slate-200 shadow-2xs transition-colors cursor-pointer"
+                          title={isExpanded ? 'Collapse equipment list' : 'Expand equipment list'}
+                        >
+                          {isExpanded ? (
+                            <ChevronUp className="w-4 h-4" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Loan Card Body (Expanded Equipment List) */}
+                    {isExpanded && (
+                      <div className="p-4 sm:p-5 divide-y divide-slate-100 bg-white">
+                        {grp.items.map((item) => (
+                          <div
+                            key={item.id}
+                            className="py-2.5 flex items-center justify-between gap-3 text-xs"
+                          >
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              <span className="font-mono text-purple-800 bg-purple-50 border border-purple-200 px-2.5 py-0.5 rounded-md text-xs font-bold shrink-0">
+                                {item.assetTag}
+                              </span>
+                              <span className="font-bold text-slate-900 truncate">{item.name}</span>
+                              <span className="text-slate-400 font-mono text-[11px] truncate hidden sm:inline">
+                                SN: {item.serialNumber || '—'}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-medium border border-slate-200 shrink-0">
+                                {item.condition}
+                              </span>
+                            </div>
+
+                            {/* Individual Item Check In button */}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onCheckinGear
+                                  ? onCheckinGear(
+                                      item.id,
+                                      item.condition,
+                                      'Returned from external loan'
+                                    )
+                                  : undefined
+                              }
+                              className="w-24 h-8 flex items-center justify-center gap-1 px-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold shadow-2xs transition-colors cursor-pointer shrink-0"
+                              title="Check in this item back to cage"
+                            >
+                              <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-700" />
+                              <span>Check In</span>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -3214,6 +4028,494 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                   >
                     <Trash2 className="w-3.5 h-3.5 text-white" />
                     <span>Confirm Delete</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: ADD A NEW LOAN (WITH EQUIPMENT ALLOCATION) */}
+      {/* ========================================================================= */}
+      {isAddLoanOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-2xl overflow-hidden my-8 animate-in fade-in-0 zoom-in-95"
+          >
+            {/* Modal Header */}
+            <div className="p-6 bg-purple-50/80 border-b border-purple-200/80 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-xs">
+                  <Handshake className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Register External Loan</h2>
+                  <p className="text-xs text-slate-500">
+                    Loan equipment to external partner studios, productions, or crew members
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsAddLoanOpen(false)}
+                className="p-1.5 rounded-xl hover:bg-purple-100 text-slate-400 hover:text-slate-700 cursor-pointer transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form
+              onSubmit={handleCreateLoan}
+              autoComplete="off"
+              data-lpignore="true"
+              data-1p-ignore="true"
+              className="p-6 space-y-4 max-h-[75vh] overflow-y-auto"
+            >
+              {/* Borrower & Company */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Borrower Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    value={newLoanBorrowerName}
+                    onChange={(e) => setNewLoanBorrowerName(e.target.value)}
+                    placeholder="e.g. Marcus Tan"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-semibold focus:outline-none focus:bg-white focus:border-purple-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Company / Production House
+                  </label>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    value={newLoanBorrowerCompany}
+                    onChange={(e) => setNewLoanBorrowerCompany(e.target.value)}
+                    placeholder="e.g. Moonlight Productions"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-medium focus:outline-none focus:bg-white focus:border-purple-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Contact & Purpose */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Contact (Phone / Email)
+                  </label>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    value={newLoanBorrowerContact}
+                    onChange={(e) => setNewLoanBorrowerContact(e.target.value)}
+                    placeholder="e.g. +65 9123 4567 / marcus@prod.sg"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-medium focus:outline-none focus:bg-white focus:border-purple-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Purpose of Loan
+                  </label>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    value={newLoanPurpose}
+                    onChange={(e) => setNewLoanPurpose(e.target.value)}
+                    placeholder="e.g. Commercial video shoot"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-medium focus:outline-none focus:bg-white focus:border-purple-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Loan Dates */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Loan Start Date *</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    autoComplete="off"
+                    value={newLoanStartDate}
+                    onChange={(e) => setNewLoanStartDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-semibold focus:outline-none focus:bg-white focus:border-purple-500 transition-colors cursor-pointer"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Expected Return Date *</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    autoComplete="off"
+                    value={newLoanReturnDate}
+                    onChange={(e) => setNewLoanReturnDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-semibold focus:outline-none focus:bg-white focus:border-purple-500 transition-colors cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* Additional Notes */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Additional Notes / Handling Instructions
+                </label>
+                <textarea
+                  rows={2}
+                  value={newLoanNotes}
+                  onChange={(e) => setNewLoanNotes(e.target.value)}
+                  placeholder="e.g. Premium lens set - return cleaned and capped..."
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:outline-none focus:bg-white focus:border-purple-500 transition-colors resize-none"
+                />
+              </div>
+
+              {/* Equipment Selection from Cage */}
+              <div className="pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Select Equipment from Cage ({availableGear.length} Available) *</span>
+                  </label>
+                  <span className="text-xs text-purple-700 font-bold">
+                    {selectedLoanGearIds.length} items selected
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mb-3">
+                  Click on available items to attach them to this loan record.
+                </p>
+
+                <div className="border border-slate-200 rounded-xl p-2 max-h-48 overflow-y-auto divide-y divide-slate-100 bg-slate-50/50">
+                  {availableGear.length === 0 ? (
+                    <div className="text-center py-4 text-xs text-slate-400">
+                      No available gear in cage to loan out.
+                    </div>
+                  ) : (
+                    availableGear.map((item) => {
+                      const isSelected = selectedLoanGearIds.includes(item.id);
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            setSelectedLoanGearIds((prev) =>
+                              prev.includes(item.id)
+                                ? prev.filter((id) => id !== item.id)
+                                : [...prev, item.id]
+                            );
+                          }}
+                          className={`p-2 rounded-lg flex items-center justify-between cursor-pointer text-xs transition-colors ${
+                            isSelected
+                              ? 'bg-purple-100 text-purple-950 font-semibold'
+                              : 'hover:bg-slate-100/80 text-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 truncate min-w-0">
+                            <div
+                              className={`w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 ${
+                                isSelected
+                                  ? 'bg-purple-600 border-purple-600 text-white'
+                                  : 'border-slate-300 bg-white'
+                              }`}
+                            >
+                              {isSelected && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                            </div>
+                            <span className="font-mono text-purple-800 font-bold">
+                              {item.assetTag}
+                            </span>
+                            <span className="truncate">{item.name}</span>
+                          </div>
+                          <span className="text-[10px] text-slate-500 shrink-0 ml-2">
+                            {item.category}
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setIsAddLoanOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={selectedLoanGearIds.length === 0}
+                  className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-bold transition-all shadow-xs cursor-pointer hover:shadow-sm flex items-center gap-1.5"
+                >
+                  <Handshake className="w-4 h-4 text-white" />
+                  <span>Confirm Loan ({selectedLoanGearIds.length})</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: EDIT LOAN DETAILS */}
+      {/* ========================================================================= */}
+      {editingLoan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-2xl overflow-hidden my-8 animate-in fade-in-0 zoom-in-95"
+          >
+            {/* Modal Header */}
+            <div className="p-6 bg-purple-50/80 border-b border-purple-200/80 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-xs">
+                  <Pencil className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">
+                    Edit Loan: {editingLoan.loan.borrowerName}
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Update borrower information, duration dates, and notes
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingLoan(null)}
+                className="p-1.5 rounded-xl hover:bg-purple-100 text-slate-400 hover:text-slate-700 cursor-pointer transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form
+              onSubmit={handleSaveEditLoan}
+              autoComplete="off"
+              data-lpignore="true"
+              data-1p-ignore="true"
+              className="p-6 space-y-4 max-h-[75vh] overflow-y-auto"
+            >
+              {/* Borrower & Company */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Borrower Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    autoComplete="off"
+                    value={editLoanBorrowerName}
+                    onChange={(e) => setEditLoanBorrowerName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-semibold focus:outline-none focus:bg-white focus:border-purple-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Company / Production House
+                  </label>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    value={editLoanBorrowerCompany}
+                    onChange={(e) => setEditLoanBorrowerCompany(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-medium focus:outline-none focus:bg-white focus:border-purple-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Contact & Purpose */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Contact (Phone / Email)
+                  </label>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    value={editLoanBorrowerContact}
+                    onChange={(e) => setEditLoanBorrowerContact(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-medium focus:outline-none focus:bg-white focus:border-purple-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Purpose of Loan
+                  </label>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    value={editLoanPurpose}
+                    onChange={(e) => setEditLoanPurpose(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-medium focus:outline-none focus:bg-white focus:border-purple-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Dates */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Loan Start Date *</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    autoComplete="off"
+                    value={editLoanStartDate}
+                    onChange={(e) => setEditLoanStartDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-semibold focus:outline-none focus:bg-white focus:border-purple-500 transition-colors cursor-pointer"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Expected Return Date *</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    autoComplete="off"
+                    value={editLoanReturnDate}
+                    onChange={(e) => setEditLoanReturnDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-semibold focus:outline-none focus:bg-white focus:border-purple-500 transition-colors cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Additional Notes / Handling Instructions
+                </label>
+                <textarea
+                  rows={2}
+                  value={editLoanNotes}
+                  onChange={(e) => setEditLoanNotes(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:outline-none focus:bg-white focus:border-purple-500 transition-colors resize-none"
+                />
+              </div>
+
+              {/* Equipment on this loan list */}
+              <div className="pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                    <Box className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Assigned Equipment ({editingLoan.items.length})</span>
+                  </label>
+                </div>
+                <div className="border border-slate-200 rounded-xl p-2 max-h-40 overflow-y-auto divide-y divide-slate-100 bg-slate-50/50">
+                  {editingLoan.items.map((item) => (
+                    <div key={item.id} className="p-2 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="font-mono text-purple-800 font-bold bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                          {item.assetTag}
+                        </span>
+                        <span className="font-semibold text-slate-800 truncate">{item.name}</span>
+                      </div>
+                      <span className="text-slate-400 font-mono text-[11px]">
+                        SN: {item.serialNumber || '—'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Modal Buttons */}
+              <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteLoanConfirm(true)}
+                  className="px-3.5 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+                  title="Check in all equipment on this loan"
+                >
+                  <ArrowDownLeft className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Return All Equipment</span>
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingLoan(null)}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer hover:shadow-sm"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          {/* Delete / Return Loan Confirmation Dialog */}
+          {showDeleteLoanConfirm && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150"
+              >
+                <div className="flex items-start gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0">
+                    <ArrowDownLeft className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-bold text-slate-900">
+                      Check In All Equipment?
+                    </h3>
+                    <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                      All <strong className="text-slate-900">{editingLoan.items.length} items</strong> on loan to <strong className="text-slate-900">"{editingLoan.loan.borrowerName}"</strong> will be checked back in to the cage as Available.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteLoanConfirm(false)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleReturnAllLoanGear(editingLoan)}
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs flex items-center gap-1.5"
+                  >
+                    <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />
+                    <span>Confirm Check In</span>
                   </button>
                 </div>
               </div>
