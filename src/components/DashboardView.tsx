@@ -18,8 +18,6 @@ import {
   ChevronRight,
   ExternalLink,
   Handshake,
-  Search,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { GearItem, MaintenanceRecord, ShootProject, GearCategory } from '../types';
 import { formatDateDDMMYYYY, normalizeDateToYMD, formatCurrencySGD } from '../utils/dateUtils';
@@ -68,11 +66,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       window.removeEventListener('cinevault-category-colors-changed', syncColors);
     };
   }, []);
-
-  // Macro view controls for Active Shoots & Deployed Equipment
-  const [macroViewMode, setMacroViewMode] = useState<'by-project' | 'fleet-roster'>('by-project');
-  const [macroCategoryFilter, setMacroCategoryFilter] = useState<string>('ALL');
-  const [macroSearchQuery, setMacroSearchQuery] = useState<string>('');
 
   // Calculations
   const totalFleetValue = gear.reduce((sum, g) => sum + g.replacementValue, 0);
@@ -253,42 +246,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       (a, b) => macroCategoryCounts[b] - macroCategoryCounts[a]
     );
   }, [macroCategoryCounts]);
-
-  // Enriched deployed gear for fleet roster
-  const enrichedDeployedGear = useMemo(() => {
-    return allDeployedGear.map((item) => {
-      const matchedProject = activeShoots.find(
-        (p) =>
-          p.assignedGear.some((g) => g.id === item.id) ||
-          p.name.trim().toLowerCase() === item.currentCheckout?.projectName?.trim().toLowerCase()
-      );
-      return {
-        item,
-        projectName: matchedProject?.name || item.currentCheckout?.projectName || 'Field Deployment',
-        jobNo: matchedProject?.jobNo || item.currentCheckout?.jobNo,
-        leadDP: matchedProject?.leadDP || item.currentCheckout?.userName || 'Lead DP',
-        location: matchedProject?.location || item.currentCheckout?.shootLocation || 'On Location',
-        returnDate: matchedProject?.endDate || item.currentCheckout?.expectedReturnDate?.split('T')[0],
-      };
-    });
-  }, [allDeployedGear, activeShoots]);
-
-  const filteredMacroGear = useMemo(() => {
-    return enrichedDeployedGear.filter(({ item, projectName, leadDP }) => {
-      if (macroCategoryFilter !== 'ALL' && item.category !== macroCategoryFilter) {
-        return false;
-      }
-      if (macroSearchQuery.trim()) {
-        const q = macroSearchQuery.toLowerCase();
-        const matchName = item.name.toLowerCase().includes(q);
-        const matchTag = item.assetTag.toLowerCase().includes(q);
-        const matchProj = projectName.toLowerCase().includes(q);
-        const matchDP = leadDP.toLowerCase().includes(q);
-        return matchName || matchTag || matchProj || matchDP;
-      }
-      return true;
-    });
-  }, [enrichedDeployedGear, macroCategoryFilter, macroSearchQuery]);
 
   // Return countdown helper
   const getReturnCountdown = (endDateStr?: string) => {
@@ -520,23 +477,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
 
-            {/* Macro Deployed Equipment Telemetry & Fleet Footprint */}
+            {/* Macro Deployment & Fleet Telemetry Bar (Macro overview of all equipment deployed across all projects) */}
             <div className="bg-slate-50/90 rounded-2xl border border-slate-200/90 p-4 my-4 shadow-2xs">
-              {/* Macro Summary Telemetry & View Selector */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3.5 border-b border-slate-200/80">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/80">
                 <div className="flex flex-wrap items-center gap-4 sm:gap-6 divide-x divide-slate-200">
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
-                      Total Units Deployed
-                    </span>
-                    <span className="text-xl font-black text-slate-900 font-mono flex items-baseline gap-1.5">
-                      {allDeployedGear.length}
-                      <span className="text-xs font-semibold text-amber-600 font-sans">
-                        active in field
-                      </span>
-                    </span>
-                  </div>
-                  <div className="pl-4 sm:pl-6">
                     <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
                       Active Deployments
                     </span>
@@ -549,6 +494,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
                   <div className="pl-4 sm:pl-6">
                     <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
+                      Total Equipment in Field
+                    </span>
+                    <span className="text-xl font-black text-slate-900 font-mono flex items-baseline gap-1.5">
+                      {allDeployedGear.length}
+                      <span className="text-xs font-semibold text-amber-600 font-sans">
+                        units deployed
+                      </span>
+                    </span>
+                  </div>
+                  <div className="pl-4 sm:pl-6 hidden md:block">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
                       Deployed Fleet Valuation
                     </span>
                     <span className="text-xl font-black text-slate-900 font-mono">
@@ -557,107 +513,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
                 </div>
 
-                {/* View Mode Switcher */}
-                <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200/90 self-start md:self-auto shadow-2xs">
-                  <button
-                    id="btn-view-by-project"
-                    onClick={() => setMacroViewMode('by-project')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                      macroViewMode === 'by-project'
-                        ? 'bg-amber-500 text-white shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    }`}
-                  >
-                    <Film className="w-3.5 h-3.5" />
-                    <span>By Project ({activeShoots.length})</span>
-                  </button>
-                  <button
-                    id="btn-view-fleet-roster"
-                    onClick={() => setMacroViewMode('fleet-roster')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                      macroViewMode === 'fleet-roster'
-                        ? 'bg-amber-500 text-white shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    }`}
-                  >
-                    <Boxes className="w-3.5 h-3.5" />
-                    <span>Macro Fleet Roster ({allDeployedGear.length})</span>
-                  </button>
+                <div className="text-right hidden sm:block">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
+                    Movement Status
+                  </span>
+                  <span className="text-xs font-bold text-emerald-600 flex items-center justify-end gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Live Field Operations
+                  </span>
                 </div>
               </div>
 
-              {/* Macro Category Distribution Roster Across ALL Deployments */}
-              <div className="pt-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-amber-500" />
-                    Macro Equipment Distribution (Across All Deployments)
-                  </span>
-                  <span className="text-[11px] text-slate-400">
-                    {macroDeployedCategories.length} categories currently active in field
+              {/* Macro Category Footprint across ALL active deployment projects */}
+              <div className="pt-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium shrink-0">
+                  <Layers className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <span className="font-bold text-slate-800">Macro Deployed Equipment:</span>
+                  <span className="text-slate-400 text-[11px]">
+                    ({allDeployedGear.length} units across {activeShoots.length} deployments)
                   </span>
                 </div>
 
-                <div className="flex flex-wrap gap-1.5 items-center">
-                  <button
-                    onClick={() => {
-                      setMacroCategoryFilter('ALL');
-                      if (macroViewMode !== 'fleet-roster') setMacroViewMode('fleet-roster');
-                    }}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
-                      macroCategoryFilter === 'ALL' && macroViewMode === 'fleet-roster'
-                        ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <span>All Fleet</span>
-                    <span
-                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
-                        macroCategoryFilter === 'ALL' && macroViewMode === 'fleet-roster'
-                          ? 'bg-slate-800 text-white'
-                          : 'bg-slate-100 text-slate-700'
-                      }`}
-                    >
-                      {allDeployedGear.length}
-                    </span>
-                  </button>
-
+                <div className="flex flex-wrap items-center gap-1.5">
                   {macroDeployedCategories.map((cat) => {
                     const count = macroCategoryCounts[cat];
                     const theme = getCategoryTheme(cat, categoryColors[cat]);
-                    const isSelected = macroCategoryFilter === cat && macroViewMode === 'fleet-roster';
-
                     return (
-                      <button
+                      <span
                         key={cat}
-                        onClick={() => {
-                          if (macroCategoryFilter === cat && macroViewMode === 'fleet-roster') {
-                            setMacroCategoryFilter('ALL');
-                          } else {
-                            setMacroCategoryFilter(cat);
-                            setMacroViewMode('fleet-roster');
-                          }
-                        }}
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
-                            : `${theme.badgeBg} hover:opacity-90`
-                        }`}
-                        title={`View ${cat} deployed units (${count})`}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg border text-xs font-medium ${theme.badgeBg}`}
                       >
                         <span className={`w-2 h-2 rounded-full shrink-0 ${theme.dot}`} />
-                        <span>{cat}</span>
-                        <span
-                          className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold font-mono ${
-                            isSelected ? 'bg-slate-800 text-white' : 'bg-white/90 text-slate-800'
-                          }`}
-                        >
-                          {count}
-                        </span>
-                      </button>
+                        <span>{cat}:</span>
+                        <strong className="font-mono font-bold">{count}</strong>
+                      </span>
                     );
                   })}
-
                   {macroDeployedCategories.length === 0 && (
                     <span className="text-xs text-slate-400 italic">
                       No equipment currently deployed in the field.
@@ -667,297 +558,209 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
 
-            {/* MODE 1: BY PROJECT VIEW (Focused on Project Title & Complete Manifest) */}
-            {macroViewMode === 'by-project' && (
-              <div className="space-y-4 mt-4">
-                {activeShoots.map((proj) => {
-                  const countdown = getReturnCountdown(proj.endDate);
+            {/* Deployments List (Sorted primarily by Deployments, with all equipments falling under each) */}
+            <div className="space-y-5 mt-4">
+              {activeShoots.map((proj) => {
+                const countdown = getReturnCountdown(proj.endDate);
 
-                  // Group assigned gear by category
-                  const catGrouped = proj.assignedGear.reduce((acc, item) => {
-                    acc[item.category] = (acc[item.category] || 0) + 1;
-                    return acc;
-                  }, {} as Record<string, number>);
+                // Group assigned gear by category for quick tally
+                const catGrouped = proj.assignedGear.reduce((acc, item) => {
+                  acc[item.category] = (acc[item.category] || 0) + 1;
+                  return acc;
+                }, {} as Record<string, number>);
 
-                  const kitNames = Array.from(
-                    new Set(proj.assignedGear.filter((g) => g.kitName).map((g) => g.kitName as string))
-                  );
+                const kitNames = Array.from(
+                  new Set(proj.assignedGear.filter((g) => g.kitName).map((g) => g.kitName as string))
+                );
 
-                  return (
-                    <div
-                      key={proj.id}
-                      id={`shoot-card-${proj.id}`}
-                      className="p-5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 transition-all shadow-xs"
-                    >
-                      {/* Top Bar: Primary Focus on Deployment Title */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100">
-                        <div className="flex flex-wrap items-center gap-2">
+                return (
+                  <div
+                    key={proj.id}
+                    id={`shoot-card-${proj.id}`}
+                    className="p-5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 transition-all shadow-xs"
+                  >
+                    {/* PRIMARY FOCUS: Deployment Title & Status Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border ${
+                            proj.status === 'On Shoot'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-blue-50 text-blue-700 border-blue-200'
+                          }`}
+                        >
                           <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border ${
-                              proj.status === 'On Shoot'
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : 'bg-blue-50 text-blue-700 border-blue-200'
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              proj.status === 'On Shoot' ? 'bg-emerald-500 animate-pulse' : 'bg-blue-500'
                             }`}
-                          >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                proj.status === 'On Shoot' ? 'bg-emerald-500 animate-pulse' : 'bg-blue-500'
-                              }`}
-                            />
-                            {proj.status}
+                          />
+                          {proj.status}
+                        </span>
+
+                        {/* Bold Hero Deployment Title */}
+                        <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                          {proj.name}
+                        </h3>
+
+                        {proj.jobNo && (
+                          <span className="px-2 py-0.5 rounded-md bg-amber-100/90 text-amber-900 border border-amber-300 text-[11px] font-mono font-bold tracking-wide shadow-2xs">
+                            Job: {proj.jobNo}
                           </span>
+                        )}
+                      </div>
 
-                          <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
-                            {proj.name}
-                          </h3>
+                      <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                        {countdown && (
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${countdown.badgeClass}`}
+                          >
+                            {countdown.label}
+                          </span>
+                        )}
+                        <span className="text-xs font-bold text-slate-700 font-mono bg-slate-100 px-2.5 py-0.5 rounded-md">
+                          {formatCurrencySGD(proj.totalValue)}
+                        </span>
+                      </div>
+                    </div>
 
-                          {proj.jobNo && (
-                            <span className="px-2 py-0.5 rounded-md bg-amber-100/90 text-amber-900 border border-amber-300 text-[11px] font-mono font-bold tracking-wide shadow-2xs">
-                              Job: {proj.jobNo}
-                            </span>
-                          )}
-                        </div>
+                    {/* De-emphasized Secondary Metadata Bar (Location, DP, Client, Dates) */}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 py-2 border-b border-slate-100">
+                      <div className="flex items-center gap-1 text-slate-700">
+                        <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="text-slate-400">Lead DP:</span>
+                        <span className="font-semibold text-slate-800">{proj.leadDP}</span>
+                      </div>
+                      <span className="text-slate-300">•</span>
+                      <div className="flex items-center gap-1 text-slate-600">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="truncate max-w-[240px]">{proj.location}</span>
+                      </div>
+                      <span className="text-slate-300">•</span>
+                      <div className="text-slate-500">
+                        <span className="text-slate-400">Client:</span> {proj.client}
+                      </div>
+                      <span className="text-slate-300">•</span>
+                      <div className="flex items-center gap-1 font-mono text-[11px] text-slate-500">
+                        <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span>
+                          {formatDateDDMMYYYY(proj.startDate)} → {formatDateDDMMYYYY(proj.endDate)}
+                        </span>
+                      </div>
+                    </div>
 
-                        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-                          {countdown && (
+                    {/* Kit Bundles (if any) */}
+                    {kitNames.length > 0 && (
+                      <div className="flex items-center gap-1.5 pt-2 text-xs">
+                        <Layers className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        <span className="text-slate-400 font-medium">Bundles:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {kitNames.map((k) => (
                             <span
-                              className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${countdown.badgeClass}`}
+                              key={k}
+                              className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[10.5px] font-semibold"
                             >
-                              {countdown.label}
+                              {k}
                             </span>
-                          )}
-                          <span className="text-xs font-bold text-slate-700 font-mono bg-slate-100 px-2 py-0.5 rounded-md">
-                            {formatCurrencySGD(proj.totalValue)}
-                          </span>
+                          ))}
                         </div>
                       </div>
+                    )}
 
-                      {/* De-emphasized Secondary Metadata Bar (Location, DP, Client, Dates) */}
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 py-2 border-b border-slate-100">
-                        <div className="flex items-center gap-1 text-slate-700">
-                          <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="text-slate-400">Lead DP:</span>
-                          <span className="font-semibold text-slate-800">{proj.leadDP}</span>
-                        </div>
-                        <span className="text-slate-300">•</span>
-                        <div className="flex items-center gap-1 text-slate-600">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="truncate max-w-[240px]">{proj.location}</span>
-                        </div>
-                        <span className="text-slate-300">•</span>
-                        <div className="text-slate-500">
-                          <span className="text-slate-400">Client:</span> {proj.client}
-                        </div>
-                        <span className="text-slate-300">•</span>
-                        <div className="flex items-center gap-1 font-mono text-[11px] text-slate-500">
-                          <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
-                          <span>
-                            {formatDateDDMMYYYY(proj.startDate)} → {formatDateDDMMYYYY(proj.endDate)}
+                    {/* Equipment Manifest (THE PRIMARY FOCUS UNDER THE DEPLOYMENT) */}
+                    <div className="mt-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-2.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                            <Package className="w-3.5 h-3.5 text-amber-500" />
+                            Equipment Manifest ({proj.assignedGear.length} units):
                           </span>
-                        </div>
-                      </div>
-
-                      {/* Kit Bundles (if any) */}
-                      {kitNames.length > 0 && (
-                        <div className="flex items-center gap-1.5 pt-2 text-xs">
-                          <Layers className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                          <span className="text-slate-400 font-medium">Bundles:</span>
-                          <div className="flex flex-wrap gap-1">
-                            {kitNames.map((k) => (
-                              <span
-                                key={k}
-                                className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[10.5px] font-semibold"
-                              >
-                                {k}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Equipment Movement Manifest (PRIMARY FOCUS - One-Glance Complete Visibility) */}
-                      <div className="mt-3">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-2.5">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                              <Package className="w-3.5 h-3.5 text-amber-500" />
-                              Equipment Manifest ({proj.assignedGear.length} units):
-                            </span>
-                            {/* Category badges for this shoot */}
-                            <div className="flex items-center gap-1 flex-wrap">
-                              {Object.entries(catGrouped).map(([cat, count]) => {
-                                const theme = getCategoryTheme(cat, categoryColors[cat]);
-                                return (
-                                  <span
-                                    key={cat}
-                                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium border ${theme.badgeBg}`}
-                                  >
-                                    <span className={`w-1.5 h-1.5 rounded-full ${theme.dot}`} />
-                                    <span>{cat}:</span>
-                                    <strong className="font-mono">{count}</strong>
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          <button
-                            onClick={onNavigateToField}
-                            className="text-[11px] font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1 cursor-pointer self-start sm:self-auto"
-                          >
-                            <span>Inspect in Field Console</span>
-                            <ArrowUpRight className="w-3 h-3" />
-                          </button>
-                        </div>
-
-                        {/* All Equipment Items Grid (No 4-item truncation cutoff!) */}
-                        {proj.assignedGear.length > 0 ? (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
-                            {proj.assignedGear.map((item) => {
-                              const theme = getCategoryTheme(item.category, categoryColors[item.category]);
+                          {/* Category badges for this deployment */}
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {Object.entries(catGrouped).map(([cat, count]) => {
+                              const theme = getCategoryTheme(cat, categoryColors[cat]);
                               return (
-                                <div
-                                  key={item.id}
-                                  onClick={() => onSelectGearItem(item)}
-                                  title={`Inspect ${item.name} (${item.assetTag})`}
-                                  className={`group flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50/90 hover:bg-white border ${theme.containerBorder} hover:shadow-xs transition-all cursor-pointer`}
+                                <span
+                                  key={cat}
+                                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium border ${theme.badgeBg}`}
                                 >
-                                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                                    <span
-                                      className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold tracking-tight shrink-0 border ${theme.badgeBg}`}
-                                    >
-                                      {item.assetTag}
-                                    </span>
-                                    <div className="min-w-0 flex-1">
-                                      <p className="text-xs font-bold text-slate-800 group-hover:text-amber-600 transition-colors truncate">
-                                        {item.name}
-                                      </p>
-                                      <p className="text-[10px] text-slate-400 truncate flex items-center gap-1">
-                                        <span>{item.category}</span>
-                                        {item.kitName && (
-                                          <>
-                                            <span>•</span>
-                                            <span className="text-amber-600 font-medium truncate">
-                                              {item.kitName}
-                                            </span>
-                                          </>
-                                        )}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all shrink-0" />
-                                </div>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${theme.dot}`} />
+                                  <span>{cat}:</span>
+                                  <strong className="font-mono">{count}</strong>
+                                </span>
                               );
                             })}
                           </div>
-                        ) : (
-                          <div className="p-4 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center text-xs text-slate-400">
-                            No equipment currently recorded for this shoot manifest.
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {activeShoots.length === 0 && (
-                  <div className="p-8 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center">
-                    <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-                    <h4 className="text-sm font-bold text-slate-800">All Equipment in Cage</h4>
-                    <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                      There are no active field shoots underway. All cameras, lenses, and lighting packages are accounted for in studio storage.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* MODE 2: MACRO FLEET ROSTER (All Deployed Equipment Across All Projects) */}
-            {macroViewMode === 'fleet-roster' && (
-              <div className="space-y-3 mt-4">
-                {/* Search & Counter Bar for Macro Fleet */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-1">
-                  <div className="relative flex-1 max-w-sm">
-                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      value={macroSearchQuery}
-                      onChange={(e) => setMacroSearchQuery(e.target.value)}
-                      placeholder="Search deployed gear, tag, project, or DP..."
-                      className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500 focus:bg-white"
-                    />
-                  </div>
-                  <div className="text-xs text-slate-500 flex items-center gap-1.5">
-                    <span>Showing</span>
-                    <strong className="text-slate-900 font-mono">{filteredMacroGear.length}</strong>
-                    <span>of {allDeployedGear.length} deployed units</span>
-                  </div>
-                </div>
-
-                {/* Macro Gear Cards Grid */}
-                {filteredMacroGear.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
-                    {filteredMacroGear.map(({ item, projectName, jobNo, leadDP, returnDate }) => {
-                      const theme = getCategoryTheme(item.category, categoryColors[item.category]);
-                      const countdown = getReturnCountdown(returnDate);
-
-                      return (
-                        <div
-                          key={item.id}
-                          onClick={() => onSelectGearItem(item)}
-                          title={`Inspect ${item.name} (${item.assetTag})`}
-                          className={`group p-3 rounded-xl bg-white border ${theme.containerBorder} hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between gap-2`}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                              <span
-                                className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold tracking-tight shrink-0 border ${theme.badgeBg}`}
-                              >
-                                {item.assetTag}
-                              </span>
-                              <span className="text-xs font-bold text-slate-800 group-hover:text-amber-600 transition-colors truncate">
-                                {item.name}
-                              </span>
-                            </div>
-                            {countdown && (
-                              <span
-                                className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0 ${countdown.badgeClass}`}
-                              >
-                                {countdown.label}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                            <div className="truncate min-w-0 flex-1 flex items-center gap-1">
-                              <Film className="w-3 h-3 text-amber-500 shrink-0" />
-                              <span className="font-semibold text-slate-700 truncate">{projectName}</span>
-                              {jobNo && (
-                                <span className="font-mono text-[10px] text-slate-400">({jobNo})</span>
-                              )}
-                            </div>
-                            <div className="shrink-0 flex items-center gap-1 text-slate-500">
-                              <User className="w-3 h-3 text-slate-400" />
-                              <span className="truncate max-w-[100px]">{leadDP}</span>
-                            </div>
-                          </div>
                         </div>
-                      );
-                    })}
+
+                        <button
+                          onClick={onNavigateToField}
+                          className="text-[11px] font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1 cursor-pointer self-start sm:self-auto"
+                        >
+                          <span>Inspect in Field Console</span>
+                          <ArrowUpRight className="w-3 h-3" />
+                        </button>
+                      </div>
+
+                      {/* All Equipment Items Grid (Entire manifest visible in one glance) */}
+                      {proj.assignedGear.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+                          {proj.assignedGear.map((item) => {
+                            const theme = getCategoryTheme(item.category, categoryColors[item.category]);
+                            return (
+                              <div
+                                key={item.id}
+                                onClick={() => onSelectGearItem(item)}
+                                title={`Inspect ${item.name} (${item.assetTag})`}
+                                className={`group flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50/90 hover:bg-white border ${theme.containerBorder} hover:shadow-xs transition-all cursor-pointer`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  <span
+                                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold tracking-tight shrink-0 border ${theme.badgeBg}`}
+                                  >
+                                    {item.assetTag}
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-bold text-slate-800 group-hover:text-amber-600 transition-colors truncate">
+                                      {item.name}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400 truncate flex items-center gap-1">
+                                      <span>{item.category}</span>
+                                      {item.kitName && (
+                                        <>
+                                          <span>•</span>
+                                          <span className="text-amber-600 font-medium truncate">
+                                            {item.kitName}
+                                          </span>
+                                        </>
+                                      )}
+                                    </p>
+                                  </div>
+                                </div>
+                                <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="p-4 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center text-xs text-slate-400">
+                          No equipment currently recorded for this shoot manifest.
+                        </div>
+                      )}
+                    </div>
                   </div>
-                ) : (
-                  <div className="p-8 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center">
-                    <Boxes className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                    <h4 className="text-sm font-bold text-slate-800">No Matching Deployed Equipment</h4>
-                    <p className="text-xs text-slate-500 mt-1">
-                      {macroSearchQuery
-                        ? `No deployed items matched "${macroSearchQuery}".`
-                        : `No equipment in "${macroCategoryFilter}" is currently deployed.`}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
+                );
+              })}
+
+              {activeShoots.length === 0 && (
+                <div className="p-8 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+                  <h4 className="text-sm font-bold text-slate-800">All Equipment in Cage</h4>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                    There are no active field shoots underway. All cameras, lenses, and lighting packages are accounted for in studio storage.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
