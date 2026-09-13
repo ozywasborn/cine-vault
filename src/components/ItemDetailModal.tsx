@@ -20,7 +20,7 @@ import {
   Package,
   Check,
 } from 'lucide-react';
-import { GearItem, UserAccount, MaintenanceRecord } from '../types';
+import { GearItem, UserAccount, MaintenanceRecord, LoanRecord } from '../types';
 import { generateQrDataUrl } from '../services/qr';
 import { formatDateDDMMYYYY, formatCurrencySGD } from '../utils/dateUtils';
 
@@ -170,7 +170,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                     item.status === 'Available'
                       ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                       : item.status === 'Checked Out'
-                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                      ? 'bg-red-50 text-red-700 border-red-200'
                       : 'bg-rose-50 text-rose-700 border border-rose-200'
                   }`}
                 >
@@ -179,11 +179,11 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                       item.status === 'Available'
                         ? 'bg-emerald-500'
                         : item.status === 'Checked Out'
-                        ? 'bg-blue-500 animate-pulse'
+                        ? 'bg-red-500 animate-pulse'
                         : 'bg-rose-500'
                     }`}
                   />
-                  {item.status}
+                  {item.status === 'Checked Out' ? 'Deployed' : item.status}
                 </span>
 
                 <span className="text-slate-500 text-xs">
@@ -271,7 +271,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
           )}
 
           {/* Active Checkout info if checked out */}
-          {item.currentCheckout && (
+          {item.currentCheckout && item.status !== 'Out On Loan' && (
             <div className="p-4 rounded-xl bg-blue-50/70 border border-blue-200 space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-blue-800 flex items-center gap-1.5">
@@ -288,6 +288,49 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                 <span>Location: {item.currentCheckout.shootLocation}</span>
                 <span>•</span>
                 <span>Assignee: {item.currentCheckout.userName}</span>
+              </div>
+            </div>
+          )}
+
+          {/* External Loan info if out on loan */}
+          {item.status === 'Out On Loan' && item.currentLoan && (
+            <div className="p-4 rounded-xl bg-blue-50/70 border border-blue-200 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-blue-800 flex items-center gap-1.5">
+                  <ArrowUpRight className="w-4 h-4 text-blue-600" /> Out On Loan
+                </span>
+                <span className="text-blue-600 font-medium">
+                  ETA Return: {formatDateDDMMYYYY(item.currentLoan.expectedReturnDate)}
+                </span>
+              </div>
+              <div className="text-xs text-slate-800 font-bold">
+                Borrower: {item.currentLoan.borrowerName}
+                {item.currentLoan.borrowerCompany && (
+                  <span className="font-semibold text-slate-600"> ({item.currentLoan.borrowerCompany})</span>
+                )}
+              </div>
+              <div className="text-[11px] text-slate-600 flex flex-wrap gap-3 font-medium">
+                {item.currentLoan.borrowerCompany && (
+                  <>
+                    <span>Company: {item.currentLoan.borrowerCompany}</span>
+                    <span>•</span>
+                  </>
+                )}
+                <span>
+                  Loan Dates: {formatDateDDMMYYYY(item.currentLoan.loanDate)} to {formatDateDDMMYYYY(item.currentLoan.expectedReturnDate)}
+                </span>
+                {item.currentLoan.purpose && (
+                  <>
+                    <span>•</span>
+                    <span>Purpose: {item.currentLoan.purpose}</span>
+                  </>
+                )}
+                {item.currentLoan.borrowerContact && (
+                  <>
+                    <span>•</span>
+                    <span>Contact: {item.currentLoan.borrowerContact}</span>
+                  </>
+                )}
               </div>
             </div>
           )}

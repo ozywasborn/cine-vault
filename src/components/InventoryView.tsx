@@ -518,6 +518,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
         updated = {
           ...updated,
           currentCheckout: undefined,
+          currentLoan: undefined,
         };
       } else if (value === 'Checked Out' && !updated.currentCheckout) {
         updated = {
@@ -557,6 +558,16 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             status: 'Active',
             notes: 'Out on loan to external production',
             conditionOnCheckout: item.condition,
+          },
+          currentLoan: {
+            id: `loan-${Date.now()}`,
+            borrowerName: 'External Partner',
+            borrowerCompany: '',
+            borrowerContact: '',
+            loanDate: new Date().toISOString().split('T')[0],
+            expectedReturnDate: new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0],
+            purpose: '',
+            notes: 'Loan created via inventory status change — update details in Edit modal',
           },
         };
       }
@@ -1077,7 +1088,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                   item.status === 'Available'
                     ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100/80'
                     : item.status === 'Checked Out'
-                    ? 'bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100/80'
+                    ? 'bg-red-50 text-red-800 border-red-300 hover:bg-red-100/80'
                     : item.status === 'In Maintenance'
                     ? 'bg-rose-50 text-rose-800 border-rose-300 hover:bg-rose-100/80'
                     : item.status === 'Out On Loan'
@@ -1090,16 +1101,19 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               >
                 {statuses.map((st) => (
                   <option key={st} value={st} className="bg-white text-slate-800 py-1 font-medium normal-case">
-                    {st}
+                    {st === 'Checked Out' ? 'Deployed' : st}
                   </option>
                 ))}
               </select>
               <ChevronDown className="w-3 h-3 text-slate-500 absolute right-1 pointer-events-none" />
             </div>
-            {item.currentCheckout && (item.status === 'Checked Out' || item.status === 'Out On Loan') && (
+            {(item.status === 'Checked Out' || item.status === 'Out On Loan') && (
               <div className="text-[10px] text-slate-500 truncate w-[124px]">
-                {item.status === 'Out On Loan' ? 'Loan: ' : 'On: '}
-                <strong className="text-slate-800">{item.currentCheckout.projectName}</strong>
+                {item.status === 'Out On Loan'
+                  ? <><span>Loan: </span><strong className="text-slate-800">{item.currentLoan?.borrowerName || item.currentCheckout?.projectName || '—'}</strong></>
+                  : item.currentCheckout
+                  ? <><span>On: </span><strong className="text-slate-800">{item.currentCheckout.projectName}</strong></>
+                  : null}
               </div>
             )}
           </div>
@@ -1233,6 +1247,15 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                 <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-700" />
                 <span>Check In</span>
               </button>
+            ) : item.status === 'Out On Loan' ? (
+              <button
+                onClick={() => handleOpenCheckin(item)}
+                className="w-24 h-8 flex items-center justify-center gap-1 px-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold shadow-2xs transition-colors cursor-pointer shrink-0"
+                title="Check in loaned gear back to cage"
+              >
+                <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Check In</span>
+              </button>
             ) : (
               <button
                 onClick={() => (canMaintain ? handleOpenMaintenance(item) : onSelectGear(item))}
@@ -1328,7 +1351,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               </span>
             </div>
             <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-2">
-              <span className="text-[10px] uppercase font-bold text-slate-400">On Shoot</span>
+              <span className="text-[10px] uppercase font-bold text-slate-400">Deployed</span>
               <span className="text-xs font-bold text-amber-600 font-mono">
                 {onShootCount} Units
               </span>
@@ -1841,8 +1864,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                         </span>
                       )}
                       {group.checkedOutCount > 0 && (
-                        <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-medium">
-                          {group.checkedOutCount} On Shoot
+                        <span className="px-2 py-0.5 rounded-md bg-red-50 text-red-700 border border-red-200 font-medium">
+                          {group.checkedOutCount} Deployed
                         </span>
                       )}
                       {group.maintenanceCount > 0 && (

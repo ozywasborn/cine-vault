@@ -857,7 +857,7 @@ export default function App() {
     const notif: InventoryNotification = {
       id: `NOTIF-${Date.now()}`,
       title: 'Field Gear Dispatched',
-      message: `${payload.gearIds.length} item(s) checked out to "${payload.projectName}" for ${payload.assigneeName}.`,
+      message: `${payload.gearIds.length} item(s) deployed to "${payload.projectName}" for ${payload.assigneeName}.`,
       timestamp: now,
       read: false,
       type: 'STATUS_ALERT',
@@ -885,6 +885,7 @@ export default function App() {
             condition: conditionOnReturn,
             location: location || item.location,
             currentCheckout: undefined,
+            currentLoan: undefined,
             updatedAt: now,
           };
           checkedInItem = updated;

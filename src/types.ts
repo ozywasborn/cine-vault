@@ -104,6 +104,18 @@ export interface GearComponent {
   notes?: string;
 }
 
+export interface LoanRecord {
+  id: string;
+  borrowerName: string;       // Who borrowed it
+  borrowerCompany?: string;   // Company/production house
+  borrowerContact?: string;   // Phone/email
+  loanDate: string;           // When it was loaned out
+  expectedReturnDate: string; // When it should come back
+  actualReturnDate?: string;  // When it actually came back
+  purpose?: string;           // Why it was loaned
+  notes?: string;
+}
+
 export interface GearItem {
   id: string;
   assetTag: string;
@@ -124,6 +136,7 @@ export interface GearItem {
   nextServiceDate?: string;
   maintenanceIntervalDays?: number;
   currentCheckout?: CheckoutRecord;
+  currentLoan?: LoanRecord;
   imageUrl?: string;
   notes?: string;
   totalShootsCompleted?: number;

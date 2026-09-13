@@ -17,6 +17,7 @@ import {
   Package,
   ChevronRight,
   ExternalLink,
+  Handshake,
 } from 'lucide-react';
 import { GearItem, MaintenanceRecord, ShootProject, GearCategory } from '../types';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
@@ -56,6 +57,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const availableCount = gear.filter((g) => g.status === 'Available').length;
   const inMaintenanceCount = gear.filter((g) => g.status === 'In Maintenance').length;
   const utilizationRate = gear.length > 0 ? Math.round((checkedOutCount / gear.length) * 100) : 0;
+
+  // Loan tracking
+  const loanedItems = useMemo(() => gear.filter((g) => g.status === 'Out On Loan'), [gear]);
 
   // Overdue and upcoming maintenance
   const today = new Date();
@@ -649,6 +653,88 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* SIDE 1-COL SECTION: Fleet Utilization & Maintenance (Swapped into side column) */}
         <div className="space-y-6">
+          {/* Active Loans Summary */}
+          <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Handshake className="w-4 h-4 text-purple-500" />
+                  <h2 className="text-base font-bold text-slate-900">Active Loans</h2>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">Equipment currently on loan</p>
+              </div>
+              <span className={`text-xs font-bold px-2 py-1 rounded-lg border ${
+                loanedItems.length > 0
+                  ? 'text-purple-600 bg-purple-50 border-purple-200'
+                  : 'text-slate-500 bg-slate-50 border-slate-200'
+              }`}>
+                {loanedItems.length} {loanedItems.length === 1 ? 'Item' : 'Items'}
+              </span>
+            </div>
+
+            {loanedItems.length === 0 ? (
+              <div className="text-center py-6">
+                <Handshake className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                <p className="text-xs text-slate-400 font-medium">No items currently on loan</p>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {loanedItems.map((item) => {
+                  const loan = item.currentLoan;
+                  const isOverdue = loan?.expectedReturnDate
+                    ? new Date(loan.expectedReturnDate) < new Date()
+                    : false;
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-purple-200 transition-colors cursor-pointer"
+                      onClick={() => onSelectGearItem?.(item)}
+                      title="Click to view item details"
+                    >
+                      {/* Row 1: Item name + asset tag */}
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-xs font-bold text-slate-900 truncate">{item.name}</span>
+                          <span className="text-[10px] font-mono font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md shrink-0">{item.assetTag}</span>
+                        </div>
+                        {isOverdue && (
+                          <span className="text-[10px] font-bold text-red-700 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-md shrink-0 animate-pulse">
+                            OVERDUE
+                          </span>
+                        )}
+                      </div>
+                      {/* Row 2: Borrower info */}
+                      {loan && (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                            <User className="w-3 h-3 text-purple-400 shrink-0" />
+                            <span className="font-semibold text-slate-800">{loan.borrowerName}</span>
+                            {loan.borrowerCompany && (
+                              <span className="text-slate-400">· {loan.borrowerCompany}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                            <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                            <span>{formatDateDDMMYYYY(loan.loanDate)}</span>
+                            <span className="text-slate-300">→</span>
+                            <span className={isOverdue ? 'text-red-600 font-semibold' : ''}>
+                              {formatDateDDMMYYYY(loan.expectedReturnDate)}
+                            </span>
+                          </div>
+                          {loan.purpose && (
+                            <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                              {loan.purpose}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {/* Utilization by Category */}
           <div id="utilization-category-box" className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between mb-4">
@@ -688,7 +774,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <div
                       className="bg-amber-500 h-full transition-all duration-500 rounded-full"
                       style={{ width: `${stat.utilizationRate}%` }}
-                      title={`${stat.checkedOut} Checked Out`}
+                      title={`${stat.checkedOut} Deployed`}
                     />
                     {stat.maintenance > 0 && (
                       <div

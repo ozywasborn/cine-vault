@@ -22,6 +22,7 @@ import {
   MaintenanceRecord,
   GearComponent,
   DEFAULT_GEAR_CATEGORIES,
+  LoanRecord,
 } from '../types';
 import { INITIAL_USERS } from '../data/mockData';
 import { formatDateDDMMYYYY, formatCurrencySGD } from '../utils/dateUtils';
@@ -653,7 +654,7 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                     status === 'Available'
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                       : status === 'Checked Out'
-                      ? 'bg-blue-50 text-blue-700 border-blue-200'
+                      ? 'bg-red-50 text-red-700 border-red-200'
                       : 'bg-rose-50 text-rose-700 border-rose-200'
                   }`}
                 >
@@ -852,9 +853,9 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                       onChange={(e) => setStatus(e.target.value as GearStatus)}
                       className="w-full p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-medium focus:outline-none focus:bg-white focus:border-amber-500 cursor-pointer disabled:opacity-60"
                     >
-                      {statuses.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
+                      {statuses.map((st) => (
+                        <option key={st} value={st}>
+                          {st === 'Checked Out' ? 'Deployed' : st}
                         </option>
                       ))}
                     </select>
@@ -992,10 +993,65 @@ export const EditGearModal: React.FC<EditGearModalProps> = ({
                   </div>
                   {item.currentCheckout && (
                     <span className="text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 font-semibold">
-                      Checked out to: {item.currentCheckout.projectName}
+                      Deployed to: {item.currentCheckout.projectName}
                     </span>
                   )}
                 </div>
+
+                {/* Loan Details section */}
+                {item.status === 'Out On Loan' && item.currentLoan && (
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2 text-xs">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-amber-500" />
+                        <h4 className="font-bold text-slate-900">Loan Details</h4>
+                      </div>
+                      <span className="text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 font-semibold">
+                        Out On Loan
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-600">
+                      <div>
+                        <span className="text-slate-500 font-medium">Borrower: </span>
+                        <strong className="text-slate-900">{item.currentLoan.borrowerName}</strong>
+                        {item.currentLoan.borrowerCompany && (
+                          <span className="text-slate-700"> • {item.currentLoan.borrowerCompany}</span>
+                        )}
+                        {item.currentLoan.borrowerContact && (
+                          <div className="text-[11px] text-slate-500 mt-0.5">
+                            Contact: <span className="text-slate-800 font-medium">{item.currentLoan.borrowerContact}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div>
+                          <span className="text-slate-500 font-medium">Loan Date: </span>
+                          <span className="text-slate-800 font-mono font-medium">{formatDateDDMMYYYY(item.currentLoan.loanDate)}</span>
+                        </div>
+                        <div className="mt-0.5">
+                          <span className="text-slate-500 font-medium">Expected Return: </span>
+                          <span className="text-slate-800 font-mono font-medium">{formatDateDDMMYYYY(item.currentLoan.expectedReturnDate)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    {(item.currentLoan.purpose || item.currentLoan.notes) && (
+                      <div className="pt-1.5 border-t border-slate-200/60 space-y-1 text-[11px] text-slate-600">
+                        {item.currentLoan.purpose && (
+                          <div>
+                            <span className="text-slate-500 font-medium">Purpose: </span>
+                            <span className="text-slate-800">{item.currentLoan.purpose}</span>
+                          </div>
+                        )}
+                        {item.currentLoan.notes && (
+                          <div>
+                            <span className="text-slate-500 font-medium">Notes: </span>
+                            <span className="text-slate-700">{item.currentLoan.notes}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

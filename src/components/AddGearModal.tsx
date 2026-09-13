@@ -270,7 +270,7 @@ export const AddGearModal: React.FC<AddGearModalProps> = ({
                 >
                   {statuses.map((st) => (
                     <option key={st} value={st}>
-                      {st}
+                      {st === 'Checked Out' ? 'Deployed' : st}
                     </option>
                   ))}
                 </select>
