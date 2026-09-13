@@ -489,44 +489,44 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div
                     key={proj.id}
                     id={`shoot-card-${proj.id}`}
-                    className={`p-5 rounded-2xl border ${depTheme.containerBorder} bg-white hover:shadow-xs transition-all`}
+                    className={`rounded-2xl border ${depTheme.containerBorder} bg-white hover:shadow-xs transition-all overflow-hidden`}
                   >
-                    {/* Header: Title on Left, Clean Status & Countdown on Right (No bubble clutter, No $ bubble) */}
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 pb-3 border-b border-slate-100">
+                    {/* Themed Header / Title Bar - Same colour highlight as Field Deployment page */}
+                    <div className={`p-4 sm:p-5 ${depTheme.headerBg} flex flex-col sm:flex-row sm:items-start justify-between gap-3`}>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           {/* Matching deployment coloured dot from Field Deployment console */}
                           <span
-                            className={`w-2.5 h-2.5 rounded-full ${depTheme.dot} shadow-2xs ring-2 ring-white shrink-0`}
+                            className={`w-3 h-3 rounded-full ${depTheme.dot} shadow-2xs ring-2 ring-white shrink-0`}
                             title={`Deployment colour: ${depTheme.name}`}
                           />
                           <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
                             {proj.name}
                           </h3>
                           {proj.jobNo && (
-                            <span className="text-xs font-mono text-slate-400 font-medium">
+                            <span className="text-xs font-mono text-slate-500 font-medium">
                               #{proj.jobNo}
                             </span>
                           )}
                         </div>
 
                         {/* Subtle Metadata Row - Fixed horizontal date baseline alignment */}
-                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-slate-500 mt-1">
-                          <span className="font-medium text-slate-700">{proj.leadDP}</span>
+                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-slate-600 mt-1.5">
+                          <span className="font-medium text-slate-800">{proj.leadDP}</span>
                           {proj.location && (
                             <>
                               <span className="text-slate-300 select-none">•</span>
-                              <span className="truncate max-w-[260px]">{proj.location}</span>
+                              <span className="truncate max-w-[260px] text-slate-600">{proj.location}</span>
                             </>
                           )}
                           {proj.client && (
                             <>
                               <span className="text-slate-300 select-none">•</span>
-                              <span className="text-slate-400">{proj.client}</span>
+                              <span className="text-slate-500">{proj.client}</span>
                             </>
                           )}
                           <span className="text-slate-300 select-none">•</span>
-                          <span className="text-slate-400 text-xs tabular-nums">
+                          <span className="text-slate-500 text-xs tabular-nums">
                             {formatDateDDMMYYYY(proj.startDate)} → {formatDateDDMMYYYY(proj.endDate)}
                           </span>
                         </div>
@@ -568,10 +568,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </div>
                     </div>
 
-                    {/* All Equipment Items Grid (Entire equipment list visible directly without manifest text header) */}
-                    <div className="mt-3.5">
-
-                      {/* All Equipment Items Grid (Entire manifest visible in one glance) */}
+                    {/* All Equipment Items Grid (Nestled inside card body on clean white background) */}
+                    <div className="p-4 sm:p-5">
                       {proj.assignedGear.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
                           {proj.assignedGear.map((item) => {
