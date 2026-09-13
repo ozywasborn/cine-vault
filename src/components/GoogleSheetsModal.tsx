@@ -15,6 +15,7 @@ import {
   Check,
   Sparkles,
   Link2,
+  ChevronDown,
 } from 'lucide-react';
 import { GearItem, ShootProject, MaintenanceRecord, AuditLog } from '../types';
 import {
@@ -275,21 +276,10 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {activeSpreadsheetUrl ? (
-              <a
-                href={activeSpreadsheetUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
-                title="Open your Google Spreadsheet in a new tab"
-              >
-                <span>Open Sheet</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            ) : null}
             <button
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              title="Close modal"
             >
               <X className="w-5 h-5" />
             </button>
@@ -297,25 +287,27 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-5">
+        <div className="p-6 overflow-y-auto space-y-4">
           {/* Status Alert Banner */}
           {sheetsConfig.status === 'connected' ? (
-            <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 space-y-3">
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50/90 to-teal-50/60 border border-emerald-200/90 space-y-3 shadow-2xs">
               <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                  <div>
-                    <div className="text-xs font-bold text-emerald-900 flex items-center gap-2 flex-wrap">
-                      <span>Connected to:</span>
-                      <span className="px-2 py-0.5 rounded-lg bg-emerald-100 border border-emerald-300 font-mono font-black text-emerald-950">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-600/10 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200/80">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-emerald-950 flex items-center gap-1.5 flex-wrap">
+                      <span className="text-emerald-800 font-semibold">Connected to:</span>
+                      <span className="px-2.5 py-0.5 rounded-lg bg-white/90 border border-emerald-300 font-mono font-bold text-emerald-950 text-xs shadow-2xs truncate max-w-[280px]">
                         {sheetsConfig.sheetName || 'cine-vault-inventory'}
                       </span>
                     </div>
-                    <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-200/60 text-emerald-900 text-[11px] font-semibold">
+                    <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-100/90 text-emerald-900 text-[11px] font-semibold border border-emerald-200/70">
                         📋 Tab: <strong>Inventory</strong> ({gear.length} items)
                       </span>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-200/60 text-emerald-900 text-[11px] font-semibold">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-100/90 text-emerald-900 text-[11px] font-semibold border border-emerald-200/70">
                         🎬 Tab: <strong>Deployments</strong> ({projects.length} shoots)
                       </span>
                     </div>
@@ -327,7 +319,8 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
                     href={activeSpreadsheetUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all shrink-0"
+                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs hover:shadow transition-all shrink-0 cursor-pointer active:scale-95"
+                    title="Open your Google Spreadsheet in a new tab"
                   >
                     <span>Open Sheet</span>
                     <ExternalLink className="w-3.5 h-3.5" />
@@ -335,22 +328,24 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
                 )}
               </div>
 
-              <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-start gap-2">
-                <span className="font-bold text-amber-700 shrink-0">👉 Tip:</span>
-                <span>
-                  Google Sheets displays tabs along the bottom bar. Click the <strong>Inventory</strong> tab to view all equipment assets. (If you see an empty <strong>Sheet1</strong>, click on <strong>Inventory</strong> right next to it!)
+              {/* Integrated sleek tip & sync timestamp */}
+              <div className="pt-2.5 border-t border-emerald-200/60 flex items-center justify-between gap-2 flex-wrap text-[11px] text-emerald-800">
+                <span className="flex items-center gap-1.5">
+                  <span className="font-bold text-emerald-700">💡 Tip:</span>
+                  <span>Tabs are along the bottom of your Google Sheet — switch between <strong>Inventory</strong> and <strong>Deployments</strong>.</span>
                 </span>
+                {sheetsConfig.lastSynced && (
+                  <span className="text-[10px] text-emerald-700/80 font-medium font-mono shrink-0">
+                    Synced: {new Date(sheetsConfig.lastSynced).toLocaleString()}
+                  </span>
+                )}
               </div>
-
-              {sheetsConfig.lastSynced && (
-                <div className="text-[10px] text-emerald-700 font-medium pt-1 border-t border-emerald-200/50">
-                  Last synchronized: {new Date(sheetsConfig.lastSynced).toLocaleString()}
-                </div>
-              )}
             </div>
           ) : (
-            <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 flex items-start gap-3">
-              <Cloud className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5 border border-amber-200">
+                <Cloud className="w-4 h-4 text-amber-600" />
+              </div>
               <div className="flex-1 text-xs text-amber-900">
                 <div className="font-bold">Cloud Database Disconnected</div>
                 <p className="mt-0.5 text-amber-800/90 leading-relaxed">
@@ -361,11 +356,20 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
           )}
 
           {/* Web App URL Configuration */}
-          <div className="space-y-2">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-              <Link2 className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Google Apps Script Web App URL</span>
-            </label>
+          <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <Link2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Google Apps Script Web App URL</span>
+              </label>
+              {testResult.status === 'success' && (
+                <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Connection Verified</span>
+                </span>
+              )}
+            </div>
+
             <div className="flex gap-2">
               <input
                 type="url"
@@ -377,13 +381,13 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
                 placeholder="https://script.google.com/macros/s/.../exec"
-                className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-mono focus:outline-none focus:bg-white focus:border-emerald-500 transition-colors"
+                className="flex-1 px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all shadow-2xs"
               />
               <button
                 type="button"
                 onClick={handleTestConnection}
                 disabled={isTesting}
-                className="px-4 py-2.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 font-bold text-xs flex items-center gap-2 transition-all shrink-0 disabled:opacity-50"
+                className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 disabled:opacity-50 cursor-pointer active:scale-95 shadow-2xs"
               >
                 {isTesting ? (
                   <>
@@ -403,10 +407,10 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
             {urlInput.includes('docs.google.com/spreadsheets/d/') && (
               <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-medium space-y-1">
                 <div className="font-bold flex items-center gap-1.5 text-amber-800">
-                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                   <span>Spreadsheet link entered in Web App field</span>
                 </div>
-                <p>
+                <p className="text-[11px] text-amber-800 leading-relaxed">
                   You entered the spreadsheet web link. CineVault requires the <strong>Web app URL</strong> ending in <strong>/exec</strong>. In your Google Sheet, click <strong>Extensions &gt; Apps Script &gt; Deploy &gt; Manage deployments</strong>, and copy the Web app URL.
                 </p>
               </div>
@@ -415,28 +419,22 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
             {urlInput.includes('/dev') && (
               <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-medium space-y-1">
                 <div className="font-bold flex items-center gap-1.5 text-amber-800">
-                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                   <span>Development '/dev' URL detected</span>
                 </div>
-                <p>
+                <p className="text-[11px] text-amber-800 leading-relaxed">
                   URLs ending in <strong>/dev</strong> require Google browser login. Please replace <strong>/dev</strong> with <strong>/exec</strong> from <strong>Deploy &gt; Manage deployments</strong>.
                 </p>
               </div>
             )}
 
-            {testResult.status === 'success' && (
-              <p className="text-xs font-semibold text-emerald-600 flex items-center gap-1.5 mt-1">
-                <Check className="w-3.5 h-3.5" />
-                <span>{testResult.message}</span>
-              </p>
-            )}
             {testResult.status === 'error' && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-1 mt-1.5">
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-1">
                 <div className="font-bold flex items-center gap-1.5 text-rose-700">
-                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
                   <span>Connection Issue</span>
                 </div>
-                <p className="text-rose-800 leading-relaxed font-medium">
+                <p className="text-rose-800 leading-relaxed font-medium text-[11px]">
                   {testResult.message}
                 </p>
               </div>
@@ -444,12 +442,13 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
           </div>
 
           {/* Database Synchronization Controls */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+          <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200 space-y-3.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                Database Synchronization
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <RefreshCw className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Database Synchronization</span>
               </span>
-              <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer">
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer select-none transition-colors">
                 <input
                   type="checkbox"
                   checked={sheetsConfig.autoSyncEnabled}
@@ -464,12 +463,12 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
               </label>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <button
                 type="button"
                 onClick={handlePushAll}
                 disabled={isPushing || (!urlInput && !sheetsConfig.webAppUrl)}
-                className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs hover:shadow disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer active:scale-98"
               >
                 {isPushing ? (
                   <>
@@ -479,7 +478,7 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
                 ) : (
                   <>
                     <UploadCloud className="w-4 h-4" />
-                    <span>Push Inventory to Sheet ({gear.length})</span>
+                    <span>Push All to Sheet ({gear.length})</span>
                   </>
                 )}
               </button>
@@ -488,7 +487,7 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
                 type="button"
                 onClick={handlePullAll}
                 disabled={isPulling || (!urlInput && !sheetsConfig.webAppUrl)}
-                className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-800 border border-slate-200/90 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-2xs hover:shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer active:scale-98"
               >
                 {isPulling ? (
                   <>
@@ -498,22 +497,22 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
                 ) : (
                   <>
                     <DownloadCloud className="w-4 h-4 text-emerald-600" />
-                    <span>Pull Latest from Google Sheet</span>
+                    <span>Pull Latest from Sheet</span>
                   </>
                 )}
               </button>
             </div>
 
             {/* Direct CSV Download option */}
-            <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-xs text-slate-600">
-              <span className="text-[11px] text-slate-500">Need immediate offline data or manual file import?</span>
+            <div className="pt-2.5 border-t border-slate-200/70 flex items-center justify-between text-xs text-slate-500">
+              <span className="text-[11px]">Need offline export or manual spreadsheet backup?</span>
               <button
                 type="button"
                 onClick={() => {
                   googleSheetsService.downloadInventoryCsv(gear);
                   showToast('Inventory CSV downloaded!');
                 }}
-                className="font-bold text-slate-800 hover:text-emerald-700 text-[11px] flex items-center gap-1.5 transition-colors underline"
+                className="font-bold text-slate-700 hover:text-emerald-700 text-[11px] flex items-center gap-1 transition-colors cursor-pointer"
               >
                 <span>Download Inventory CSV</span>
               </button>
@@ -521,11 +520,11 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
           </div>
 
           {/* Quick Setup & Update Guide Accordion */}
-          <div className="border border-slate-200 rounded-2xl overflow-hidden">
+          <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs transition-all">
             <button
               type="button"
               onClick={() => setShowInstructions((prev) => !prev)}
-              className="w-full px-4 py-3 bg-slate-50 hover:bg-slate-100/80 flex items-center justify-between text-left transition-colors"
+              className="w-full px-4 py-3 bg-slate-50 hover:bg-slate-100/80 flex items-center justify-between text-left transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-2">
                 <HelpCircle className="w-4 h-4 text-amber-500" />
@@ -533,9 +532,10 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
                   Google Apps Script Setup &amp; Update Guide
                 </span>
               </div>
-              <span className="text-xs font-semibold text-emerald-700">
-                {showInstructions ? 'Hide Guide' : 'Show Guide'}
-              </span>
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                <span>{showInstructions ? 'Hide Guide' : 'Show Guide'}</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showInstructions ? 'rotate-180 text-emerald-600' : ''}`} />
+              </div>
             </button>
 
             {showInstructions && (
@@ -574,7 +574,7 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
                   <button
                     type="button"
                     onClick={handleCopyScript}
-                    className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-sm"
+                    className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-sm cursor-pointer"
                   >
                     {copiedScript ? (
                       <>
@@ -602,7 +602,7 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+        <div className="px-6 py-4 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between">
           <div className="text-[11px] text-slate-500 flex items-center gap-1.5 font-medium">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
             <span>Database permanently hosted on your personal Google Drive</span>
@@ -610,7 +610,7 @@ export const GoogleSheetsModal: React.FC<GoogleSheetsModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors"
+            className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors cursor-pointer active:scale-95 shadow-2xs"
           >
             Done
           </button>
