@@ -1092,6 +1092,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
       monthName: string;
       isToday: boolean;
       isWeekend: boolean;
+      isMonday: boolean;
     }[] = [];
 
     const curr = new Date(timelineStart);
@@ -1104,6 +1105,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
       const monthName = curr.toLocaleDateString('en-US', { month: 'short' });
       const dayNum = curr.getDate();
       const isWeekend = curr.getDay() === 0 || curr.getDay() === 6;
+      const isMonday = curr.getDay() === 1;
 
       days.push({
         date: new Date(curr),
@@ -1113,6 +1115,7 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
         monthName,
         isToday,
         isWeekend,
+        isMonday,
       });
 
       curr.setDate(curr.getDate() + 1);
@@ -2098,74 +2101,19 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Visual timeline showing shoot dates, equipment loan durations, and concurrent schedule overlaps.
+                  Visual timeline showing shoot dates, equipment loan durations, and weekly schedule progression.
                 </p>
               </div>
             </div>
-
-            {/* Overlap Indicator Pill */}
-            <div className="flex items-center gap-2">
-              {ganttData.overlaps.length > 0 ? (
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold shadow-2xs">
-                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                  <span>
-                    {ganttData.overlaps.length} Schedule Overlap{ganttData.overlaps.length > 1 ? 's' : ''} Detected
-                  </span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shadow-2xs">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>No Date Overlaps</span>
-                </div>
-              )}
-            </div>
           </div>
-
-          {/* Overlap Summary Alert Banner (if any) */}
-          {ganttData.overlaps.length > 0 && (
-            <div className="px-5 py-2.5 bg-amber-50/60 border-b border-amber-200/80 text-xs text-amber-900 flex flex-wrap items-center gap-2">
-              <span className="font-bold text-amber-800 uppercase text-[10px] tracking-wider bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
-                Concurrent
-              </span>
-              <span>
-                Simultaneous operations:{' '}
-                {ganttData.overlaps.map((o, idx) => (
-                  <strong key={idx} className="font-semibold text-amber-950 inline-flex items-center gap-1 flex-wrap mr-2">
-                    "{o.projA}"{' '}
-                    <span
-                      className={`text-[9px] font-mono px-1 py-0.2 rounded font-bold ${
-                        o.typeA === 'loan'
-                          ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                          : 'bg-amber-100 text-amber-800 border border-amber-200'
-                      }`}
-                    >
-                      {o.typeA === 'loan' ? 'LOAN' : 'SHOOT'}
-                    </span>{' '}
-                    & "{o.projB}"{' '}
-                    <span
-                      className={`text-[9px] font-mono px-1 py-0.2 rounded font-bold ${
-                        o.typeB === 'loan'
-                          ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                          : 'bg-amber-100 text-amber-800 border border-amber-200'
-                      }`}
-                    >
-                      {o.typeB === 'loan' ? 'LOAN' : 'SHOOT'}
-                    </span>{' '}
-                    ({o.range})
-                    {idx < ganttData.overlaps.length - 1 ? ' • ' : ''}
-                  </strong>
-                ))}
-              </span>
-            </div>
-          )}
 
           {/* Scrollable Gantt Canvas */}
           <div className="overflow-x-auto p-5">
-            <div className="min-w-[850px] select-none">
+            <div className="min-w-[960px] select-none">
               {/* Month / Day Header Grid */}
               <div className="flex border-b border-slate-200 pb-2 mb-3">
                 {/* Left Label Column */}
-                <div className="w-56 shrink-0 font-bold text-xs uppercase tracking-wider text-slate-400 pl-2">
+                <div className="w-72 shrink-0 font-bold text-xs uppercase tracking-wider text-slate-400 pl-2">
                   Shoots & Loans
                 </div>
 
@@ -2176,17 +2124,21 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                     gridTemplateColumns: `repeat(${ganttData.days.length}, minmax(0, 1fr))`,
                   }}
                 >
-                  {ganttData.days.map((day) => (
+                  {ganttData.days.map((day, idx) => (
                     <div
                       key={day.dateStr}
-                      className={`text-center py-1 rounded transition-colors ${
+                      className={`text-center py-1 rounded transition-colors relative ${
+                        day.isMonday && idx > 0
+                          ? 'border-l-2 border-slate-300 pl-0.5'
+                          : ''
+                      } ${
                         day.isToday
                           ? 'bg-amber-500 text-white font-bold shadow-xs'
                           : day.isWeekend
                           ? 'bg-slate-100/70 text-slate-400'
                           : 'text-slate-600'
                       }`}
-                      title={`${day.monthName} ${day.dayNum} (${day.dateStr})`}
+                      title={`${day.monthName} ${day.dayNum} (${day.dateStr})${day.isMonday ? ' • Week start (Mon)' : ''}`}
                     >
                       <div className="text-[10px] leading-tight font-medium uppercase">
                         {day.dayOfWeek}
@@ -2201,11 +2153,28 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
 
               {/* Project Lanes */}
               <div className="space-y-3 relative">
+                {/* Vertical Week Separator Lines spanning across all lanes (starts on Monday) */}
+                {ganttData.days.map((d, i) => {
+                  if (!d.isMonday || i === 0) return null;
+                  const pct = (i / ganttData.days.length) * 100;
+                  return (
+                    <div
+                      key={`week-line-${d.dateStr}`}
+                      className="absolute top-0 bottom-0 pointer-events-none z-10 flex flex-col items-center"
+                      style={{
+                        left: `calc(18rem + (100% - 18rem) * ${pct / 100})`,
+                      }}
+                    >
+                      <div className="w-px h-full border-l border-dashed border-slate-300/80" />
+                    </div>
+                  );
+                })}
+
                 {/* Vertical "Today" Marker Line spanning all lanes */}
                 <div
                   className="absolute top-0 bottom-0 pointer-events-none z-10 flex flex-col items-center"
                   style={{
-                    left: `calc(14rem + (100% - 14rem) * ${ganttData.todayPercent / 100})`,
+                    left: `calc(18rem + (100% - 18rem) * ${ganttData.todayPercent / 100})`,
                   }}
                 >
                   <div className="w-0.5 h-full bg-amber-500 shadow-sm" />
@@ -2218,49 +2187,70 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                       key={bar.id || bar.name}
                       className="flex items-center group/row rounded-xl hover:bg-slate-50/70 p-1.5 transition-colors"
                     >
-                      {/* Left Info Column */}
-                      <div className="w-56 shrink-0 pr-3 min-w-0">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          {isLoan ? (
-                            <Handshake className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                          ) : (
-                            <span
-                              className={`w-2 h-2 rounded-full shrink-0 ${bar.theme.dot}`}
-                            />
-                          )}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              isLoan && bar.loanGroup
-                                ? handleOpenEditLoan(bar.loanGroup)
-                                : handleOpenEditDeployment(bar.name)
-                            }
-                            className={`font-bold text-xs truncate text-left cursor-pointer transition-colors ${
-                              isLoan
-                                ? 'text-purple-900 hover:text-purple-700'
-                                : 'text-slate-900 hover:text-amber-600'
-                            }`}
-                            title={`Click to edit ${bar.name}`}
-                          >
-                            {bar.name}
-                          </button>
-                          {isLoan ? (
-                            <span className="px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 border border-purple-300 text-[10px] font-mono font-bold shrink-0">
-                              LOAN
-                            </span>
-                          ) : (
-                            bar.jobNo && (
-                              <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-mono font-bold shrink-0">
-                                {bar.jobNo}
+                      {/* Left Info Column - Standardized Width and Structured Alignment */}
+                      <div className="w-72 shrink-0 pr-4 min-w-0">
+                        <div className="flex items-start gap-2.5 min-w-0">
+                          {/* Fixed-width Icon Slot (20px width, centered) */}
+                          <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
+                            {isLoan ? (
+                              <Handshake className="w-4 h-4 text-purple-600" />
+                            ) : (
+                              <span
+                                className={`w-2.5 h-2.5 rounded-full ${bar.theme.dot} ring-2 ring-white shadow-2xs`}
+                              />
+                            )}
+                          </div>
+
+                          {/* Content Area: Title + Badge on top row, metadata on second row */}
+                          <div className="flex-1 min-w-0">
+                            {/* Title & Badge Row: Title flexes and truncates, Badge stays pinned to the right */}
+                            <div className="flex items-center justify-between gap-1.5 min-h-[20px]">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  isLoan && bar.loanGroup
+                                    ? handleOpenEditLoan(bar.loanGroup)
+                                    : handleOpenEditDeployment(bar.name)
+                                }
+                                className={`font-bold text-xs truncate text-left cursor-pointer transition-colors ${
+                                  isLoan
+                                    ? 'text-purple-900 hover:text-purple-700'
+                                    : 'text-slate-900 hover:text-amber-600'
+                                }`}
+                                title={`Click to edit ${bar.name}`}
+                              >
+                                {bar.name}
+                              </button>
+
+                              {/* Standardized Badge Slot */}
+                              <div className="shrink-0 flex items-center justify-end">
+                                {isLoan ? (
+                                  <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-300 text-[10px] font-mono font-bold leading-none">
+                                    LOAN
+                                  </span>
+                                ) : bar.jobNo ? (
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-mono font-bold leading-none">
+                                    {bar.jobNo}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+
+                            {/* Metadata Subline: Clean, neat bulleted info aligned exactly with the title */}
+                            <div className="text-[10px] text-slate-500 truncate mt-0.5 flex items-center gap-1.5 leading-tight">
+                              <span className="font-semibold text-slate-700 shrink-0">
+                                {bar.itemCount} {bar.itemCount === 1 ? 'asset' : 'assets'}
                               </span>
-                            )
-                          )}
-                        </div>
-                        <div className="text-[10px] text-slate-500 truncate mt-0.5 pl-3.5">
-                          <span className="font-semibold text-slate-700">
-                            {bar.itemCount} assets
-                          </span>{' '}
-                          • {bar.durationDays}d • {isLoan ? bar.borrowerCompany || 'External' : bar.leadDP}
+                              <span className="text-slate-300 font-bold">•</span>
+                              <span className="font-medium text-slate-600 shrink-0">
+                                {bar.durationDays}d
+                              </span>
+                              <span className="text-slate-300 font-bold">•</span>
+                              <span className="truncate text-slate-600 font-medium">
+                                {isLoan ? bar.borrowerCompany || 'External' : bar.leadDP}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
@@ -2277,6 +2267,10 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                             <div
                               key={i}
                               className={`border-r border-slate-200/40 h-full ${
+                                d.isMonday && i > 0
+                                  ? 'border-l-2 border-l-slate-300'
+                                  : ''
+                              } ${
                                 d.isToday ? 'bg-amber-50/50' : d.isWeekend ? 'bg-slate-200/20' : ''
                               }`}
                             />
@@ -2344,6 +2338,25 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                             </div>
                           )}
                         </div>
+
+                        {/* Week Separation Overlay Lines (Monday boundaries, visible crossing through bars) */}
+                        <div
+                          className="absolute inset-0 grid pointer-events-none z-25"
+                          style={{
+                            gridTemplateColumns: `repeat(${ganttData.days.length}, minmax(0, 1fr))`,
+                          }}
+                        >
+                          {ganttData.days.map((d, i) => (
+                            <div
+                              key={i}
+                              className={`h-full ${
+                                d.isMonday && i > 0
+                                  ? 'border-l-2 border-dashed border-white/60 shadow-[-1px_0_0_0_rgba(15,23,42,0.2)]'
+                                  : ''
+                              }`}
+                            />
+                          ))}
+                        </div>
                       </div>
                     </div>
                   );
@@ -2375,6 +2388,10 @@ export const FieldShootSummaryView: React.FC<FieldShootSummaryProps> = ({
                 </div>
 
                 <div className="flex items-center gap-4 font-medium">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 border-t-2 border-dashed border-slate-400 inline-block" />
+                    <span>Week boundary (Mon)</span>
+                  </div>
                   <div className="flex items-center gap-1.5">
                     <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
                     <span>Current Day ("Today")</span>
